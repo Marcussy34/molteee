@@ -178,6 +178,8 @@ Phase 1: Foundation (OpenClaw + Contracts)
 | RPSGame | `0x2A622c1878335149c251Be32dE5660297609A12f` |
 | ERC-8004 Identity Registry | `0x8004A818BFB912233c491871b3d84c89A494BD9e` (singleton) |
 | ERC-8004 Reputation Registry | `0x8004B663056A597Dffe9eCcC1965A193B7388713` (singleton) |
+| **Fighter Agent ID** | **10** (ERC-8004 Identity NFT) |
+| Fighter IPFS Metadata | `ipfs://QmbtN8zWfhVmSJ4HoDztwEWpP6osFD5vXMHZrsZXgpJJtY` |
 
 ---
 

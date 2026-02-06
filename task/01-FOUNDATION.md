@@ -204,6 +204,9 @@
 - [x] RPSGame deployed to Monad testnet (`0x2A622c18...`) — includes ERC-8004 reputation
 - [x] ERC-8004 interfaces created (IReputationRegistry, IIdentityRegistry)
 - [x] ERC-8004 agent registration scaffold (`agent/` directory)
+- [x] ERC-8004 agent registered on Identity Registry (Agent ID: 10)
+- [x] Agent metadata uploaded to IPFS via Pinata
+- [x] agentId set in RPSGame contract (`setAgentId(fighter, 10)`)
 - [ ] Manual RPS match verified on testnet
 - [x] Fighter wallet funded with testnet MON
 - [x] 5 opponent wallets created

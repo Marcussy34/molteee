@@ -8,7 +8,7 @@
 
 ## Summary
 
-Phase 1 established the full development foundation for the Gaming Arena Agent hackathon project. All smart contracts are written, tested (54 tests passing), deployed to Monad testnet, and verified on-chain. The OpenClaw fighter skill is scaffolded and discoverable. Six wallets are created and the deployer is funded.
+Phase 1 established the full development foundation for the Gaming Arena Agent hackathon project. All smart contracts are written, tested (60 tests passing), deployed to Monad testnet (v2 with ERC-8004 reputation), and verified on-chain. The OpenClaw fighter skill is scaffolded and discoverable. Six wallets are created and the deployer is funded. ERC-8004 agent registration scaffold created.
 
 ---
 
@@ -93,13 +93,13 @@ Features implemented:
 
 ### 7. Foundry Tests
 
-**54 tests across 3 test suites — all passing.**
+**60 tests across 3 test suites — all passing.**
 
 | Test Suite | Tests | Coverage |
 |------------|-------|----------|
 | `AgentRegistry.t.sol` | 16 | Registration, double-register revert, status toggle, open agents filtering by game type, ELO updates, match records, authorization |
 | `Escrow.t.sol` | 17 | Create/accept match, wager locking, settlement to winner, draw refund, timeout cancellation, authorization checks, balance verification |
-| `RPSGame.t.sol` | 21 | Game creation, all 9 move combinations, best-of-1 (win/loss/draw), best-of-3 (early majority + full 3 rounds), commit/reveal validation (double commit, hash mismatch, wrong phase, Move.None), timeout (commit/reveal phases, neither committed), ELO update integration, match record integration |
+| `RPSGame.t.sol` | 27 | Game creation, all 9 move combinations, best-of-1 (win/loss/draw), best-of-3 (early majority + full 3 rounds), commit/reveal validation (double commit, hash mismatch, wrong phase, Move.None), timeout (commit/reveal phases, neither committed), ELO update integration, match record integration, **ERC-8004 reputation feedback** (after match, not on draw, skipped without agentIds, skipped without registry), setAgentId, setAgentId revert |
 
 ### 8. Deployment to Monad Testnet
 
@@ -112,20 +112,49 @@ Deployment order:
 4. `escrow.authorizeContract(rpsGame)` — RPSGame can settle matches
 5. `registry.authorizeContract(rpsGame)` — RPSGame can update ELO/history
 
-| Contract | Deployed Address |
-|----------|-----------------|
-| AgentRegistry | `0x88Ca39AE7b2e0fc3aA166DFf93561c71CF129b08` |
-| Escrow | `0x8C685b42790dAF3cFc601b102DdaBc2D9c9A552d` |
-| RPSGame | `0x14C394b4042Fd047fD9226082684ED3F174eFD0C` |
+| Contract | Deployed Address (v1 — no ERC-8004) | Deployed Address (v2 — with ERC-8004) |
+|----------|--------------------------------------|---------------------------------------|
+| AgentRegistry | `0x88Ca39AE...` (deprecated) | `0x96728e0962d7B3fA3B1c632bf489004803C165cE` |
+| Escrow | `0x8C685b42...` (deprecated) | `0x16d9CD10c426B4c82d07E4f90B7fB7E02b2715Bc` |
+| RPSGame | `0x14C394b4...` (deprecated) | `0x2A622c1878335149c251Be32dE5660297609A12f` |
 
-**On-chain verification:**
-- `owner()` returns deployer address
-- `ACCEPT_TIMEOUT()` returns 3600 (1 hour)
+ERC-8004 Singletons (not deployed by us):
+| Registry | Address |
+|----------|---------|
+| Identity Registry | `0x8004A818BFB912233c491871b3d84c89A494BD9e` |
+| Reputation Registry | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
+
+**On-chain verification (v2):**
+- `reputationRegistry()` returns `0x8004B663...` (ERC-8004 Reputation Registry)
 - `phaseTimeout()` returns 300 (5 minutes)
 - `authorizedContracts(rpsGame)` returns true on both Escrow and Registry
-- Deployment cost: ~0.61 MON
+- v2 deployment cost: ~0.64 MON
 
-### 9. OpenClaw Installation & Fighter Skill Scaffold
+### 9. ERC-8004 Agent Registration
+
+- **Agent ID: 10** on ERC-8004 Identity Registry
+- Registration metadata uploaded to IPFS: `ipfs://QmbtN8zWfhVmSJ4HoDztwEWpP6osFD5vXMHZrsZXgpJJtY`
+- Registration TX: `0x6432f1b64bdcf04f95755f3c230705e4f1fd23455f46b44efb27116b1588c06e` (block 11036490)
+- `setAgentId` TX: `0xfd93e3738532531ad0d0fe342a8d558b2ba95ccf025bd1a158f6e3be1fc66493` (block 11036527)
+- Agent viewable at: https://8004scan.io/agent/10
+- Pinata gateway: https://gateway.pinata.cloud/ipfs/QmbtN8zWfhVmSJ4HoDztwEWpP6osFD5vXMHZrsZXgpJJtY
+- `agentIds(fighterAddress)` returns `10` in RPSGame contract — reputation feedback will be posted after matches
+
+**Agent registration directory:**
+```
+agent/
+├── package.json              # Registration-only deps (dotenv, ethers)
+├── tsconfig.json             # ES2022 target
+├── registration.json         # ERC-8004 metadata (name, description, trust models)
+├── .well-known/
+│   └── agent-card.json       # A2A discovery card
+├── src/
+│   └── register.ts           # IPFS upload + Identity Registry mint script
+├── .env                      # Private key + Pinata JWT (gitignored)
+└── .gitignore
+```
+
+### 10. OpenClaw Installation & Fighter Skill Scaffold
 
 - **OpenClaw v2026.2.3-1** installed globally via npm
 - Onboarded with workspace set to `/Users/marcus/Projects/molteee`
@@ -172,6 +201,14 @@ skills/fighter/
 │   ├── script/
 │   │   └── Deploy.s.sol                          # NEW
 │   └── broadcast/Deploy.s.sol/10143/             # AUTO-GENERATED (deployment receipts)
+├── agent/                                        # NEW (ERC-8004 registration)
+│   ├── package.json                              # NEW
+│   ├── tsconfig.json                             # NEW
+│   ├── registration.json                         # NEW (agent metadata)
+│   ├── .well-known/agent-card.json               # NEW (A2A discovery)
+│   ├── src/register.ts                           # NEW (IPFS upload + mint)
+│   ├── .env                                      # NEW (gitignored)
+│   └── .gitignore                                # NEW
 ├── skills/fighter/
 │   ├── SKILL.md                                  # NEW
 │   ├── pyproject.toml                            # NEW
@@ -189,16 +226,19 @@ skills/fighter/
 
 - [x] OpenClaw installed and configured with LLM provider
 - [x] Foundry project compiles cleanly (`forge build` — zero errors)
-- [x] All Foundry tests pass (`forge test` — 54/54)
-- [x] AgentRegistry deployed to Monad testnet (`0x88Ca39AE...`)
-- [x] Escrow deployed to Monad testnet (`0x8C685b42...`)
-- [x] RPSGame deployed to Monad testnet (`0x14C394b4...`)
+- [x] All Foundry tests pass (`forge test` — 60/60)
+- [x] AgentRegistry deployed to Monad testnet (`0x96728e09...`)
+- [x] Escrow deployed to Monad testnet (`0x16d9CD10...`)
+- [x] RPSGame deployed to Monad testnet (`0x2A622c18...`)
 - [x] Cross-contract authorization verified on-chain
 - [x] Fighter wallet funded with testnet MON (~1.39 MON remaining)
 - [x] 5 opponent wallets created (addresses in `.env`)
 - [x] Fighter skill scaffold created and discovered by OpenClaw
 - [x] Contract ABIs and addresses in `lib/contracts.py`
 - [x] web3.py installed and connects to Monad testnet
+- [x] ERC-8004 agent registered (Agent ID: 10) on Identity Registry
+- [x] IPFS metadata uploaded via Pinata (`QmbtN8z...`)
+- [x] agentId set in RPSGame contract for reputation feedback
 
 ---
 
