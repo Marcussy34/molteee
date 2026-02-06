@@ -161,11 +161,23 @@ Phase 1: Foundation (OpenClaw + Contracts)
 |----------|-------|---------|
 | AgentRegistry.sol | 1 | Registration, discovery, ELO ratings, match history |
 | Escrow.sol | 1 | Wager locking and payout (shared across all games) |
-| RPSGame.sol | 1 | Commit-reveal Rock-Paper-Scissors |
+| RPSGame.sol | 1 | Commit-reveal Rock-Paper-Scissors + ERC-8004 reputation feedback |
+| interfaces/IReputationRegistry.sol | 1 | ERC-8004 Reputation Registry interface |
+| interfaces/IIdentityRegistry.sol | 1 | ERC-8004 Identity Registry interface |
 | PokerGame.sol | 4 | Simplified heads-up poker with betting rounds |
 | AuctionGame.sol | 5 | Sealed-bid blind auction |
 | Tournament.sol | 6 | Bracket tournaments with game rotation |
 | PredictionMarket.sol | 8 | Bonus: spectator betting AMM |
+
+### Deployed Addresses (Monad Testnet, v2 — with ERC-8004)
+
+| Contract | Address |
+|----------|---------|
+| AgentRegistry | `0x96728e0962d7B3fA3B1c632bf489004803C165cE` |
+| Escrow | `0x16d9CD10c426B4c82d07E4f90B7fB7E02b2715Bc` |
+| RPSGame | `0x2A622c1878335149c251Be32dE5660297609A12f` |
+| ERC-8004 Identity Registry | `0x8004A818BFB912233c491871b3d84c89A494BD9e` (singleton) |
+| ERC-8004 Reputation Registry | `0x8004B663056A597Dffe9eCcC1965A193B7388713` (singleton) |
 
 ---
 
@@ -184,8 +196,10 @@ Phase 1: Foundation (OpenClaw + Contracts)
 | Component | Technology | Why |
 |-----------|-----------|-----|
 | Smart Contracts | Solidity + Foundry | Monad is EVM-compatible, proven patterns |
+| Agent Identity | ERC-8004 Standard | On-chain identity + reputation via deployed registries |
 | Agent Runtime | OpenClaw | Hackathon ecosystem — LLM-powered agent loop |
 | Fighter Skill Scripts | Python + web3.py | Proven pattern for blockchain OpenClaw skills (PolyClaw model) |
+| Agent Registration | TypeScript + ethers.js | ERC-8004 registration script in agent/ directory |
 | Opponent Bots | Python + web3.py | Simple standalone scripts, no LLM needed |
 | Chain | Monad Testnet | Hackathon chain |
 | Currency | Testnet MON | Claimed from Monad faucet |

@@ -196,15 +196,17 @@
 
 ## Gate Checklist
 
-- [ ] OpenClaw installed and configured with LLM provider
-- [ ] Foundry project compiles cleanly
-- [ ] All Foundry tests pass
-- [ ] AgentRegistry deployed to Monad testnet
-- [ ] Escrow deployed to Monad testnet
-- [ ] RPSGame deployed to Monad testnet
+- [x] OpenClaw installed and configured with LLM provider
+- [x] Foundry project compiles cleanly
+- [x] All Foundry tests pass (60/60 — 27 RPSGame + 17 Escrow + 16 AgentRegistry)
+- [x] AgentRegistry deployed to Monad testnet (`0x96728e09...`)
+- [x] Escrow deployed to Monad testnet (`0x16d9CD10...`)
+- [x] RPSGame deployed to Monad testnet (`0x2A622c18...`) — includes ERC-8004 reputation
+- [x] ERC-8004 interfaces created (IReputationRegistry, IIdentityRegistry)
+- [x] ERC-8004 agent registration scaffold (`agent/` directory)
 - [ ] Manual RPS match verified on testnet
-- [ ] Fighter wallet funded with testnet MON
-- [ ] 5 opponent wallets created
-- [ ] Fighter skill scaffold created and discovered by OpenClaw
-- [ ] Contract ABIs and addresses in `lib/contracts.py`
-- [ ] web3.py installed and able to connect to Monad testnet
+- [x] Fighter wallet funded with testnet MON
+- [x] 5 opponent wallets created
+- [x] Fighter skill scaffold created and discovered by OpenClaw
+- [x] Contract ABIs and addresses in `lib/contracts.py`
+- [x] web3.py installed and able to connect to Monad testnet
