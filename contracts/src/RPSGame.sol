@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import "./Escrow.sol";
 import "./AgentRegistry.sol";
+import "./interfaces/IReputationRegistry.sol";
 
 /// @title RPSGame — Commit-reveal Rock Paper Scissors with best-of-N rounds
 /// @notice Players commit hashed moves, then reveal. After all rounds,
@@ -41,6 +42,12 @@ contract RPSGame is Ownable {
     Escrow public escrow;
     AgentRegistry public registry;
 
+    /// @dev ERC-8004 Reputation Registry (deployed singleton on Monad)
+    IReputationRegistry public reputationRegistry;
+
+    /// @dev Maps player wallet address to their ERC-8004 agentId (for reputation feedback)
+    mapping(address => uint256) public agentIds;
+
     /// @dev Auto-incrementing game ID
     uint256 public nextGameId;
 
@@ -66,12 +73,21 @@ contract RPSGame is Ownable {
     event RoundResult(uint256 indexed gameId, uint256 round, address winner); // winner=address(0) for draw
     event GameComplete(uint256 indexed gameId, address indexed winner); // winner=address(0) for draw
     event TimeoutClaimed(uint256 indexed gameId, address indexed claimer);
+    event AgentIdSet(address indexed agent, uint256 agentId);
+    event ReputationFeedback(uint256 indexed gameId, uint256 agentId, int128 value, string tag);
 
     // ─── Constructor ─────────────────────────────────────────────────────
 
-    constructor(address _escrow, address _registry) Ownable(msg.sender) {
+    /// @param _escrow             Address of the Escrow contract
+    /// @param _registry           Address of the AgentRegistry contract
+    /// @param _reputationRegistry Address of the ERC-8004 Reputation Registry (address(0) to disable)
+    constructor(address _escrow, address _registry, address _reputationRegistry) Ownable(msg.sender) {
         escrow = Escrow(_escrow);
         registry = AgentRegistry(_registry);
+        // Reputation registry is optional — address(0) disables ERC-8004 feedback
+        if (_reputationRegistry != address(0)) {
+            reputationRegistry = IReputationRegistry(_reputationRegistry);
+        }
     }
 
     // ─── Game Lifecycle ──────────────────────────────────────────────────
@@ -241,6 +257,20 @@ contract RPSGame is Ownable {
         phaseTimeout = _timeout;
     }
 
+    /// @notice Set the ERC-8004 agentId for a player wallet (for reputation feedback)
+    /// @param _agent   Player wallet address
+    /// @param _agentId ERC-8004 Identity Registry token ID
+    function setAgentId(address _agent, uint256 _agentId) external onlyOwner {
+        agentIds[_agent] = _agentId;
+        emit AgentIdSet(_agent, _agentId);
+    }
+
+    /// @notice Update the reputation registry address
+    /// @param _reputationRegistry New reputation registry address (address(0) to disable)
+    function setReputationRegistry(address _reputationRegistry) external onlyOwner {
+        reputationRegistry = IReputationRegistry(_reputationRegistry);
+    }
+
     // ─── Internal Functions ──────────────────────────────────────────────
 
     /// @dev Resolve a round after both players reveal, then advance or complete
@@ -338,9 +368,43 @@ contract RPSGame is Ownable {
             // Record match results
             try registry.recordMatch(_winner, loser, AgentRegistry.GameType.RPS, true, m.wager) {} catch {}
             try registry.recordMatch(loser, _winner, AgentRegistry.GameType.RPS, false, m.wager) {} catch {}
+
+            // Post ERC-8004 reputation feedback (if registry is configured)
+            _postReputationFeedback(_gameId, _winner, loser);
         }
 
         emit GameComplete(_gameId, _winner);
+    }
+
+    /// @dev Post reputation feedback to the ERC-8004 Reputation Registry
+    /// @param _gameId Game ID (for events)
+    /// @param _winner Winner address
+    /// @param _loser  Loser address
+    function _postReputationFeedback(uint256 _gameId, address _winner, address _loser) internal {
+        // Skip if reputation registry is not configured
+        if (address(reputationRegistry) == address(0)) return;
+
+        // Lookup ERC-8004 agent IDs for both players
+        uint256 winnerAgentId = agentIds[_winner];
+        uint256 loserAgentId = agentIds[_loser];
+
+        // Post positive feedback for winner (value = +1, tag1 = "RPS", tag2 = "win")
+        if (winnerAgentId != 0) {
+            try reputationRegistry.giveFeedback(
+                winnerAgentId, int128(1), 0, "RPS", "win", "", "", bytes32(0)
+            ) {
+                emit ReputationFeedback(_gameId, winnerAgentId, int128(1), "win");
+            } catch {}
+        }
+
+        // Post negative feedback for loser (value = -1, tag1 = "RPS", tag2 = "loss")
+        if (loserAgentId != 0) {
+            try reputationRegistry.giveFeedback(
+                loserAgentId, int128(-1), 0, "RPS", "loss", "", "", bytes32(0)
+            ) {
+                emit ReputationFeedback(_gameId, loserAgentId, int128(-1), "loss");
+            } catch {}
+        }
     }
 
     /// @dev Calculate new ELO ratings after a match
