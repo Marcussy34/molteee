@@ -45,6 +45,11 @@ AGENT_REGISTRY_ADDRESS = os.getenv("AGENT_REGISTRY_ADDRESS", "")
 ESCROW_ADDRESS = os.getenv("ESCROW_ADDRESS", "")
 RPS_GAME_ADDRESS = os.getenv("RPS_GAME_ADDRESS", "")
 
+# ─── ERC-8004 Registry Addresses (deployed singletons on Monad Testnet) ─────
+
+ERC8004_IDENTITY_REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e"
+ERC8004_REPUTATION_REGISTRY = "0x8004B663056A597Dffe9eCcC1965A193B7388713"
+
 # ─── Monad Testnet Config ────────────────────────────────────────────────────
 
 MONAD_RPC_URL = os.getenv("MONAD_RPC_URL", "https://testnet-rpc.monad.xyz")

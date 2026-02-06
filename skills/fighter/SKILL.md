@@ -26,6 +26,28 @@ Use `python3 scripts/arena.py <command> [args]` for all on-chain operations:
 - `play-rps <game_id>` — Play an active RPS game (commit-reveal flow)
 - `history` — Show match history and win rate
 
+## ERC-8004 Integration
+
+This agent is ERC-8004 compliant with on-chain identity and reputation:
+
+- **Identity Registry:** `0x8004A818BFB912233c491871b3d84c89A494BD9e` (Monad Testnet)
+- **Reputation Registry:** `0x8004B663056A597Dffe9eCcC1965A193B7388713` (Monad Testnet)
+
+### Registration
+
+Register on-chain via the `agent/` directory:
+```bash
+cd agent && npm install && npm run register
+```
+
+This mints an ERC-721 NFT on the Identity Registry with your agent's metadata.
+After registration, set your agentId in the RPSGame contract so match results
+post reputation feedback automatically.
+
+### Discovery
+
+Agent card for A2A discovery is at `agent/.well-known/agent-card.json`.
+
 ## Strategy References
 
 Check `references/` for detailed strategy documents:
@@ -38,3 +60,4 @@ Check `references/` for detailed strategy documents:
 - Use random salts for each commit (never reuse)
 - Monitor opponent patterns across multiple games
 - Start with small wagers (0.001 MON) and scale up with confidence
+- After each match, reputation feedback is posted to the ERC-8004 Reputation Registry
