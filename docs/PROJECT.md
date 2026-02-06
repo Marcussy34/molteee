@@ -123,8 +123,18 @@ All contracts are written in Solidity and deployed using Foundry. Monad is EVM-c
 - **Commit phase:** Both players submit `keccak256(move + salt)` within a time window
 - **Reveal phase:** Both players reveal move and salt. Contract verifies hashes.
 - **Resolution:** Contract determines winner, calls escrow, updates registry ELO
+- **ERC-8004 Reputation:** After settlement, posts feedback to deployed Reputation Registry (+1 win, -1 loss, tags: "RPS"/"win" or "RPS"/"loss")
 - Supports best-of-1, best-of-3, or best-of-N rounds
 - Timeouts: failure to commit or reveal = forfeit
+
+#### ERC-8004 Integration (Standards Compliance)
+
+The project integrates with the ERC-8004 Agent Registry Standard for interoperable agent identity and reputation:
+
+- **Identity Registry** (`0x8004A818...`): Deployed singleton on Monad Testnet. Each agent mints an ERC-721 NFT representing their on-chain identity with metadata (name, description, endpoints, supported trust models).
+- **Reputation Registry** (`0x8004B663...`): Deployed singleton on Monad Testnet. RPSGame automatically posts win/loss feedback after each match settlement, building verifiable on-chain reputation.
+- **Agent discovery:** Agents are discoverable via A2A protocol (`.well-known/agent-card.json`) and 8004scan.io.
+- Registration handled via `agent/` directory: `npm run register` uploads metadata to IPFS and mints identity NFT.
 
 #### 4. Poker Game Contract
 
@@ -396,46 +406,38 @@ The hackathon is built around OpenClaw. Packaging as skills means composability 
 
 ---
 
-## File Structure (Expected)
+## File Structure
 
 ```
-gaming-arena-agent/
-├── contracts/                       # Solidity smart contracts
+molteee/
+├── contracts/                       # Solidity smart contracts (Foundry)
 │   ├── src/
 │   │   ├── AgentRegistry.sol        # Registration, discovery, ELO ratings
 │   │   ├── Escrow.sol               # Wager locking and payout (shared)
-│   │   ├── RPSGame.sol              # Rock-Paper-Scissors commit-reveal
-│   │   ├── PokerGame.sol            # Simplified heads-up poker
-│   │   ├── AuctionGame.sol          # Sealed-bid blind auction
-│   │   ├── Tournament.sol           # Bracket tournament with game rotation
-│   │   └── PredictionMarket.sol     # Bonus: spectator betting AMM
-│   ├── test/                        # Foundry tests for all contracts
-│   ├── script/                      # Deployment and interaction scripts
+│   │   ├── RPSGame.sol              # Rock-Paper-Scissors commit-reveal + ERC-8004 reputation
+│   │   └── interfaces/
+│   │       ├── IReputationRegistry.sol  # ERC-8004 Reputation Registry interface
+│   │       └── IIdentityRegistry.sol    # ERC-8004 Identity Registry interface
+│   ├── test/                        # Foundry tests (60 tests passing)
+│   ├── script/
+│   │   └── Deploy.s.sol             # Deployment script (includes reputation registry)
 │   └── foundry.toml                 # Foundry config for Monad testnet
+├── agent/                           # ERC-8004 registration & discovery
+│   ├── registration.json            # ERC-8004 agent metadata
+│   ├── src/register.ts              # On-chain registration script
+│   ├── .well-known/agent-card.json  # A2A discovery endpoint
+│   └── .env.example                 # Environment config template
 ├── skills/                          # OpenClaw skills
-│   ├── fighter/                     # Main fighter skill (core deliverable)
-│   │   ├── index.ts                 # Skill entry point
-│   │   ├── matchmaker.ts            # Registry scanning, opponent eval, game selection
-│   │   ├── strategy/
-│   │   │   ├── rps.ts               # RPS: frequency, Markov, anti-exploit
-│   │   │   ├── poker.ts             # Poker: bluffing, value betting, tells
-│   │   │   └── auction.ts           # Auction: bid shading, info gathering
-│   │   ├── opponent-model.ts        # Cross-game opponent profiling
-│   │   ├── bankroll.ts              # Kelly criterion, risk allocation, tilt prevention
-│   │   ├── psychology.ts            # Timing, pattern seeding, tilt induction
-│   │   └── tournament.ts            # Tournament bracket navigation
-│   ├── opponents/                   # 5 opponent strategy variants
-│   │   ├── rock.ts                  # Conservative
-│   │   ├── gambler.ts               # Aggressive
-│   │   ├── mirror.ts                # Reactive / tit-for-tat
-│   │   ├── random.ts                # Pure random baseline
-│   │   └── counter.ts               # Analytical counter-puncher
-│   └── spectator/                   # Bonus: prediction market bettor
-│       └── index.ts
-├── dashboard/                       # Demo UI or terminal logger
-├── PROJECT.md                       # This file
-├── PROBLEM.md                       # Problem statement
-├── SOLUTION.md                      # Solution design
+│   └── fighter/                     # Main fighter skill (core deliverable)
+│       ├── SKILL.md                 # Skill manifest + LLM instructions
+│       ├── scripts/arena.py         # CLI dispatcher for on-chain operations
+│       ├── lib/contracts.py         # Contract ABIs, addresses, constants
+│       └── references/              # Strategy docs for LLM context
+├── opponents/                       # Standalone Python bots (no OpenClaw)
+├── docs/                            # Project documentation
+│   ├── PROJECT.md                   # This file
+│   ├── PROBLEM.md                   # Problem statement
+│   └── SOLUTION.md                  # Solution design
 └── README.md                        # Setup and run instructions
 ```
 

@@ -8,13 +8,19 @@ An autonomous OpenClaw agent that competes across multiple game types (RPS, Poke
 
 ## How We Solve Each Problem
 
-### Problem: Agent-to-Agent Discovery → Solution: On-Chain Agent Registry
+### Problem: Agent-to-Agent Discovery → Solution: On-Chain Agent Registry + ERC-8004
 
-We deploy a smart contract on Monad that acts as an open registry. Any agent can register itself with its wallet address, supported game types, wager range, and an "open to challenge" flag. The registry also stores each agent's ELO rating and match history, making it publicly queryable.
+We deploy a custom Agent Registry smart contract on Monad for game-specific data (ELO, match history, game types, wager ranges) and integrate with the **ERC-8004 standard** for cross-ecosystem agent identity and reputation.
 
-Our fighter agent scans the registry autonomously, evaluates available opponents based on their rating, history, game types, and wager ranges, and selects the most strategically favorable match. No human matchmaking. No centralized server. Agents find each other through a shared on-chain data structure.
+**Custom AgentRegistry** handles game-specific concerns: per-game ELO ratings, match history, wager preferences, and the "open to challenge" flag. Our fighter agent scans this registry autonomously to find and evaluate opponents.
 
-This solves discovery in a permissionless way — any new agent can register and immediately become discoverable to every other agent in the ecosystem.
+**ERC-8004 Integration** provides standards-compliant identity and reputation:
+- **Identity Registry** (deployed singleton at `0x8004A818...`): Agent mints an ERC-721 NFT representing its on-chain identity with metadata uploaded to IPFS (name, description, endpoints, supported trust models)
+- **Reputation Registry** (deployed singleton at `0x8004B663...`): RPSGame automatically posts win/loss feedback after each match, building verifiable reputation that any ERC-8004 compatible system can read
+- **A2A Discovery** (`.well-known/agent-card.json`): Standard discovery endpoint for agent-to-agent communication
+- **8004scan.io**: Registered agents appear on the public explorer
+
+This dual-registry approach gives us both game-specific functionality (ELO, match selection) and cross-ecosystem interoperability (any ERC-8004 agent can discover and evaluate our fighter).
 
 ---
 
