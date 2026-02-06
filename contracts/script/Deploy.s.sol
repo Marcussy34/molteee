@@ -21,8 +21,10 @@ contract Deploy is Script {
         Escrow escrow = new Escrow();
         console.log("Escrow deployed at:", address(escrow));
 
-        // 3. Deploy RPSGame (depends on Escrow + Registry)
-        RPSGame rpsGame = new RPSGame(address(escrow), address(registry));
+        // 3. Deploy RPSGame (depends on Escrow + Registry + Reputation)
+        //    Uses the ERC-8004 Reputation Registry singleton deployed on Monad Testnet
+        address reputationRegistry = 0x8004B663056A597Dffe9eCcC1965A193B7388713;
+        RPSGame rpsGame = new RPSGame(address(escrow), address(registry), reputationRegistry);
         console.log("RPSGame deployed at:", address(rpsGame));
 
         // 4. Authorize cross-contract references
@@ -39,9 +41,10 @@ contract Deploy is Script {
         // Summary
         console.log("");
         console.log("=== Deployment Summary ===");
-        console.log("AgentRegistry:", address(registry));
-        console.log("Escrow:       ", address(escrow));
-        console.log("RPSGame:      ", address(rpsGame));
+        console.log("AgentRegistry:       ", address(registry));
+        console.log("Escrow:              ", address(escrow));
+        console.log("RPSGame:             ", address(rpsGame));
+        console.log("ReputationRegistry:  ", reputationRegistry);
         console.log("==========================");
     }
 }
