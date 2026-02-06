@@ -5,11 +5,49 @@ import "forge-std/Test.sol";
 import "../src/AgentRegistry.sol";
 import "../src/Escrow.sol";
 import "../src/RPSGame.sol";
+import "../src/interfaces/IReputationRegistry.sol";
+
+/// @dev Mock ERC-8004 Reputation Registry for testing feedback calls
+contract MockReputationRegistry is IReputationRegistry {
+    struct FeedbackCall {
+        uint256 agentId;
+        int128 value;
+        uint8 valueDecimals;
+        string tag1;
+        string tag2;
+    }
+
+    FeedbackCall[] public feedbackCalls;
+
+    function giveFeedback(
+        uint256 agentId,
+        int128 value,
+        uint8 valueDecimals,
+        string calldata tag1,
+        string calldata tag2,
+        string calldata,
+        string calldata,
+        bytes32
+    ) external override {
+        feedbackCalls.push(FeedbackCall(agentId, value, valueDecimals, tag1, tag2));
+    }
+
+    /// @dev Get total number of giveFeedback calls
+    function feedbackCount() external view returns (uint256) {
+        return feedbackCalls.length;
+    }
+
+    /// @dev Get a specific feedback call for assertions
+    function getFeedback(uint256 index) external view returns (FeedbackCall memory) {
+        return feedbackCalls[index];
+    }
+}
 
 contract RPSGameTest is Test {
     AgentRegistry public registry;
     Escrow public escrow;
     RPSGame public rps;
+    MockReputationRegistry public mockReputation;
 
     address public owner = address(this);
     address public player1;
@@ -24,10 +62,11 @@ contract RPSGameTest is Test {
         player1 = makeAddr("player1");
         player2 = makeAddr("player2");
 
-        // Deploy contracts
+        // Deploy contracts (including mock ERC-8004 Reputation Registry)
         registry = new AgentRegistry();
         escrow = new Escrow();
-        rps = new RPSGame(address(escrow), address(registry));
+        mockReputation = new MockReputationRegistry();
+        rps = new RPSGame(address(escrow), address(registry), address(mockReputation));
 
         // Authorize contracts
         escrow.authorizeContract(address(rps), true);
@@ -387,6 +426,97 @@ contract RPSGameTest is Test {
 
         AgentRegistry.MatchRecord[] memory p2History = registry.getMatchHistory(player2);
         assertFalse(p2History[0].won);
+    }
+
+    // ─── ERC-8004 Reputation Feedback Tests ─────────────────────────────
+
+    function test_reputationFeedbackAfterMatch() public {
+        // Set ERC-8004 agent IDs for both players
+        rps.setAgentId(player1, 100);
+        rps.setAgentId(player2, 200);
+
+        uint256 gameId = _createGame(1 ether, 1);
+        _playRound(gameId, RPSGame.Move.Rock, RPSGame.Move.Scissors);
+
+        // player1 wins — should post 2 feedback calls (winner + loser)
+        assertEq(mockReputation.feedbackCount(), 2);
+
+        // Winner gets positive feedback
+        MockReputationRegistry.FeedbackCall memory winFeedback = mockReputation.getFeedback(0);
+        assertEq(winFeedback.agentId, 100);
+        assertEq(winFeedback.value, int128(1));
+        assertEq(winFeedback.valueDecimals, 0);
+        assertEq(winFeedback.tag1, "RPS");
+        assertEq(winFeedback.tag2, "win");
+
+        // Loser gets negative feedback
+        MockReputationRegistry.FeedbackCall memory loseFeedback = mockReputation.getFeedback(1);
+        assertEq(loseFeedback.agentId, 200);
+        assertEq(loseFeedback.value, int128(-1));
+        assertEq(loseFeedback.tag1, "RPS");
+        assertEq(loseFeedback.tag2, "loss");
+    }
+
+    function test_reputationFeedbackNotCalledOnDraw() public {
+        // Set ERC-8004 agent IDs
+        rps.setAgentId(player1, 100);
+        rps.setAgentId(player2, 200);
+
+        uint256 gameId = _createGame(1 ether, 1);
+        _playRound(gameId, RPSGame.Move.Rock, RPSGame.Move.Rock);
+
+        // Draw — no reputation feedback should be posted
+        assertEq(mockReputation.feedbackCount(), 0);
+    }
+
+    function test_reputationFeedbackSkippedWithoutAgentIds() public {
+        // Don't set agent IDs — feedback should be silently skipped
+        uint256 gameId = _createGame(1 ether, 1);
+        _playRound(gameId, RPSGame.Move.Rock, RPSGame.Move.Scissors);
+
+        // No feedback calls because agentIds are 0
+        assertEq(mockReputation.feedbackCount(), 0);
+    }
+
+    function test_reputationFeedbackSkippedWithoutRegistry() public {
+        // Deploy RPSGame without reputation registry (address(0))
+        RPSGame rpsNoRep = new RPSGame(address(escrow), address(registry), address(0));
+        escrow.authorizeContract(address(rpsNoRep), true);
+        registry.authorizeContract(address(rpsNoRep), true);
+
+        // Create match using rpsNoRep
+        vm.prank(player1);
+        uint256 matchId = escrow.createMatch{value: 1 ether}(player2, address(rpsNoRep));
+        vm.prank(player2);
+        escrow.acceptMatch{value: 1 ether}(matchId);
+
+        vm.prank(player1);
+        uint256 gameId = rpsNoRep.createGame(matchId, 1);
+
+        // Play round
+        vm.prank(player1);
+        rpsNoRep.commit(gameId, _commitHash(RPSGame.Move.Rock, salt1));
+        vm.prank(player2);
+        rpsNoRep.commit(gameId, _commitHash(RPSGame.Move.Scissors, salt2));
+        vm.prank(player1);
+        rpsNoRep.reveal(gameId, RPSGame.Move.Rock, salt1);
+        vm.prank(player2);
+        rpsNoRep.reveal(gameId, RPSGame.Move.Scissors, salt2);
+
+        // Game settles without reverting (reputation feedback silently skipped)
+        RPSGame.Game memory g = rpsNoRep.getGame(gameId);
+        assertTrue(g.settled);
+    }
+
+    function test_setAgentId() public {
+        rps.setAgentId(player1, 42);
+        assertEq(rps.agentIds(player1), 42);
+    }
+
+    function test_setAgentId_revertNonOwner() public {
+        vm.prank(player1);
+        vm.expectRevert();
+        rps.setAgentId(player1, 42);
     }
 
     // ─── All 9 Move Combinations ─────────────────────────────────────────
