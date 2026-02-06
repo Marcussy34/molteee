@@ -1,0 +1,13 @@
+[project]
+name = "fighter-skill"
+version = "0.1.0"
+description = "Gaming Arena Fighter Agent — on-chain game scripts for Monad testnet"
+requires-python = ">=3.10"
+dependencies = [
+    "web3>=7.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
