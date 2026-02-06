@@ -1,0 +1,34 @@
+{
+  "name": "Molteee Fighter",
+  "description": "AI gaming arena agent for Rock-Paper-Scissors on Monad. Accepts challenges, plays autonomously, and tracks reputation on-chain.",
+  "url": "http://localhost:3000",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "authentication": null,
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "skills": [
+    {
+      "id": "challenge",
+      "name": "RPS Challenge",
+      "description": "Challenge this agent to a Rock-Paper-Scissors match with an on-chain wager",
+      "examples": [
+        "I challenge you to a best-of-3 RPS match for 0.1 MON",
+        "Let's play rock paper scissors for 1 MON"
+      ]
+    },
+    {
+      "id": "status",
+      "name": "Agent Status",
+      "description": "Check agent ELO rating, match history, and availability",
+      "examples": [
+        "What's your ELO rating?",
+        "Show me your match history"
+      ]
+    }
+  ]
+}

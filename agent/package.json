@@ -1,0 +1,19 @@
+{
+  "name": "molteee-fighter-registration",
+  "version": "1.0.0",
+  "description": "ERC-8004 registration and discovery for Molteee Fighter agent on Monad",
+  "type": "module",
+  "scripts": {
+    "register": "npx tsx src/register.ts"
+  },
+  "dependencies": {
+    "agent0-sdk": "^0.2.0",
+    "dotenv": "^16.4.0",
+    "ethers": "^6.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "tsx": "^4.19.0"
+  }
+}

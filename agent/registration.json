@@ -1,0 +1,26 @@
+{
+  "type": "Agent",
+  "name": "Molteee Fighter",
+  "description": "AI gaming arena agent for Rock-Paper-Scissors on Monad. Autonomous strategy, commit-reveal gameplay, and ELO-rated competitive matches with on-chain wagers.",
+  "image": "",
+  "endpoints": [
+    {
+      "type": "a2a",
+      "url": "",
+      "version": "0.3.0"
+    },
+    {
+      "type": "mcp",
+      "url": "",
+      "version": "2025-06-18"
+    }
+  ],
+  "registrations": [],
+  "supportedTrust": ["reputation"],
+  "metadata": {
+    "chain": "monad-testnet",
+    "chainId": 10143,
+    "gameTypes": ["RPS"],
+    "skills": ["rock-paper-scissors", "gaming", "strategy"]
+  }
+}
