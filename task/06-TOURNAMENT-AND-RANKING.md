@@ -1,6 +1,6 @@
 # Task 06 — Phase 6: Tournament System + ELO Ranking
 
-> **DISCLAIMER:** Before starting development, reference official and up-to-date documentation for Foundry, Solidity, and ELO rating system formulas. Do not assume cached knowledge is current. Use MCP tools or official docs sites.
+> **DISCLAIMER:** Before starting development, reference official and up-to-date documentation for Foundry, Solidity, web3.py, and ELO rating formulas. Do not assume cached knowledge is current. Use MCP tools or official docs sites.
 
 ---
 
@@ -18,8 +18,9 @@
 
 1. Write, test, and deploy Tournament.sol on Monad testnet
 2. Implement full ELO rating system in AgentRegistry (per-game + composite)
-3. Run a full tournament bracket with game rotation and escalating stakes
-4. Fighter agent navigates tournament brackets autonomously
+3. Add tournament navigation scripts and commands
+4. Update SKILL.md with tournament instructions
+5. Run a full tournament bracket with game rotation and escalating stakes
 
 ---
 
@@ -37,8 +38,8 @@
 
 - Tournament.sol — single-elimination bracket, game rotation, escalating stakes, prize distribution
 - ELO rating system (per-game + composite)
-- Fighter tournament navigation logic
-- Tournament-specific bankroll strategy
+- Tournament scripts and CLI commands
+- Updated SKILL.md with tournament workflow
 
 ### Out of Scope
 
@@ -52,93 +53,94 @@
 
 ### Task 6.1 — Design Tournament Structure
 
-- **Description:** Define the on-chain tournament format. Single-elimination bracket. N agents register and lock entry fee. Random matchup generation (commit-reveal randomness for fairness). Configurable game type per round (e.g., quarterfinals = RPS, semifinals = poker, finals = auction). Escalating per-round wagers. Prize distribution: winner gets majority, runner-up gets portion, semifinalists get remainder.
+- **Description:** Single-elimination bracket. N agents register, lock entry fee. Randomized matchups (commit-reveal for fairness). Configurable game type per round. Escalating per-round wagers. Prize distribution: winner majority, runner-up portion, semifinalists remainder.
 - **Owner:** —
 - **Acceptance Criteria:**
-  - Tournament format fully specified
-  - Bracket generation randomness mechanism defined
-  - Game rotation per round documented
-  - Escalating stake schedule defined
-  - Prize distribution percentages defined
-  - Edge cases: odd number of entrants (byes), timeout during tournament match, tie handling
+  - Format specified: bracket generation, game rotation, stakes, prizes
+  - Edge cases: byes, timeout, ties
 
 ### Task 6.2 — Write Tournament.sol
 
-- **Description:** Implement the tournament contract. Functions: `createTournament()` (set entry fee, game types per round, stake schedule), `register()` (lock entry fee), `generateBracket()` (randomized matchups), `reportResult()` (advance winner), `distributePrizes()`. The contract orchestrates — individual matches still run through the game-specific contracts (RPSGame, PokerGame, AuctionGame) and Escrow.
+- **Description:** Functions: `createTournament()`, `register()`, `generateBracket()`, `reportResult()`, `distributePrizes()`. Orchestrates — individual matches run through game contracts + Escrow.
 - **Owner:** —
 - **Acceptance Criteria:**
-  - Contract compiles with `forge build`
-  - Tournament creation with configurable parameters works
-  - Agent registration locks entry fee
-  - Bracket generation produces valid matchups
-  - Result reporting advances winners correctly
-  - Prize distribution pays correct amounts
-  - Game type rotation per round enforced
-  - Escalating stakes applied per round
+  - Compiles with `forge build`
+  - Registration locks entry fee
+  - Bracket generation valid
+  - Winners advance correctly
+  - Game type rotation enforced
+  - Escalating stakes per round
+  - Prize distribution correct
 
 ### Task 6.3 — Foundry Tests for Tournament
 
-- **Description:** Write tests: full 4-agent tournament (2 rounds), 8-agent tournament (3 rounds), bye handling, timeout during tournament match, prize distribution math, bracket generation randomness.
+- **Description:** Tests: 4-agent tournament (2 rounds), 8-agent (3 rounds), byes, timeouts, prize math, bracket randomness.
 - **Owner:** —
 - **Acceptance Criteria:**
   - `forge test` passes all tournament tests
-  - Coverage: bracket generation, round progression, prize distribution, edge cases
-  - Integration test: full tournament flow through game contracts and escrow
 
 ### Task 6.4 — Deploy Tournament to Monad Testnet
 
-- **Description:** Deploy Tournament.sol. Configure with references to all game contracts, Escrow, and AgentRegistry. Authorize Tournament to create matches via game contracts.
+- **Description:** Deploy, configure with all game contracts + Escrow + Registry. Update `lib/contracts.py`.
 - **Owner:** —
 - **Acceptance Criteria:**
-  - Tournament deployed and address recorded
-  - All cross-contract references configured
-  - Tournament authorized to interact with game contracts and Escrow
+  - Deployed, authorized for match creation
+  - `lib/contracts.py` updated
 
 ### Task 6.5 — ELO Rating System
 
-- **Description:** Implement (or enhance existing) ELO rating in AgentRegistry. Each agent has per-game-type ELO (RPS, poker, auction) and a composite overall ELO (weighted average or separate calculation). ELO updates after every match using standard formula: `new_rating = old_rating + K * (actual - expected)` where expected is based on rating difference. K-factor: higher for new agents (faster convergence), lower for established agents.
+- **Description:** Implement/enhance ELO in AgentRegistry. Per-game-type ELO + composite. Standard formula: `new = old + K × (actual - expected)`. K-factor: higher for new agents, lower for established. All on-chain and queryable.
 - **Owner:** —
 - **Acceptance Criteria:**
-  - Per-game ELO stored and updated after each match
-  - Composite ELO calculated from per-game ratings
-  - Correct ELO math (beating higher-rated opponent gives more points)
-  - K-factor adjusts based on number of matches played
-  - ELO queryable on-chain
-  - All existing matches retroactively update ELO (or start fresh)
+  - Per-game ELO updated after each match
+  - Composite ELO computed
+  - Correct math (beating higher-rated = more points)
+  - K-factor adjusts by match count
+  - Queryable on-chain
 
-### Task 6.6 — Fighter Tournament Logic
+### Task 6.6 — Tournament Scripts
 
-- **Description:** Add tournament-specific logic to the fighter agent. The agent should: detect open tournament registrations, evaluate entry fee vs. prize pool vs. field strength, register if EV-positive, navigate bracket matches (play the correct game type for each round), handle escalating stakes with bankroll management, adapt strategy knowing it's in a tournament context.
+- **Description:** Add tournament commands to CLI:
+  - `arena.py tournaments` — list open tournaments
+  - `arena.py join-tournament <id>` — register and lock entry fee
+  - `arena.py play-tournament <id>` — navigate bracket: play each round's game type, handle escalating stakes
+  - `arena.py tournament-status <id>` — check bracket position and results
 - **Owner:** —
 - **Acceptance Criteria:**
-  - Fighter detects and joins tournaments
-  - Entry decision based on EV calculation
-  - Plays correct game type per round
-  - Escalating stakes handled by bankroll management
-  - Tournament bracket navigation fully autonomous
+  - All tournament commands work
+  - Bracket navigation fully handled by scripts
+  - Game type switching per round works
+  - Escalating stakes applied
 
 ### Task 6.7 — Tournament Bankroll Strategy
 
-- **Description:** Adjust bankroll management for tournament context. In tournaments, the agent can't choose to decline mid-bracket. Budget the locked entry fee + escalating wagers across expected rounds. Be more conservative early (survive to later rounds) and more aggressive in finals (winner-take-most incentive).
+- **Description:** Add tournament-specific logic to `scripts/bankroll.py`. Budget entry fee + escalating wagers across expected rounds. Conservative early, aggressive in finals. The LLM uses this when deciding whether to enter tournaments.
 - **Owner:** —
 - **Acceptance Criteria:**
-  - Tournament bankroll budgeted across expected rounds
-  - Early rounds: conservative play
-  - Later rounds: more aggressive (higher stakes, more at risk)
-  - Strategy adapts to remaining bankroll within tournament
+  - Tournament budget calculated
+  - Early rounds: conservative
+  - Later rounds: more aggressive
+  - Entry decision factors in prize pool, field strength, bankroll
 
-### Task 6.8 — Full Tournament Test
+### Task 6.8 — Update SKILL.md with Tournament Instructions
 
-- **Description:** Run a full tournament on Monad testnet with the fighter + at least 3 opponents (4-agent bracket). 2 rounds. Round 1: RPS. Round 2 (finals): poker or auction. Verify bracket progression, escalating stakes, prize distribution, ELO updates.
+- **Description:** Add tournament workflow to SKILL.md: how to find, evaluate, join, and navigate tournaments. Include ELO-based decisions (use ELO to assess opponents and decide entry).
 - **Owner:** —
 - **Acceptance Criteria:**
-  - 4+ agents registered in tournament
-  - Bracket generated and first round matches play out
-  - Winners advance, losers eliminated
-  - Finals play different game type than first round
-  - Prize distributed correctly to winner, runner-up
-  - ELO ratings updated for all participants
-  - All tournament tx hashes logged
+  - SKILL.md covers tournament lifecycle
+  - LLM can autonomously decide to join and play tournaments
+
+### Task 6.9 — Full Tournament Test via OpenClaw
+
+- **Description:** Run a 4-agent tournament on Monad testnet (fighter + 3 opponents). 2 rounds. Round 1: RPS. Finals: poker or auction. Run via OpenClaw — tell agent "there's an open tournament, evaluate and join."
+- **Owner:** —
+- **Acceptance Criteria:**
+  - 4+ agents in tournament
+  - Bracket plays out, winners advance
+  - Finals use different game type than round 1
+  - Prize distributed correctly
+  - ELO updated for all participants
+  - All tx hashes logged
 
 ---
 
@@ -146,31 +148,21 @@
 
 1. Tournament.sol deployed to Monad testnet
 2. ELO rating system active in AgentRegistry
-3. Fighter tournament navigation logic
-4. Full tournament test results log
-
----
-
-## Test / Acceptance Criteria
-
-- Tournament contract deployed and functional on Monad testnet
-- Full tournament bracket completes (4+ agents, 2+ rounds)
-- Game type rotates between rounds
-- Stakes escalate per round
-- ELO ratings update correctly after tournament matches
-- Prize distribution correct
+3. Tournament scripts and CLI commands
+4. Updated SKILL.md
+5. Tournament test results
 
 ---
 
 ## Gate Checklist
 
-- [ ] Tournament.sol compiles and Foundry tests pass
-- [ ] Tournament deployed to Monad testnet
-- [ ] ELO per-game and composite ratings working
-- [ ] Fighter registers for and navigates tournament bracket
-- [ ] Game type rotation works per round
+- [ ] Tournament.sol compiles, tests pass
+- [ ] Deployed to Monad testnet
+- [ ] ELO per-game + composite working
+- [ ] Tournament CLI commands work
+- [ ] Fighter joins and navigates tournament via OpenClaw
+- [ ] Game type rotation per round
 - [ ] Escalating stakes applied
 - [ ] Prize distribution correct
 - [ ] Full 4-agent tournament completed on testnet
-- [ ] ELO ratings visibly change after tournament
-- [ ] All tournament tx hashes logged
+- [ ] ELO changes visible after tournament

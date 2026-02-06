@@ -1,17 +1,67 @@
 # Task 00 — Master Plan & Dependency Graph
 
-> **DISCLAIMER:** Before starting any phase, reference official and up-to-date documentation for all tools, frameworks, and APIs (OpenClaw, Foundry, Monad, ethers.js). Do not assume cached knowledge is current. Use MCP tools or official docs sites.
+> **DISCLAIMER:** Before starting any phase, reference official and up-to-date documentation for all tools, frameworks, and APIs (OpenClaw, Foundry, Monad, web3.py). Do not assume cached knowledge is current. Use MCP tools or official docs sites.
 
 ---
 
 ## Project Summary
 
-**Gaming Arena Agent** — An autonomous OpenClaw agent that competes across three game types (RPS, Poker, Blind Auction) on Monad testnet, using adaptive strategy, bluffing, negotiation, psychological tactics, bankroll management, and tournament play. All matches are wagered in testnet MON, all transactions are on-chain, all without human intervention.
+**Gaming Arena Agent** — An autonomous OpenClaw agent that competes across three game types (RPS, Poker, Blind Auction) on Monad testnet, using adaptive strategy, bluffing, negotiation, psychological tactics, bankroll management, and tournament play. All matches are wagered in testnet MON, all transactions are on-chain, all driven by an LLM agent through OpenClaw skills.
 
 **Hackathon:** Moltiverse by Nad.fun & Monad
 **Bounty:** Gaming Arena Agent ($10,000)
 **Chain:** Monad testnet (EVM-compatible L1)
-**Agent Framework:** OpenClaw
+**Agent Framework:** OpenClaw (LLM-powered autonomous agent runtime)
+
+---
+
+## Architecture: How OpenClaw Skills Work
+
+OpenClaw is an **LLM-powered agent runtime**. It runs locally, connects to an LLM (Claude, GPT-4, etc.), and uses **skills** to teach the LLM what to do. Our project builds skills — NOT standalone applications.
+
+### Skill = SKILL.md + Scripts
+
+```
+skills/fighter/
+  SKILL.md                  # Manifest (YAML frontmatter) + LLM instructions (markdown)
+  scripts/                  # Executable code the LLM calls via bash
+    arena.py                # Main CLI dispatcher
+    play_rps.py             # RPS commit-reveal flow
+    play_poker.py           # Poker game flow
+    play_auction.py         # Auction bid flow
+    strategy.py             # Opponent modeling + strategy selection
+    bankroll.py             # Kelly criterion wager sizing
+    registry.py             # AgentRegistry contract interaction
+    escrow.py               # Escrow contract interaction
+    tournament.py           # Tournament bracket navigation
+    psychology.py           # Timing manipulation, pattern seeding
+  lib/
+    contracts.py            # Contract ABIs + Monad deployed addresses
+    opponent_model.py       # Cross-game profiling data structures
+    game_state.py           # Game state tracking + persistence
+  references/
+    rps-strategy.md         # Detailed RPS strategy docs for LLM
+    poker-strategy.md       # Poker bluffing/betting docs
+    auction-strategy.md     # Auction bidding docs
+    bankroll-management.md  # Kelly criterion explanation
+  config.json               # Monad RPC URL, wallet path, settings
+  pyproject.toml            # Python dependencies (web3, etc.)
+```
+
+### How It Runs
+
+1. **OpenClaw agent loop**: OpenClaw reads SKILL.md metadata, injects skill name + description into the LLM system prompt
+2. **Skill invocation**: When the LLM decides to play games, it reads the full SKILL.md for instructions
+3. **Script execution**: The LLM calls `python3 scripts/arena.py play rps <opponent> <wager>` via bash
+4. **Scripts handle on-chain work**: Python scripts use web3.py to interact with Monad contracts directly
+5. **Results returned to LLM**: Script output goes back to the LLM, which reasons about next actions
+
+### Fighter vs. Opponents
+
+- **Fighter Agent** = OpenClaw instance + Fighter Skill (LLM-powered, strategic, adaptive)
+- **Opponent Agents** = Standalone Python scripts with hardcoded strategies (no LLM needed, just bots)
+- Opponents run independently, listen for challenges, play with fixed strategies
+- Only the fighter needs OpenClaw — opponents are simple automation
 
 ---
 
@@ -19,10 +69,10 @@
 
 | Phase | Name | Key Output | Est. Days |
 |-------|------|------------|-----------|
-| 1 | Foundation & Environment | 3 core contracts deployed, Foundry + OpenClaw ready | 1–2 |
-| 2 | Basic Fighter Agent | Agent completes 1 autonomous RPS match | 1–2 |
-| 3 | Opponents + RPS Strategy | 5 opponents deployed, fighter wins >50% in RPS | 1–2 |
-| 4 | Poker | PokerGame contract + bluffing strategy module | 1–2 |
+| 1 | Foundation & Environment | OpenClaw running, 3 core contracts deployed, skill scaffold ready | 1–2 |
+| 2 | Basic Fighter Skill | Fighter skill completes 1 autonomous RPS match via OpenClaw | 1–2 |
+| 3 | Opponents + RPS Strategy | 5 opponent bots deployed, fighter wins >50% in RPS | 1–2 |
+| 4 | Poker | PokerGame contract + poker strategy scripts | 1–2 |
 | 5 | Auction + Cross-Game Intel | AuctionGame contract + cross-game opponent profiling | 1–2 |
 | 6 | Tournament + ELO | Tournament contract + ranking system | 1–2 |
 | 7 | Demo & Polish | Psychological tactics, logging, demo video, submission | 1–2 |
@@ -33,31 +83,29 @@
 ## Dependency Graph
 
 ```
-Phase 1: Foundation
-    └──▶ Phase 2: Basic Agent
+Phase 1: Foundation (OpenClaw + Contracts)
+    └──▶ Phase 2: Basic Fighter Skill
              └──▶ Phase 3: Opponents + RPS Strategy
                       ├──▶ Phase 4: Poker
                       │        └──▶ Phase 5: Auction + Cross-Game
                       │                     └──▶ Phase 6: Tournament + ELO
                       │                                  └──▶ Phase 7: Demo & Polish
                       │                                               └──▶ Phase 8: Bonus
-                      └──▶ (Phase 4 and 5 can run in parallel if contracts are independent)
+                      └──▶ (Phase 4 and 5 contract work can overlap;
+                            agent-side cross-game profiling is sequential)
 ```
 
 **Linear critical path:** 1 → 2 → 3 → 4 → 5 → 6 → 7
-
-**Parallelizable:** Phases 4 (Poker) and 5 (Auction) contract work can overlap if both depend only on Phase 3 outputs. Cross-game profiling in Phase 5 requires Phase 4 poker data though, so the agent-side work is sequential.
 
 ---
 
 ## Critical Path (Minimum Viable Submission)
 
-A submission that hits ALL core requirements and most bonus points:
-
 | Must Have | Phase |
 |-----------|-------|
+| OpenClaw running with fighter skill | Phase 1–2 |
 | Core contracts (Registry, Escrow, RPS) deployed on Monad | Phase 1 |
-| Agent completes autonomous matches | Phase 2 |
+| Agent completes autonomous matches via OpenClaw | Phase 2 |
 | 5+ matches against different opponents | Phase 3 |
 | Adaptive strategy with positive win rate | Phase 3 |
 | Proper wager handling via escrow | Phase 1–2 |
@@ -93,10 +141,11 @@ A submission that hits ALL core requirements and most bonus points:
 
 ## Submission Checklist
 
+- [ ] OpenClaw instance running with fighter skill loaded
 - [ ] All smart contracts deployed to Monad testnet
 - [ ] Fighter agent registered on Agent Registry
-- [ ] 5 opponent agents registered on Agent Registry
-- [ ] 5+ matches completed autonomously
+- [ ] 5 opponent bots registered on Agent Registry
+- [ ] 5+ matches completed autonomously via OpenClaw
 - [ ] Demo video recorded showing full match sequence
 - [ ] README with setup, architecture, and run instructions
 - [ ] All tx hashes documented and verifiable on block explorer
@@ -106,7 +155,7 @@ A submission that hits ALL core requirements and most bonus points:
 
 ---
 
-## Smart Contracts (7 Total)
+## Smart Contracts (7 Total, Solidity + Foundry)
 
 | Contract | Phase | Purpose |
 |----------|-------|---------|
@@ -120,20 +169,34 @@ A submission that hits ALL core requirements and most bonus points:
 
 ---
 
-## Agent Skills (OpenClaw, TypeScript)
+## Agent Skills (OpenClaw)
 
-| Skill | Phase | Purpose |
-|-------|-------|---------|
-| Fighter Skill | 2–7 | Core deliverable — matchmaking, strategy, bankroll |
-| Opponent Skills (×5) | 3 | Rock, Gambler, Mirror, Random, Counter |
-| Spectator Skill | 8 | Bonus: prediction market bettor |
+| Skill | Type | Phase | Purpose |
+|-------|------|-------|---------|
+| Fighter Skill | OpenClaw skill (SKILL.md + Python scripts) | 2–7 | Core deliverable — LLM-driven matchmaking, strategy, bankroll |
+| Opponent Bots (×5) | Standalone Python scripts (no LLM) | 3 | Rock, Gambler, Mirror, Random, Counter |
+| Spectator Skill | OpenClaw skill | 8 | Bonus: prediction market bettor |
+
+---
+
+## Tech Stack
+
+| Component | Technology | Why |
+|-----------|-----------|-----|
+| Smart Contracts | Solidity + Foundry | Monad is EVM-compatible, proven patterns |
+| Agent Runtime | OpenClaw | Hackathon ecosystem — LLM-powered agent loop |
+| Fighter Skill Scripts | Python + web3.py | Proven pattern for blockchain OpenClaw skills (PolyClaw model) |
+| Opponent Bots | Python + web3.py | Simple standalone scripts, no LLM needed |
+| Chain | Monad Testnet | Hackathon chain |
+| Currency | Testnet MON | Claimed from Monad faucet |
+| Demo | OpenClaw chat output + terminal logs | Strategy reasoning visible in agent output |
 
 ---
 
 ## Phase Documents
 
 - [Phase 1: Foundation & Environment](./01-FOUNDATION.md)
-- [Phase 2: Basic Fighter Agent](./02-BASIC-AGENT.md)
+- [Phase 2: Basic Fighter Skill](./02-BASIC-AGENT.md)
 - [Phase 3: Opponents + RPS Strategy](./03-OPPONENTS-AND-STRATEGY.md)
 - [Phase 4: Poker](./04-POKER.md)
 - [Phase 5: Auction + Cross-Game Intelligence](./05-AUCTION-AND-CROSS-GAME.md)
