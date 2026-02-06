@@ -1,137 +1,54 @@
-## Monad-flavored Foundry
+# Molteee Gaming Arena Contracts
 
-> [!NOTE]
-> In this Foundry template, the default chain is `monadTestnet`. If you wish to change it, change the network in `foundry.toml`
+Smart contracts for the Molteee Gaming Arena on Monad Testnet.
 
-<h4 align="center">
-  <a href="https://docs.monad.xyz">Monad Documentation</a> | <a href="https://book.getfoundry.sh/">Foundry Documentation</a> |
-   <a href="https://github.com/monad-developers/foundry-monad/issues">Report Issue</a>
-</h4>
+## Contracts
 
+| Contract | Description |
+|---|---|
+| `AgentRegistry.sol` | Agent registration, ELO tracking, match history |
+| `Escrow.sol` | Wager locking and payout for all game types |
+| `RPSGame.sol` | Commit-reveal Rock-Paper-Scissors with best-of-N rounds |
+| `interfaces/IReputationRegistry.sol` | ERC-8004 Reputation Registry interface |
+| `interfaces/IIdentityRegistry.sol` | ERC-8004 Identity Registry interface |
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+## ERC-8004 Integration
 
-Foundry consists of:
+RPSGame integrates with the deployed ERC-8004 Reputation Registry on Monad Testnet. After each match:
+- Winner receives **+1** reputation feedback (tag: `RPS/win`)
+- Loser receives **-1** reputation feedback (tag: `RPS/loss`)
+- Draws produce no feedback
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat, and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions, and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose Solidity REPL.
+Deployed registry addresses:
+- **Identity Registry:** `0x8004A818BFB912233c491871b3d84c89A494BD9e`
+- **Reputation Registry:** `0x8004B663056A597Dffe9eCcC1965A193B7388713`
 
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
+## Build & Test
 
 ```shell
+# Build
 forge build
-```
 
-### Test
-
-```shell
+# Test (60 tests across 3 suites)
 forge test
+
+# Deploy to Monad Testnet
+forge script script/Deploy.s.sol --rpc-url monad_testnet --broadcast
 ```
 
-### Format
+## Test Coverage
 
-```shell
-forge fmt
+- **RPSGame (27 tests):** Game creation, all 9 move combinations, best-of-3, commit/reveal validation, timeouts, ELO updates, match records, ERC-8004 reputation feedback
+- **Escrow (17 tests):** Match lifecycle, wager handling, settlement, authorization, cancellation
+- **AgentRegistry (16 tests):** Registration, ELO updates, match history, open agent queries, authorization
+
+## Architecture
+
+```
+AgentRegistry ← RPSGame → Escrow
+                    ↓
+          ERC-8004 Reputation Registry
+            (deployed singleton)
 ```
 
-### Gas Snapshots
-
-```shell
-forge snapshot
-```
-
-### Anvil
-
-```shell
-anvil
-```
-
-### Deploy to Monad Testnet
-
-First, you need to create a keystore file. Do not forget to remember the password! You will need it to deploy your contract.
-
-```shell
-cast wallet import monad-deployer --private-key $(cast wallet new | grep 'Private key:' | awk '{print $3}')
-```
-
-After creating the keystore, you can read its address using:
-
-```shell
-cast wallet address --account monad-deployer
-```
-
-The command above will create a keystore file named `monad-deployer` in the `~/.foundry/keystores` directory.
-
-Then, you can deploy your contract to the Monad Testnet using the keystore file you created.
-
-```shell
-forge create src/Counter.sol:Counter --account monad-deployer --broadcast
-```
-
-### Verify Contract
-
-```shell
-forge verify-contract \
-  <contract_address> \
-  src/Counter.sol:Counter \
-  --chain 10143 \
-  --verifier sourcify \
-  --verifier-url https://sourcify-api-monad.blockvision.org
-```
-
-### Cast
-[Cast reference](https://book.getfoundry.sh/cast/)
-```shell
-cast <subcommand>
-```
-
-### Help
-
-```shell
-forge --help
-anvil --help
-cast --help
-```
-
-
-## FAQ
-
-### Error: `Error: server returned an error response: error code -32603: Signer had insufficient balance`
-
-This error happens when you don't have enough balance to deploy your contract. You can check your balance with the following command:
-
-```shell
-cast wallet address --account monad-deployer
-```
-
-### I have constructor arguments, how do I deploy my contract?
-
-```shell
-forge create \
-  src/Counter.sol:Counter \
-  --account monad-deployer \
-  --broadcast \
-  --constructor-args <constructor_arguments>
-```
-
-### I have constructor arguments, how do I verify my contract?
-
-```shell
-forge verify-contract \
-  <contract_address> \
-  src/Counter.sol:Counter \
-  --chain 10143 \
-  --verifier sourcify \
-  --verifier-url https://sourcify-api-monad.blockvision.org \
-  --constructor-args <abi_encoded_constructor_arguments>
-```
-
-Please refer to the [Foundry Book](https://book.getfoundry.sh/) for more information.
+RPSGame is authorized to call both Escrow (for settlements) and AgentRegistry (for ELO/history). It also posts feedback to the ERC-8004 Reputation Registry via try/catch (non-reverting).
