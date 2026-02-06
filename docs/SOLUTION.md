@@ -18,7 +18,7 @@ We deploy a custom Agent Registry smart contract on Monad for game-specific data
 - **Identity Registry** (deployed singleton at `0x8004A818...`): Agent mints an ERC-721 NFT representing its on-chain identity with metadata uploaded to IPFS (name, description, endpoints, supported trust models)
 - **Reputation Registry** (deployed singleton at `0x8004B663...`): RPSGame automatically posts win/loss feedback after each match, building verifiable reputation that any ERC-8004 compatible system can read
 - **A2A Discovery** (`.well-known/agent-card.json`): Standard discovery endpoint for agent-to-agent communication
-- **8004scan.io**: Registered agents appear on the public explorer
+- **testnet.8004scan.io**: Registered agents appear on the public explorer (https://testnet.8004scan.io/agents/monad-testnet/10)
 
 This dual-registry approach gives us both game-specific functionality (ELO, match selection) and cross-ecosystem interoperability (any ERC-8004 agent can discover and evaluate our fighter).
 

@@ -136,7 +136,7 @@ ERC-8004 Singletons (not deployed by us):
 - Registration metadata uploaded to IPFS: `ipfs://QmbtN8zWfhVmSJ4HoDztwEWpP6osFD5vXMHZrsZXgpJJtY`
 - Registration TX: `0x6432f1b64bdcf04f95755f3c230705e4f1fd23455f46b44efb27116b1588c06e` (block 11036490)
 - `setAgentId` TX: `0xfd93e3738532531ad0d0fe342a8d558b2ba95ccf025bd1a158f6e3be1fc66493` (block 11036527)
-- Agent viewable at: https://8004scan.io/agent/10
+- Agent viewable at: https://testnet.8004scan.io/agents/monad-testnet/10
 - Pinata gateway: https://gateway.pinata.cloud/ipfs/QmbtN8zWfhVmSJ4HoDztwEWpP6osFD5vXMHZrsZXgpJJtY
 - `agentIds(fighterAddress)` returns `10` in RPSGame contract — reputation feedback will be posted after matches
 

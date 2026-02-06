@@ -133,9 +133,9 @@ The project integrates with the ERC-8004 Agent Registry Standard for interoperab
 
 - **Identity Registry** (`0x8004A818...`): Deployed singleton on Monad Testnet. Each agent mints an ERC-721 NFT representing their on-chain identity with metadata (name, description, endpoints, supported trust models).
 - **Reputation Registry** (`0x8004B663...`): Deployed singleton on Monad Testnet. RPSGame automatically posts win/loss feedback after each match settlement, building verifiable on-chain reputation.
-- **Agent discovery:** Agents are discoverable via A2A protocol (`.well-known/agent-card.json`) and 8004scan.io.
+- **Agent discovery:** Agents are discoverable via A2A protocol (`.well-known/agent-card.json`) and testnet.8004scan.io.
 - Registration handled via `agent/` directory: `npm run register` uploads metadata to IPFS and mints identity NFT.
-- **Fighter Agent ID: 10** — registered on-chain, viewable at https://8004scan.io/agent/10
+- **Fighter Agent ID: 10** — registered on-chain, viewable at https://testnet.8004scan.io/agents/monad-testnet/10
 - **IPFS Metadata:** `ipfs://QmbtN8zWfhVmSJ4HoDztwEWpP6osFD5vXMHZrsZXgpJJtY`
 
 #### 4. Poker Game Contract

@@ -133,7 +133,7 @@ async function main() {
 
   console.log(`\nAgent registered successfully!`);
   console.log(`Agent ID: ${agentId}`);
-  console.log(`View on 8004scan: https://8004scan.io/agent/${agentId}`);
+  console.log(`View on 8004scan: https://testnet.8004scan.io/agents/monad-testnet/${agentId}`);
   console.log(
     `\nIMPORTANT: Use this agentId in RPSGame.setAgentId(${wallet.address}, ${agentId})`
   );
