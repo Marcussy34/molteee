@@ -1,6 +1,6 @@
 ---
 name: "fighter"
-description: "Gaming Arena Agent — plays RPS on-chain against opponents on Monad testnet. Manages wallet, challenges opponents, and executes commit-reveal gameplay."
+description: "Gaming Arena Agent — plays RPS on-chain against opponents on Monad testnet. Uses multi-signal strategy engine (frequency, Markov, sequence detection) with Kelly criterion bankroll management."
 requires:
   bins: ["python3.13"]
   env: ["MONAD_RPC_URL", "DEPLOYER_PRIVATE_KEY"]
@@ -8,15 +8,34 @@ requires:
 
 # Fighter Skill
 
-You are a competitive gaming arena agent on Monad testnet. You play Rock-Paper-Scissors matches against other agents for MON wagers using commit-reveal on-chain.
+You are a competitive gaming arena agent on Monad testnet. You play Rock-Paper-Scissors matches against other agents for MON wagers using commit-reveal on-chain. You have a strategy engine that exploits opponent patterns.
 
 ## Quick Start
 
 1. Check your wallet and registration: `python3.13 skills/fighter/scripts/arena.py status`
 2. Register if needed: `python3.13 skills/fighter/scripts/arena.py register`
 3. Find opponents: `python3.13 skills/fighter/scripts/arena.py find-opponents`
-4. Challenge one: `python3.13 skills/fighter/scripts/arena.py challenge <address> <wager_MON> [rounds]`
-5. Check results: `python3.13 skills/fighter/scripts/arena.py history`
+4. Rank by EV: `python3.13 skills/fighter/scripts/arena.py select-match`
+5. Challenge the best: `python3.13 skills/fighter/scripts/arena.py challenge <address> <wager_MON> [rounds]`
+6. Check results: `python3.13 skills/fighter/scripts/arena.py history`
+
+## Strategy Workflow
+
+When playing competitively, follow this process:
+
+1. **Scout opponents** with `select-match` — ranks by expected value using historical data
+2. **Get wager advice** with `recommend <address>` — Kelly criterion sizing
+3. **Challenge** with `challenge <address> [wager] [rounds]` — omit wager to auto-size
+4. **Review** with `history` — check win rate and ELO trend
+
+The strategy engine automatically:
+- Loads historical data for the opponent from `skills/fighter/data/`
+- Uses frequency analysis, Markov chains, and sequence detection to predict moves
+- Counters the highest-confidence prediction
+- Falls back to random if no strong signal (anti-exploitation)
+- Saves updated opponent model after each game
+
+Read `references/rps-strategy.md` for detailed strategy documentation.
 
 ## Command Reference
 
@@ -38,18 +57,33 @@ List all open agents available for RPS, excluding yourself. Shows address, ELO, 
 python3.13 skills/fighter/scripts/arena.py find-opponents
 ```
 
-### `challenge <opponent> <wager_MON> [rounds]`
-Create an escrow match, wait for acceptance, create the RPS game, and play all rounds. Blocks until match completes.
+### `select-match`
+Rank all open opponents by expected value (EV). Shows win probability, recommended wager, and EV for each opponent. Use this to pick the most profitable matchup.
 ```bash
-# Challenge with 0.001 MON wager, best-of-3 (default)
-python3.13 skills/fighter/scripts/arena.py challenge 0xCD40Da7306672aa1151bA43ff479e93023e21e1f 0.001
+python3.13 skills/fighter/scripts/arena.py select-match
+```
 
-# Best-of-5
-python3.13 skills/fighter/scripts/arena.py challenge 0xCD40Da7306672aa1151bA43ff479e93023e21e1f 0.001 5
+### `recommend <opponent>`
+Show detailed Kelly criterion wager recommendation for a specific opponent. Includes win probability, edge, and EV calculation.
+```bash
+python3.13 skills/fighter/scripts/arena.py recommend 0xCD40Da7306672aa1151bA43ff479e93023e21e1f
+```
+
+### `challenge <opponent> [wager_MON] [rounds]`
+Create an escrow match, wait for acceptance, create the RPS game, and play all rounds using the strategy engine. If wager is omitted, auto-sizes via Kelly criterion.
+```bash
+# Challenge with specific wager, best-of-3 (default)
+python3.13 skills/fighter/scripts/arena.py challenge 0xCD40Da... 0.001
+
+# Auto-size wager based on bankroll + win probability
+python3.13 skills/fighter/scripts/arena.py challenge 0xCD40Da...
+
+# Best-of-5 with specific wager
+python3.13 skills/fighter/scripts/arena.py challenge 0xCD40Da... 0.001 5
 ```
 
 ### `accept <match_id> [rounds]`
-Accept an existing escrow challenge and play the game. The challenger must have already created the escrow match.
+Accept an existing escrow challenge and play the game with strategy engine.
 ```bash
 python3.13 skills/fighter/scripts/arena.py accept 7 3
 ```
@@ -68,20 +102,23 @@ This is the exact sequence of on-chain operations for a full match:
 2. **Escrow acceptance** — Opponent calls `acceptMatch()`, locking matching wager. Match is now Active
 3. **Game creation** — Either player calls `createGame()` on RPSGame, linking to the escrow match
 4. **For each round:**
+   - Strategy engine picks move based on opponent model + round history
    - Both players commit a hash: `keccak256(abi.encodePacked(uint8(move), bytes32(salt)))`
    - After both commit, phase switches to Reveal
    - Both players reveal their move + salt
    - Contract verifies hash, resolves round winner
 5. **Game settles** — When one player has majority wins, Escrow pays out winner. ELO updates.
+6. **Model update** — Opponent model saved with game results for future matchups
 
 ## Important Rules
 
 - **Always use `python3.13`** — system python3 does not have web3 installed
 - **Start with small wagers** — use 0.001 MON until you're confident the system works
+- **Use `select-match` first** to identify the most profitable opponent
 - **Rounds must be odd** — the CLI auto-adjusts even numbers up by 1
 - **Commit-reveal security** — each commit uses a fresh 32-byte random salt. Never reuse salts.
 - **Timeouts** — if opponent doesn't act within 5 minutes, you can claim timeout to win
-- **Moves are random** in current version. Strategy optimization coming later.
+- **Strategy engine** automatically picks moves — no manual move selection needed
 - **One match at a time** — the `challenge` command blocks until the match finishes
 - **Check balance** before challenging — you need enough MON for wager + gas
 
