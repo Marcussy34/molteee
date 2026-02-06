@@ -29,4 +29,6 @@ Thumbs.db
 *.swp
 *.swo
 
-*.claude.md
+# Claude-mem auto-generated context files (keep root CLAUDE.md tracked)
+**/CLAUDE.md
+!/CLAUDE.md
