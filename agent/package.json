@@ -7,7 +7,6 @@
     "register": "npx tsx src/register.ts"
   },
   "dependencies": {
-    "agent0-sdk": "^0.2.0",
     "dotenv": "^16.4.0",
     "ethers": "^6.13.0"
   },

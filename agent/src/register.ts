@@ -10,7 +10,6 @@
  */
 
 import dotenv from "dotenv";
-import { Agent0 } from "agent0-sdk";
 import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
