@@ -152,6 +152,49 @@ Show match history including wins, losses, win rate, ELO, and game type for each
 python3.13 skills/fighter/scripts/arena.py history
 ```
 
+### Tournament Commands
+
+#### `tournaments`
+List all open tournaments (Registration or Active status).
+```bash
+python3.13 skills/fighter/scripts/arena.py tournaments
+```
+
+#### `create-tournament <entry_fee_MON> <base_wager_MON> <max_players>`
+Create a new single-elimination tournament. Max players must be 4 or 8.
+```bash
+python3.13 skills/fighter/scripts/arena.py create-tournament 0.01 0.001 4
+```
+
+#### `join-tournament <tournament_id>`
+Register for a tournament, locking the entry fee. Auto-generates bracket if the tournament becomes full.
+```bash
+python3.13 skills/fighter/scripts/arena.py join-tournament 0
+```
+
+#### `play-tournament <tournament_id>`
+Find your next bracket match, determine the game type and wager for the current round, create an escrow match, play the game, and report the result to the tournament contract.
+```bash
+python3.13 skills/fighter/scripts/arena.py play-tournament 0
+```
+
+#### `tournament-status <tournament_id>`
+Show the full tournament bracket with results per round, participants, and prize pool.
+```bash
+python3.13 skills/fighter/scripts/arena.py tournament-status 0
+```
+
+### Tournament Match Flow
+1. **Find tournament** — `tournaments` to list open tournaments
+2. **Evaluate** — consider entry fee, base wager, and field size vs bankroll
+3. **Join** — `join-tournament <id>` locks entry fee; auto-generates bracket if full
+4. **Play rounds** — `play-tournament <id>` for each round:
+   - Game type rotates: Round 0=RPS, Round 1=Poker, Round 2=Auction, Round 3=RPS...
+   - Stakes escalate: `baseWager * 2^round`
+   - Each match runs through normal Escrow + Game contract flow
+   - Result automatically reported to Tournament contract
+5. **Prizes** — 60% winner, 25% runner-up, 7.5% each semifinalist
+
 ## Step-by-Step: Playing Each Game Type
 
 ### RPS Match Flow
@@ -211,3 +254,4 @@ All game types (RPS, Poker, Auction) automatically post reputation feedback (win
 - **RPSGame:** `0x2A622c1878335149c251Be32dE5660297609A12f`
 - **PokerGame:** `0x438962d9Bc693825EB4bd4a4e7E5B0fa0Ce895cB`
 - **AuctionGame:** `0x0D9024984658A49003e008C1379Ee872bdb74799`
+- **Tournament:** `0xc152cA4E8d992a36cDf61fffc16c2Aa81afa8Aed`
