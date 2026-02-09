@@ -59,13 +59,12 @@ async function main() {
   const registrationPath = path.join(__dirname, "..", "registration.json");
   const registration = JSON.parse(fs.readFileSync(registrationPath, "utf8"));
 
-  // Update agent wallet in registration
-  registration.agentWallet = `eip155:${CHAIN_CONFIG.chainId}:${wallet.address}`;
+  // NOTE: Do NOT set agentWallet in off-chain metadata (deprecated per ERC-8004 spec).
+  // Agent wallet is set on-chain via setAgentWallet() after registration.
 
   console.log("\n--- Registration Metadata ---");
   console.log(`Name: ${registration.name}`);
   console.log(`Description: ${registration.description}`);
-  console.log(`Agent Wallet: ${registration.agentWallet}`);
   console.log(`Trust Models: ${registration.supportedTrust.join(", ")}`);
 
   // Upload to IPFS via Pinata
@@ -130,6 +129,13 @@ async function main() {
     const balance = await identityRegistry.balanceOf(wallet.address);
     agentId = balance.toString();
   }
+
+  // Set agent wallet on-chain (the correct way per ERC-8004 spec)
+  console.log(`\nSetting agent wallet on-chain...`);
+  const setWalletTx = await identityRegistry.setAgentWallet(agentId, wallet.address);
+  console.log(`setAgentWallet tx: ${setWalletTx.hash}`);
+  await setWalletTx.wait();
+  console.log(`Agent wallet set on-chain.`);
 
   console.log(`\nAgent registered successfully!`);
   console.log(`Agent ID: ${agentId}`);
