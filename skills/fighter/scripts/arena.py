@@ -6,10 +6,14 @@ Usage: python3.13 skills/fighter/scripts/arena.py <command> [args]
 
 Commands:
     status                              Show wallet balance, ELO, registration status
-    register                            Register this agent in the AgentRegistry
-    find-opponents                      List open agents for RPS
+    register [game_types]               Register this agent (default: RPS,Poker,Auction)
+    find-opponents [game_type]          List open agents (default: RPS)
     challenge <opponent> <wager> [rounds]  Create and play an RPS match
-    accept <match_id> [rounds]          Accept a challenge and play
+    accept <match_id> [rounds]          Accept an RPS challenge and play
+    challenge-poker <opponent> <wager>  Create and play a poker match
+    accept-poker <match_id>             Accept a poker challenge and play
+    challenge-auction <opponent> <wager>  Create and play an auction match
+    accept-auction <match_id>           Accept an auction challenge and play
     history                             Show match history
     select-match                        Rank opponents by expected value
     recommend <opponent>                Show Kelly-sized wager recommendation
@@ -29,7 +33,12 @@ from lib.contracts import (
     MatchStatus,
     Move,
     MOVE_NAMES,
+    PokerPhase,
+    PokerAction,
+    AuctionPhase,
     RPS_GAME_ADDRESS,
+    POKER_GAME_ADDRESS,
+    AUCTION_GAME_ADDRESS,
     accept_escrow_match,
     claim_timeout,
     commit_move,
@@ -54,8 +63,33 @@ from lib.contracts import (
     register_agent,
     reveal_move,
     wei_to_mon,
+    # Poker wrappers
+    create_poker_game,
+    commit_poker_hand,
+    poker_take_action,
+    reveal_poker_hand,
+    get_poker_game_state,
+    get_next_poker_game_id,
+    claim_poker_timeout,
+    parse_poker_game_id_from_receipt,
+    make_poker_hand_hash,
+    # Auction wrappers
+    create_auction_game,
+    commit_auction_bid,
+    reveal_auction_bid,
+    get_auction_game_state,
+    get_next_auction_game_id,
+    claim_auction_timeout,
+    parse_auction_game_id_from_receipt,
+    make_auction_bid_hash,
 )
-from lib.strategy import choose_move as strategy_choose_move, MOVE_NAMES as STRAT_MOVE_NAMES
+from lib.strategy import (
+    choose_move as strategy_choose_move,
+    MOVE_NAMES as STRAT_MOVE_NAMES,
+    choose_hand_value,
+    choose_poker_action,
+    choose_auction_bid,
+)
 from lib.opponent_model import OpponentModelStore
 from lib.bankroll import recommend_wager, estimate_win_prob, format_recommendation
 
@@ -80,13 +114,18 @@ def cmd_status():
 
     try:
         info = get_agent_info(addr)
-        game_types = [["RPS", "Poker", "Auction"][gt] for gt in info["gameTypes"]]
-        elo_rps = get_elo(addr, GameType.RPS)
+        game_type_names = [["RPS", "Poker", "Auction"][gt] for gt in info["gameTypes"]]
         matches = get_match_count(addr)
         print(f"Status:  Registered (open={info['isOpen']})")
-        print(f"Games:   {', '.join(game_types)}")
+        print(f"Games:   {', '.join(game_type_names)}")
         print(f"Wager:   {wei_to_mon(info['minWager']):.6f} - {wei_to_mon(info['maxWager']):.6f} MON")
-        print(f"ELO:     {elo_rps}")
+        # Show ELO for each registered game type
+        elo_map = {0: GameType.RPS, 1: GameType.POKER, 2: GameType.AUCTION}
+        for gt_idx in info["gameTypes"]:
+            gt = elo_map.get(gt_idx)
+            if gt is not None:
+                name = ["RPS", "Poker", "Auction"][gt_idx]
+                print(f"ELO {name:7s}: {get_elo(addr, gt)}")
         print(f"Matches: {matches}")
     except Exception as e:
         err = str(e)
@@ -97,49 +136,65 @@ def cmd_status():
 
 
 def cmd_register():
-    """Register this agent in the AgentRegistry for RPS."""
+    """Register this agent in the AgentRegistry for all game types."""
     addr = get_address()
+
+    # Parse optional game types from args (default: all)
+    game_types = [GameType.RPS, GameType.POKER, GameType.AUCTION]
+    type_names = ["RPS", "Poker", "Auction"]
+    if len(sys.argv) >= 3:
+        type_names = [t.strip() for t in sys.argv[2].split(",")]
+        type_map = {"rps": GameType.RPS, "poker": GameType.POKER, "auction": GameType.AUCTION}
+        game_types = [type_map[t.lower()] for t in type_names if t.lower() in type_map]
+        type_names = [t.capitalize() for t in type_names]
 
     # Check if already registered
     try:
         info = get_agent_info(addr)
         if info["exists"]:
             print(f"Already registered at {addr}")
-            print(f"ELO: {get_elo(addr, GameType.RPS)}")
+            for gt, name in zip(game_types, type_names):
+                print(f"  {name} ELO: {get_elo(addr, gt)}")
             return
     except Exception:
         pass  # Not registered yet — proceed
 
-    # Register for RPS with wager range 0.001 - 1.0 MON
+    # Register with wager range 0.001 - 1.0 MON
     min_wager = mon_to_wei(0.001)
     max_wager = mon_to_wei(1.0)
-    print(f"Registering agent for RPS...")
+    print(f"Registering agent for {', '.join(type_names)}...")
     print(f"  Wager range: 0.001 - 1.0 MON")
 
-    receipt = register_agent([GameType.RPS], min_wager, max_wager)
+    receipt = register_agent(game_types, min_wager, max_wager)
     print(f"  TX: {receipt['transactionHash'].hex()}")
     print(f"  Block: {receipt['blockNumber']}")
-    print(f"  ELO: {get_elo(addr, GameType.RPS)}")
+    for gt, name in zip(game_types, type_names):
+        print(f"  {name} ELO: {get_elo(addr, gt)}")
     print("Registration complete.")
 
 
 def cmd_find_opponents():
-    """List all open agents for RPS, excluding self."""
+    """List all open agents for a game type (default: RPS), excluding self."""
+    # Parse optional game type from args
+    type_map = {"rps": GameType.RPS, "poker": GameType.POKER, "auction": GameType.AUCTION}
+    game_type_name = sys.argv[2].lower() if len(sys.argv) >= 3 else "rps"
+    game_type = type_map.get(game_type_name, GameType.RPS)
+
     addr = get_address()
-    agents = get_open_agents(GameType.RPS)
+    agents = get_open_agents(game_type)
 
     # Filter out self
     opponents = [a for a in agents if a.lower() != addr.lower()]
 
     if not opponents:
-        print("No open opponents found for RPS.")
+        print(f"No open opponents found for {game_type_name.upper()}.")
         return
 
-    print(f"Found {len(opponents)} opponent(s):\n")
+    print(f"Found {len(opponents)} {game_type_name.upper()} opponent(s):\n")
     for opp in opponents:
         try:
             info = get_agent_info(opp)
-            elo_val = get_elo(opp, GameType.RPS)
+            elo_val = get_elo(opp, game_type)
             print(f"  {opp}")
             print(f"    ELO:   {elo_val}")
             print(f"    Wager: {wei_to_mon(info['minWager']):.6f} - {wei_to_mon(info['maxWager']):.6f} MON")
@@ -592,6 +647,497 @@ def _print_game_result(game: dict, my_addr: str):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Poker Commands + Game Loop
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def cmd_challenge_poker():
+    """
+    Create and play a poker match against an opponent.
+    Usage: challenge-poker <opponent_address> <wager_MON>
+    """
+    if len(sys.argv) < 4:
+        print("Usage: arena.py challenge-poker <opponent_address> <wager_MON>")
+        print("  Example: arena.py challenge-poker 0xCD40Da... 0.01")
+        sys.exit(1)
+
+    opponent = sys.argv[2]
+    wager_mon = float(sys.argv[3])
+    wager_wei = mon_to_wei(wager_mon)
+
+    print(f"Challenging {opponent} to Poker")
+    print(f"  Wager: {wager_mon} MON ({wager_wei} wei)")
+
+    # Step 1: Create escrow match pointing to PokerGame contract
+    print("\n[1/4] Creating escrow match (Poker)...")
+    receipt = create_escrow_match(opponent, POKER_GAME_ADDRESS, wager_wei)
+    match_id = parse_match_id_from_receipt(receipt)
+    print(f"  Match ID: {match_id}")
+    print(f"  TX: {receipt['transactionHash'].hex()}")
+
+    # Step 2: Wait for opponent to accept
+    print("\n[2/4] Waiting for opponent to accept...")
+    while True:
+        m = get_escrow_match(match_id)
+        if m["status"] == MatchStatus.ACTIVE:
+            print("  Opponent accepted!")
+            break
+        if m["status"] == MatchStatus.CANCELLED:
+            print("  Match was cancelled.")
+            return
+        sys.stdout.write(".")
+        sys.stdout.flush()
+        time.sleep(POLL_INTERVAL)
+
+    # Step 3: Create the poker game
+    print("\n[3/4] Creating Poker game...")
+    receipt = create_poker_game(match_id)
+    game_id = parse_poker_game_id_from_receipt(receipt)
+    print(f"  Game ID: {game_id}")
+    print(f"  TX: {receipt['transactionHash'].hex()}")
+
+    # Step 4: Play the poker game
+    print(f"\n[4/4] Playing poker game {game_id}...")
+    _play_poker_game(game_id, opponent, wager_wei)
+
+
+def cmd_accept_poker():
+    """
+    Accept a poker escrow match and play.
+    Usage: accept-poker <match_id>
+    """
+    if len(sys.argv) < 3:
+        print("Usage: arena.py accept-poker <match_id>")
+        sys.exit(1)
+
+    match_id = int(sys.argv[2])
+
+    # Get match details
+    m = get_escrow_match(match_id)
+    opponent = m["player1"]
+    wager_wei = m["wager"]
+    print(f"Poker Match {match_id}:")
+    print(f"  Challenger: {opponent}")
+    print(f"  Wager:      {wei_to_mon(wager_wei):.6f} MON")
+    print(f"  Status:     {MatchStatus(m['status']).name}")
+
+    if m["status"] != MatchStatus.CREATED:
+        print(f"Error: Match not in CREATED state (current: {MatchStatus(m['status']).name})")
+        sys.exit(1)
+
+    # Accept the escrow match
+    print("\n[1/3] Accepting escrow match...")
+    receipt = accept_escrow_match(match_id, wager_wei)
+    print(f"  TX: {receipt['transactionHash'].hex()}")
+
+    # Wait for game creation or create it ourselves
+    print("\n[2/3] Waiting for poker game creation...")
+    game_id = _wait_for_poker_game_or_create(match_id)
+    print(f"  Game ID: {game_id}")
+
+    # Play the game
+    print(f"\n[3/3] Playing poker game {game_id}...")
+    _play_poker_game(game_id, opponent, wager_wei)
+
+
+def _wait_for_poker_game_or_create(match_id: int) -> int:
+    """
+    Wait up to 10s for the challenger to create the poker game.
+    If they don't, create it ourselves. Returns game_id.
+    """
+    start_game_id = get_next_poker_game_id()
+    waited = 0
+
+    while waited < 10:
+        current_next = get_next_poker_game_id()
+        for gid in range(start_game_id, current_next):
+            g = get_poker_game_state(gid)
+            if g["escrowMatchId"] == match_id:
+                return gid
+        time.sleep(2)
+        waited += 2
+
+    # Timeout — create the game ourselves
+    print("  Challenger didn't create poker game — creating it ourselves...")
+    receipt = create_poker_game(match_id)
+    return parse_poker_game_id_from_receipt(receipt)
+
+
+def _play_poker_game(game_id: int, opponent_addr: str, wager_wei: int):
+    """
+    Play a full poker game: commit hand → betting rounds → showdown.
+    Uses strategy engine for hand selection and betting decisions.
+    """
+    my_addr = get_address()
+
+    # Load opponent model for strategy decisions
+    model = _model_store.get(opponent_addr) if opponent_addr else None
+
+    # Choose and save our hand value + salt at the start
+    hand_value = choose_hand_value()
+    salt = generate_salt()
+    hand_hash = make_poker_hand_hash(hand_value, salt)
+
+    print(f"  Hand value chosen: {hand_value}/100")
+
+    while True:
+        game = get_poker_game_state(game_id)
+
+        # Game is settled — show result and update model
+        if game["settled"]:
+            _print_poker_result(game, my_addr)
+
+            # Update opponent model
+            if opponent_addr and model is not None:
+                i_am_p1 = game["player1"].lower() == my_addr.lower()
+                my_hand = game["p1HandValue"] if i_am_p1 else game["p2HandValue"]
+                opp_hand = game["p2HandValue"] if i_am_p1 else game["p1HandValue"]
+                won = my_hand > opp_hand
+                # Use hand values as simple round history for modeling
+                model.update([(my_hand, opp_hand)], won=won,
+                             my_score=1 if won else 0,
+                             opp_score=0 if won else 1)
+                _model_store.save(opponent_addr)
+                print(f"  Opponent model updated ({model.get_total_games()} games total)")
+            return
+
+        phase = game["phase"]
+        now = int(time.time())
+        deadline = game["phaseDeadline"]
+
+        # Check for timeout opportunity
+        if now > deadline and phase != PokerPhase.COMPLETE:
+            i_am_p1 = game["player1"].lower() == my_addr.lower()
+            if phase == PokerPhase.COMMIT:
+                my_committed = game["p1Committed"] if i_am_p1 else game["p2Committed"]
+                opp_committed = game["p2Committed"] if i_am_p1 else game["p1Committed"]
+                if my_committed and not opp_committed:
+                    print("  Opponent timed out on commit — claiming...")
+                    claim_poker_timeout(game_id)
+                    continue
+            elif phase in (PokerPhase.BETTING_ROUND1, PokerPhase.BETTING_ROUND2):
+                # If it's opponent's turn and they timed out
+                if game["currentTurn"].lower() != my_addr.lower():
+                    print("  Opponent timed out on betting — claiming...")
+                    claim_poker_timeout(game_id)
+                    continue
+            elif phase == PokerPhase.SHOWDOWN:
+                my_revealed = game["p1Revealed"] if i_am_p1 else game["p2Revealed"]
+                opp_revealed = game["p2Revealed"] if i_am_p1 else game["p1Revealed"]
+                if my_revealed and not opp_revealed:
+                    print("  Opponent timed out on reveal — claiming...")
+                    claim_poker_timeout(game_id)
+                    continue
+
+        # ── Commit phase — submit our hand hash ──
+        if phase == PokerPhase.COMMIT:
+            i_am_p1 = game["player1"].lower() == my_addr.lower()
+            my_committed = game["p1Committed"] if i_am_p1 else game["p2Committed"]
+
+            if not my_committed:
+                print(f"  Committing hand (value={hand_value})...")
+                commit_poker_hand(game_id, hand_hash)
+                print(f"    Committed.")
+
+        # ── Betting rounds — use poker strategy ──
+        elif phase in (PokerPhase.BETTING_ROUND1, PokerPhase.BETTING_ROUND2):
+            # Only act if it's our turn
+            if game["currentTurn"].lower() == my_addr.lower():
+                round_name = "Round 1" if phase == PokerPhase.BETTING_ROUND1 else "Round 2"
+                current_bet = game["currentBet"]
+                pot = game["pot"]
+
+                # Use strategy engine to decide action
+                action, amount_wei, strategy_name, confidence = choose_poker_action(
+                    hand_value=hand_value,
+                    phase=("round1" if phase == PokerPhase.BETTING_ROUND1 else "round2"),
+                    current_bet=current_bet,
+                    pot=pot,
+                    wager=wager_wei,
+                    opponent_addr=opponent_addr,
+                    model=model,
+                )
+
+                # Map string action to PokerAction enum
+                action_map = {
+                    "check": PokerAction.CHECK,
+                    "bet": PokerAction.BET,
+                    "raise": PokerAction.RAISE,
+                    "call": PokerAction.CALL,
+                    "fold": PokerAction.FOLD,
+                }
+                action_int = action_map[action]
+                send_value = amount_wei if action in ("bet", "raise") else (current_bet if action == "call" else 0)
+
+                print(f"  {round_name} [{strategy_name} {confidence:.0%}]: {action.upper()}"
+                      + (f" ({wei_to_mon(send_value):.6f} MON)" if send_value > 0 else ""))
+
+                poker_take_action(game_id, action_int, send_value)
+                print(f"    Action submitted.")
+
+        # ── Showdown — reveal our hand ──
+        elif phase == PokerPhase.SHOWDOWN:
+            i_am_p1 = game["player1"].lower() == my_addr.lower()
+            my_revealed = game["p1Revealed"] if i_am_p1 else game["p2Revealed"]
+
+            if not my_revealed:
+                print(f"  Revealing hand (value={hand_value})...")
+                reveal_poker_hand(game_id, hand_value, salt)
+                print(f"    Revealed.")
+
+        # Wait before polling again
+        time.sleep(POLL_INTERVAL)
+
+
+def _print_poker_result(game: dict, my_addr: str):
+    """Print the final poker game result."""
+    i_am_p1 = game["player1"].lower() == my_addr.lower()
+    my_hand = game["p1HandValue"] if i_am_p1 else game["p2HandValue"]
+    opp_hand = game["p2HandValue"] if i_am_p1 else game["p1HandValue"]
+    pot = game["pot"]
+
+    print(f"\n  ════════════════════════════════")
+    print(f"  Poker game complete!")
+    print(f"  My hand:  {my_hand}/100")
+    print(f"  Opp hand: {opp_hand}/100")
+    print(f"  Pot:      {wei_to_mon(pot):.6f} MON")
+
+    if my_hand > opp_hand:
+        print(f"  Result: WIN")
+    elif opp_hand > my_hand:
+        print(f"  Result: LOSS")
+    else:
+        print(f"  Result: DRAW")
+    print(f"  ════════════════════════════════\n")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Auction Commands + Game Loop
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def cmd_challenge_auction():
+    """
+    Create and play an auction match against an opponent.
+    Usage: challenge-auction <opponent_address> <wager_MON>
+    """
+    if len(sys.argv) < 4:
+        print("Usage: arena.py challenge-auction <opponent_address> <wager_MON>")
+        print("  Example: arena.py challenge-auction 0xCD40Da... 0.01")
+        sys.exit(1)
+
+    opponent = sys.argv[2]
+    wager_mon = float(sys.argv[3])
+    wager_wei = mon_to_wei(wager_mon)
+
+    print(f"Challenging {opponent} to Auction")
+    print(f"  Wager: {wager_mon} MON ({wager_wei} wei)")
+
+    # Step 1: Create escrow match pointing to AuctionGame contract
+    print("\n[1/4] Creating escrow match (Auction)...")
+    receipt = create_escrow_match(opponent, AUCTION_GAME_ADDRESS, wager_wei)
+    match_id = parse_match_id_from_receipt(receipt)
+    print(f"  Match ID: {match_id}")
+    print(f"  TX: {receipt['transactionHash'].hex()}")
+
+    # Step 2: Wait for opponent to accept
+    print("\n[2/4] Waiting for opponent to accept...")
+    while True:
+        m = get_escrow_match(match_id)
+        if m["status"] == MatchStatus.ACTIVE:
+            print("  Opponent accepted!")
+            break
+        if m["status"] == MatchStatus.CANCELLED:
+            print("  Match was cancelled.")
+            return
+        sys.stdout.write(".")
+        sys.stdout.flush()
+        time.sleep(POLL_INTERVAL)
+
+    # Step 3: Create the auction game
+    print("\n[3/4] Creating Auction game...")
+    receipt = create_auction_game(match_id)
+    game_id = parse_auction_game_id_from_receipt(receipt)
+    print(f"  Game ID: {game_id}")
+    print(f"  TX: {receipt['transactionHash'].hex()}")
+
+    # Step 4: Play the auction game
+    print(f"\n[4/4] Playing auction game {game_id}...")
+    _play_auction_game(game_id, opponent, wager_wei)
+
+
+def cmd_accept_auction():
+    """
+    Accept an auction escrow match and play.
+    Usage: accept-auction <match_id>
+    """
+    if len(sys.argv) < 3:
+        print("Usage: arena.py accept-auction <match_id>")
+        sys.exit(1)
+
+    match_id = int(sys.argv[2])
+
+    # Get match details
+    m = get_escrow_match(match_id)
+    opponent = m["player1"]
+    wager_wei = m["wager"]
+    print(f"Auction Match {match_id}:")
+    print(f"  Challenger: {opponent}")
+    print(f"  Wager:      {wei_to_mon(wager_wei):.6f} MON")
+    print(f"  Status:     {MatchStatus(m['status']).name}")
+
+    if m["status"] != MatchStatus.CREATED:
+        print(f"Error: Match not in CREATED state (current: {MatchStatus(m['status']).name})")
+        sys.exit(1)
+
+    # Accept the escrow match
+    print("\n[1/3] Accepting escrow match...")
+    receipt = accept_escrow_match(match_id, wager_wei)
+    print(f"  TX: {receipt['transactionHash'].hex()}")
+
+    # Wait for game creation or create it ourselves
+    print("\n[2/3] Waiting for auction game creation...")
+    game_id = _wait_for_auction_game_or_create(match_id)
+    print(f"  Game ID: {game_id}")
+
+    # Play the game
+    print(f"\n[3/3] Playing auction game {game_id}...")
+    _play_auction_game(game_id, opponent, wager_wei)
+
+
+def _wait_for_auction_game_or_create(match_id: int) -> int:
+    """
+    Wait up to 10s for the challenger to create the auction game.
+    If they don't, create it ourselves. Returns game_id.
+    """
+    start_game_id = get_next_auction_game_id()
+    waited = 0
+
+    while waited < 10:
+        current_next = get_next_auction_game_id()
+        for gid in range(start_game_id, current_next):
+            g = get_auction_game_state(gid)
+            if g["escrowMatchId"] == match_id:
+                return gid
+        time.sleep(2)
+        waited += 2
+
+    # Timeout — create the game ourselves
+    print("  Challenger didn't create auction game — creating it ourselves...")
+    receipt = create_auction_game(match_id)
+    return parse_auction_game_id_from_receipt(receipt)
+
+
+def _play_auction_game(game_id: int, opponent_addr: str, wager_wei: int):
+    """
+    Play a full auction game: commit bid → reveal bid → result.
+    Uses strategy engine for bid sizing.
+    """
+    my_addr = get_address()
+
+    # Load opponent model for strategy decisions
+    model = _model_store.get(opponent_addr) if opponent_addr else None
+
+    # Choose bid using strategy engine
+    bid_wei, strategy_name, confidence = choose_auction_bid(
+        wager_wei=wager_wei,
+        opponent_addr=opponent_addr,
+        model=model,
+    )
+    salt = generate_salt()
+    bid_hash = make_auction_bid_hash(bid_wei, salt)
+
+    bid_pct = (bid_wei / wager_wei * 100) if wager_wei > 0 else 0
+    print(f"  Bid: {wei_to_mon(bid_wei):.6f} MON ({bid_pct:.1f}% of wager) [{strategy_name} {confidence:.0%}]")
+
+    while True:
+        game = get_auction_game_state(game_id)
+
+        # Game is settled — show result and update model
+        if game["settled"]:
+            _print_auction_result(game, my_addr)
+
+            # Update opponent model
+            if opponent_addr and model is not None:
+                i_am_p1 = game["player1"].lower() == my_addr.lower()
+                my_bid = game["p1Bid"] if i_am_p1 else game["p2Bid"]
+                opp_bid = game["p2Bid"] if i_am_p1 else game["p1Bid"]
+                won = my_bid > opp_bid
+                # Store bid pair as round history for modeling
+                model.update([(my_bid, opp_bid)], won=won,
+                             my_score=1 if won else 0,
+                             opp_score=0 if won else 1)
+                _model_store.save(opponent_addr)
+                print(f"  Opponent model updated ({model.get_total_games()} games total)")
+            return
+
+        phase = game["phase"]
+        now = int(time.time())
+        deadline = game["phaseDeadline"]
+
+        # Check for timeout opportunity
+        if now > deadline and phase != AuctionPhase.COMPLETE:
+            i_am_p1 = game["player1"].lower() == my_addr.lower()
+            if phase == AuctionPhase.COMMIT:
+                my_committed = game["p1Committed"] if i_am_p1 else game["p2Committed"]
+                opp_committed = game["p2Committed"] if i_am_p1 else game["p1Committed"]
+                if my_committed and not opp_committed:
+                    print("  Opponent timed out on commit — claiming...")
+                    claim_auction_timeout(game_id)
+                    continue
+            elif phase == AuctionPhase.REVEAL:
+                my_revealed = game["p1Revealed"] if i_am_p1 else game["p2Revealed"]
+                opp_revealed = game["p2Revealed"] if i_am_p1 else game["p1Revealed"]
+                if my_revealed and not opp_revealed:
+                    print("  Opponent timed out on reveal — claiming...")
+                    claim_auction_timeout(game_id)
+                    continue
+
+        # ── Commit phase — submit our bid hash ──
+        if phase == AuctionPhase.COMMIT:
+            i_am_p1 = game["player1"].lower() == my_addr.lower()
+            my_committed = game["p1Committed"] if i_am_p1 else game["p2Committed"]
+
+            if not my_committed:
+                print(f"  Committing bid...")
+                commit_auction_bid(game_id, bid_hash)
+                print(f"    Committed.")
+
+        # ── Reveal phase — reveal our bid ──
+        elif phase == AuctionPhase.REVEAL:
+            i_am_p1 = game["player1"].lower() == my_addr.lower()
+            my_revealed = game["p1Revealed"] if i_am_p1 else game["p2Revealed"]
+
+            if not my_revealed:
+                print(f"  Revealing bid ({wei_to_mon(bid_wei):.6f} MON)...")
+                reveal_auction_bid(game_id, bid_wei, salt)
+                print(f"    Revealed.")
+
+        # Wait before polling again
+        time.sleep(POLL_INTERVAL)
+
+
+def _print_auction_result(game: dict, my_addr: str):
+    """Print the final auction game result."""
+    i_am_p1 = game["player1"].lower() == my_addr.lower()
+    my_bid = game["p1Bid"] if i_am_p1 else game["p2Bid"]
+    opp_bid = game["p2Bid"] if i_am_p1 else game["p1Bid"]
+    prize = game["prize"]
+
+    print(f"\n  ════════════════════════════════")
+    print(f"  Auction game complete!")
+    print(f"  My bid:  {wei_to_mon(my_bid):.6f} MON")
+    print(f"  Opp bid: {wei_to_mon(opp_bid):.6f} MON")
+    print(f"  Prize:   {wei_to_mon(prize):.6f} MON")
+
+    if my_bid > opp_bid:
+        print(f"  Result: WIN")
+    elif opp_bid > my_bid:
+        print(f"  Result: LOSS")
+    else:
+        print(f"  Result: DRAW")
+    print(f"  ════════════════════════════════\n")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -608,6 +1154,10 @@ def main():
         "find-opponents": cmd_find_opponents,
         "challenge": cmd_challenge,
         "accept": cmd_accept,
+        "challenge-poker": cmd_challenge_poker,
+        "accept-poker": cmd_accept_poker,
+        "challenge-auction": cmd_challenge_auction,
+        "accept-auction": cmd_accept_auction,
         "history": cmd_history,
         "select-match": cmd_select_match,
         "recommend": cmd_recommend,

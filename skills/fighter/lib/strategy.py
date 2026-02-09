@@ -1,11 +1,11 @@
 """
-strategy.py — Multi-signal RPS strategy engine.
+strategy.py — Multi-signal strategy engine for RPS, Poker, and Auction games.
 
-Combines frequency analysis, Markov chains, sequence detection,
-and anti-exploitation logic to predict opponent moves and counter them.
+RPS: Frequency analysis, Markov chains, sequence detection, anti-exploitation.
+Poker: Hand evaluation, bluff/fold decisions, value betting.
+Auction: Bid shading, opponent bid modeling.
 
-Input: opponent address, round history [(my_move, opp_move), ...], opponent model
-Output: (move, strategy_name, confidence) tuple
+Inputs vary per game. Outputs are (decision, strategy_name, confidence) tuples.
 """
 import random
 from collections import Counter
@@ -270,3 +270,177 @@ def choose_move(
     # No strong signal — fall back to random
     move = random.choice([ROCK, PAPER, SCISSORS])
     return (move, "random", 0.0)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Poker Strategy
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Hand strength categories for 1-100 hand values
+HAND_WEAK = 30       # Hands 1-30: weak
+HAND_MEDIUM = 60     # Hands 31-60: medium
+HAND_STRONG = 80     # Hands 61-80: strong
+                     # Hands 81-100: premium
+
+
+def choose_hand_value() -> int:
+    """
+    Choose a hand value (1-100) to commit.
+    Strategy: always pick a random value — it's committed privately.
+    The value itself doesn't matter strategically since both players
+    commit independently. We pick uniformly at random.
+    """
+    return random.randint(1, 100)
+
+
+def categorize_hand(hand_value: int) -> str:
+    """Categorize a hand value into strength tier."""
+    if hand_value <= HAND_WEAK:
+        return "weak"
+    elif hand_value <= HAND_MEDIUM:
+        return "medium"
+    elif hand_value <= HAND_STRONG:
+        return "strong"
+    else:
+        return "premium"
+
+
+def choose_poker_action(
+    hand_value: int,
+    phase: str,
+    current_bet: int,
+    pot: int,
+    wager: int,
+    opponent_addr: str = "",
+    model=None,
+) -> tuple:
+    """
+    Choose a poker betting action based on hand strength and game state.
+
+    Args:
+        hand_value: Our committed hand value (1-100)
+        phase: "round1" or "round2"
+        current_bet: Current bet to match (0 if no active bet)
+        pot: Current pot size in wei
+        wager: Original escrow wager in wei
+        opponent_addr: Opponent address for profiling
+        model: OpponentModel for historical data
+
+    Returns:
+        (action, amount_wei, strategy_name, confidence)
+        action: "check", "bet", "raise", "call", "fold"
+        amount_wei: ETH to send (0 for check/fold)
+    """
+    category = categorize_hand(hand_value)
+
+    # Calculate bluff probability based on opponent history
+    bluff_chance = 0.15  # Default 15% bluff rate
+    if model is not None and model.get_total_games() >= 3:
+        # Against tight opponents (high fold rate), bluff more
+        # Against loose opponents (low fold rate), bluff less
+        win_rate = model.get_win_rate()
+        if win_rate < 0.4:
+            bluff_chance = 0.25  # They're winning — try to bluff them
+        elif win_rate > 0.6:
+            bluff_chance = 0.05  # We're winning — play straight
+
+    # No active bet — decide whether to check or bet
+    if current_bet == 0:
+        if category == "premium":
+            # Value bet with strong hands
+            bet_size = int(wager * 0.5)  # Bet 50% of wager
+            return ("bet", bet_size, "value_bet", 0.85)
+        elif category == "strong":
+            bet_size = int(wager * 0.3)  # Bet 30% of wager
+            return ("bet", bet_size, "value_bet", 0.7)
+        elif category == "weak" and random.random() < bluff_chance:
+            # Bluff with weak hands occasionally
+            bet_size = int(wager * 0.4)  # Bluff bet
+            return ("bet", bet_size, "bluff", 0.3)
+        else:
+            return ("check", 0, "check_behind", 0.5)
+
+    # There's an active bet — decide call, raise, or fold
+    pot_odds = current_bet / (pot + current_bet) if (pot + current_bet) > 0 else 0.5
+
+    if category == "premium":
+        # Always raise with premium hands
+        raise_amount = min(int(current_bet * 2), int(wager * 2))
+        return ("raise", raise_amount, "value_raise", 0.9)
+    elif category == "strong":
+        # Usually call, sometimes raise
+        if random.random() < 0.3:
+            raise_amount = min(int(current_bet * 1.5), int(wager * 2))
+            return ("raise", raise_amount, "semi_bluff_raise", 0.6)
+        return ("call", current_bet, "call_strong", 0.7)
+    elif category == "medium":
+        # Call if pot odds are favorable, else fold
+        implied_equity = hand_value / 100.0
+        if implied_equity > pot_odds:
+            return ("call", current_bet, "call_odds", 0.5)
+        else:
+            return ("fold", 0, "fold_bad_odds", 0.4)
+    else:  # weak
+        # Almost always fold to a bet, rare bluff raise
+        if random.random() < bluff_chance * 0.5:
+            raise_amount = min(int(current_bet * 2), int(wager * 2))
+            return ("raise", raise_amount, "bluff_raise", 0.2)
+        return ("fold", 0, "fold_weak", 0.6)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Auction Strategy
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def choose_auction_bid(
+    wager_wei: int,
+    opponent_addr: str = "",
+    model=None,
+) -> tuple:
+    """
+    Choose a bid amount for a sealed-bid auction.
+
+    Strategy: bid shading — bid less than the full value to maximize profit.
+    Optimal bid in a first-price sealed-bid auction with uniform valuations
+    is approximately (n-1)/n of your valuation, where n=2 players → bid ~50%.
+
+    We add variance and adjust based on opponent modeling.
+
+    Args:
+        wager_wei: The escrow wager (max possible bid)
+        opponent_addr: Opponent address for profiling
+        model: OpponentModel for historical data
+
+    Returns:
+        (bid_wei, strategy_name, confidence)
+    """
+    # Base bid: 50-60% of wager (optimal for 2-player sealed bid)
+    base_fraction = 0.55
+
+    # Adjust based on opponent history
+    if model is not None and model.get_total_games() >= 3:
+        win_rate = model.get_win_rate()
+        if win_rate < 0.4:
+            # Losing to this opponent — bid higher to try to win
+            base_fraction = 0.70
+        elif win_rate > 0.7:
+            # Dominating — can afford to bid conservatively
+            base_fraction = 0.45
+
+    # Add randomness: ±10% variation to prevent exploitation
+    variation = random.uniform(-0.10, 0.10)
+    fraction = max(0.01, min(0.95, base_fraction + variation))
+
+    bid_wei = max(1, int(wager_wei * fraction))
+
+    # Determine strategy name based on bid fraction
+    if fraction > 0.70:
+        strategy_name = "aggressive_bid"
+    elif fraction > 0.50:
+        strategy_name = "balanced_bid"
+    else:
+        strategy_name = "conservative_bid"
+
+    confidence = 0.5 + abs(fraction - 0.5)  # Higher confidence at extremes
+
+    return (bid_wei, strategy_name, confidence)

@@ -29,6 +29,8 @@ load_dotenv(PROJECT_ROOT / ".env")
 AGENT_REGISTRY_ADDRESS = os.getenv("AGENT_REGISTRY_ADDRESS", "")
 ESCROW_ADDRESS = os.getenv("ESCROW_ADDRESS", "")
 RPS_GAME_ADDRESS = os.getenv("RPS_GAME_ADDRESS", "")
+POKER_GAME_ADDRESS = os.getenv("POKER_GAME_ADDRESS", "")
+AUCTION_GAME_ADDRESS = os.getenv("AUCTION_GAME_ADDRESS", "")
 
 # ─── ERC-8004 Registry Addresses (deployed singletons on Monad Testnet) ─────
 
@@ -70,12 +72,39 @@ class GamePhase(IntEnum):
     REVEAL = 1
     COMPLETE = 2
 
+# ─── Poker Game Constants ────────────────────────────────────────────────────
+
+# Poker game phases matching PokerGame.sol
+class PokerPhase(IntEnum):
+    COMMIT = 0
+    BETTING_ROUND1 = 1
+    BETTING_ROUND2 = 2
+    SHOWDOWN = 3
+    COMPLETE = 4
+
+# Poker actions matching PokerGame.sol
+class PokerAction(IntEnum):
+    NONE = 0
+    CHECK = 1
+    BET = 2
+    RAISE = 3
+    CALL = 4
+    FOLD = 5
+
+# Auction game phases matching AuctionGame.sol
+class AuctionPhase(IntEnum):
+    COMMIT = 0
+    REVEAL = 1
+    COMPLETE = 2
+
 # ─── ABI Loading ──────────────────────────────────────────────────────────────
 
 # Lazy-load ABIs (available after forge build)
 AGENT_REGISTRY_ABI = None
 ESCROW_ABI = None
 RPS_GAME_ABI = None
+POKER_GAME_ABI = None
+AUCTION_GAME_ABI = None
 _abis_loaded = False
 
 def _load_abi(contract_name: str) -> list:
@@ -90,12 +119,14 @@ def _load_abi(contract_name: str) -> list:
 
 def load_abis():
     """Load all contract ABIs. Call after forge build. Idempotent."""
-    global AGENT_REGISTRY_ABI, ESCROW_ABI, RPS_GAME_ABI, _abis_loaded
+    global AGENT_REGISTRY_ABI, ESCROW_ABI, RPS_GAME_ABI, POKER_GAME_ABI, AUCTION_GAME_ABI, _abis_loaded
     if _abis_loaded:
         return
     AGENT_REGISTRY_ABI = _load_abi("AgentRegistry")
     ESCROW_ABI = _load_abi("Escrow")
     RPS_GAME_ABI = _load_abi("RPSGame")
+    POKER_GAME_ABI = _load_abi("PokerGame")
+    AUCTION_GAME_ABI = _load_abi("AuctionGame")
     _abis_loaded = True
 
 # ─── Lazy Web3 + Account Init ────────────────────────────────────────────────
@@ -131,6 +162,8 @@ def get_address() -> str:
 _registry_contract = None
 _escrow_contract = None
 _rps_contract = None
+_poker_contract = None
+_auction_contract = None
 
 def get_registry():
     """Get AgentRegistry contract instance. Lazy-initialized."""
@@ -158,6 +191,24 @@ def get_rps_game():
         addr = Web3.to_checksum_address(RPS_GAME_ADDRESS)
         _rps_contract = get_w3().eth.contract(address=addr, abi=RPS_GAME_ABI)
     return _rps_contract
+
+def get_poker_game():
+    """Get PokerGame contract instance. Lazy-initialized."""
+    global _poker_contract
+    if _poker_contract is None:
+        load_abis()
+        addr = Web3.to_checksum_address(POKER_GAME_ADDRESS)
+        _poker_contract = get_w3().eth.contract(address=addr, abi=POKER_GAME_ABI)
+    return _poker_contract
+
+def get_auction_game():
+    """Get AuctionGame contract instance. Lazy-initialized."""
+    global _auction_contract
+    if _auction_contract is None:
+        load_abis()
+        addr = Web3.to_checksum_address(AUCTION_GAME_ADDRESS)
+        _auction_contract = get_w3().eth.contract(address=addr, abi=AUCTION_GAME_ABI)
+    return _auction_contract
 
 # ─── Transaction Helper ──────────────────────────────────────────────────────
 
@@ -399,3 +450,153 @@ def parse_game_id_from_receipt(receipt) -> int:
     if not logs:
         raise ValueError("No GameCreated event found in receipt")
     return logs[0]["args"]["gameId"]
+
+
+# ─── PokerGame Wrappers ─────────────────────────────────────────────────────
+
+def create_poker_game(escrow_match_id: int):
+    """Create a new poker game linked to an escrow match. Returns receipt."""
+    return send_tx(
+        get_poker_game().functions.createGame(escrow_match_id)
+    )
+
+def commit_poker_hand(game_id: int, hand_hash: bytes):
+    """Commit a hashed hand value. Returns receipt."""
+    return send_tx(
+        get_poker_game().functions.commitHand(game_id, hand_hash)
+    )
+
+def poker_take_action(game_id: int, action: int, value_wei: int = 0):
+    """
+    Take a betting action in a poker game. Returns receipt.
+    action: PokerAction enum value (1=Check, 2=Bet, 3=Raise, 4=Call, 5=Fold)
+    value_wei: ETH to send with bet/raise (0 for check/fold)
+    """
+    return send_tx(
+        get_poker_game().functions.takeAction(game_id, action),
+        value=value_wei,
+    )
+
+def reveal_poker_hand(game_id: int, hand_value: int, salt: bytes):
+    """Reveal hand value and salt. Returns receipt."""
+    return send_tx(
+        get_poker_game().functions.revealHand(game_id, hand_value, salt)
+    )
+
+def get_poker_game_state(game_id: int) -> dict:
+    """
+    Get poker game state. Returns dict with keys:
+    escrowMatchId, player1, player2, pot, currentBet, currentTurn,
+    phase, phaseDeadline, settled, p1HandValue, p2HandValue,
+    p1Committed, p2Committed, p1Revealed, p2Revealed, p1ExtraBets, p2ExtraBets
+    """
+    result = get_poker_game().functions.getGame(game_id).call()
+    # GameView struct fields in order
+    return {
+        "escrowMatchId": result[0],
+        "player1": result[1],
+        "player2": result[2],
+        "pot": result[3],
+        "currentBet": result[4],
+        "currentTurn": result[5],
+        "phase": int(result[6]),
+        "phaseDeadline": result[7],
+        "settled": result[8],
+        "p1HandValue": result[9],
+        "p2HandValue": result[10],
+        "p1Committed": result[11],
+        "p2Committed": result[12],
+        "p1Revealed": result[13],
+        "p2Revealed": result[14],
+        "p1ExtraBets": result[15],
+        "p2ExtraBets": result[16],
+    }
+
+def get_next_poker_game_id() -> int:
+    """Get the next poker game ID."""
+    return get_poker_game().functions.nextGameId().call()
+
+def claim_poker_timeout(game_id: int):
+    """Claim timeout in a poker game. Returns receipt."""
+    return send_tx(
+        get_poker_game().functions.claimTimeout(game_id)
+    )
+
+def parse_poker_game_id_from_receipt(receipt) -> int:
+    """Extract gameId from PokerGame GameCreated event."""
+    poker = get_poker_game()
+    logs = poker.events.GameCreated().process_receipt(receipt)
+    if not logs:
+        raise ValueError("No GameCreated event found in poker receipt")
+    return logs[0]["args"]["gameId"]
+
+def make_poker_hand_hash(hand_value: int, salt_bytes32: bytes) -> bytes:
+    """Compute hand value commit hash matching PokerGame.sol."""
+    return Web3.solidity_keccak(["uint8", "bytes32"], [hand_value, salt_bytes32])
+
+
+# ─── AuctionGame Wrappers ───────────────────────────────────────────────────
+
+def create_auction_game(escrow_match_id: int):
+    """Create a new auction game linked to an escrow match. Returns receipt."""
+    return send_tx(
+        get_auction_game().functions.createGame(escrow_match_id)
+    )
+
+def commit_auction_bid(game_id: int, bid_hash: bytes):
+    """Commit a hashed bid. Returns receipt."""
+    return send_tx(
+        get_auction_game().functions.commitBid(game_id, bid_hash)
+    )
+
+def reveal_auction_bid(game_id: int, bid: int, salt: bytes):
+    """Reveal bid amount and salt. Returns receipt."""
+    return send_tx(
+        get_auction_game().functions.revealBid(game_id, bid, salt)
+    )
+
+def get_auction_game_state(game_id: int) -> dict:
+    """
+    Get auction game state. Returns dict with keys:
+    escrowMatchId, player1, player2, prize, p1Bid, p2Bid,
+    p1Committed, p2Committed, p1Revealed, p2Revealed,
+    phase, phaseDeadline, settled
+    """
+    result = get_auction_game().functions.getGame(game_id).call()
+    return {
+        "escrowMatchId": result[0],
+        "player1": result[1],
+        "player2": result[2],
+        "prize": result[3],
+        "p1Bid": result[4],
+        "p2Bid": result[5],
+        "p1Committed": result[6],
+        "p2Committed": result[7],
+        "p1Revealed": result[8],
+        "p2Revealed": result[9],
+        "phase": int(result[10]),
+        "phaseDeadline": result[11],
+        "settled": result[12],
+    }
+
+def get_next_auction_game_id() -> int:
+    """Get the next auction game ID."""
+    return get_auction_game().functions.nextGameId().call()
+
+def claim_auction_timeout(game_id: int):
+    """Claim timeout in an auction game. Returns receipt."""
+    return send_tx(
+        get_auction_game().functions.claimTimeout(game_id)
+    )
+
+def parse_auction_game_id_from_receipt(receipt) -> int:
+    """Extract gameId from AuctionGame GameCreated event."""
+    auc = get_auction_game()
+    logs = auc.events.GameCreated().process_receipt(receipt)
+    if not logs:
+        raise ValueError("No GameCreated event found in auction receipt")
+    return logs[0]["args"]["gameId"]
+
+def make_auction_bid_hash(bid_wei: int, salt_bytes32: bytes) -> bytes:
+    """Compute bid commit hash matching AuctionGame.sol."""
+    return Web3.solidity_keccak(["uint256", "bytes32"], [bid_wei, salt_bytes32])

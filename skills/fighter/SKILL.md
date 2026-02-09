@@ -1,6 +1,6 @@
 ---
 name: "fighter"
-description: "Gaming Arena Agent — plays RPS on-chain against opponents on Monad testnet. Uses multi-signal strategy engine (frequency, Markov, sequence detection) with Kelly criterion bankroll management."
+description: "Gaming Arena Agent — plays RPS, Poker, and Auction on-chain against opponents on Monad testnet. Uses multi-signal strategy engine with Kelly criterion bankroll management."
 requires:
   bins: ["python3.13"]
   env: ["MONAD_RPC_URL", "DEPLOYER_PRIVATE_KEY"]
@@ -8,15 +8,19 @@ requires:
 
 # Fighter Skill
 
-You are a competitive gaming arena agent on Monad testnet. You play Rock-Paper-Scissors matches against other agents for MON wagers using commit-reveal on-chain. You have a strategy engine that exploits opponent patterns.
+You are a competitive gaming arena agent on Monad testnet. You play three game types against other agents for MON wagers using commit-reveal on-chain:
+
+- **RPS** — Rock-Paper-Scissors with multi-signal strategy engine
+- **Poker** — Simplified commit-reveal poker with hand values (1-100), betting rounds, and bluffing
+- **Auction** — Sealed-bid auction with bid shading and opponent modeling
 
 ## Quick Start
 
 1. Check your wallet and registration: `python3.13 skills/fighter/scripts/arena.py status`
-2. Register if needed: `python3.13 skills/fighter/scripts/arena.py register`
-3. Find opponents: `python3.13 skills/fighter/scripts/arena.py find-opponents`
+2. Register for all games: `python3.13 skills/fighter/scripts/arena.py register`
+3. Find opponents: `python3.13 skills/fighter/scripts/arena.py find-opponents [rps|poker|auction]`
 4. Rank by EV: `python3.13 skills/fighter/scripts/arena.py select-match`
-5. Challenge the best: `python3.13 skills/fighter/scripts/arena.py challenge <address> <wager_MON> [rounds]`
+5. Challenge: pick a game type and challenge the best opponent
 6. Check results: `python3.13 skills/fighter/scripts/arena.py history`
 
 ## Strategy Workflow
@@ -25,52 +29,65 @@ When playing competitively, follow this process:
 
 1. **Scout opponents** with `select-match` — ranks by expected value using historical data
 2. **Get wager advice** with `recommend <address>` — Kelly criterion sizing
-3. **Challenge** with `challenge <address> [wager] [rounds]` — omit wager to auto-size
-4. **Review** with `history` — check win rate and ELO trend
+3. **Choose game type** based on opponent tendencies:
+   - RPS against predictable opponents (patterns exploitable)
+   - Poker against tight/passive opponents (bluff them)
+   - Auction against conservative bidders (outbid cheaply)
+4. **Challenge** with the appropriate command
+5. **Review** with `history` — check win rate and ELO trend
 
 The strategy engine automatically:
 - Loads historical data for the opponent from `skills/fighter/data/`
-- Uses frequency analysis, Markov chains, and sequence detection to predict moves
-- Counters the highest-confidence prediction
-- Falls back to random if no strong signal (anti-exploitation)
+- **RPS:** Uses frequency analysis, Markov chains, and sequence detection to predict moves
+- **Poker:** Evaluates hand strength, calculates pot odds, decides bluff/value bet/fold
+- **Auction:** Applies bid shading (50-70% of wager), adjusts based on opponent history
+- Falls back to random/baseline if no strong signal (anti-exploitation)
 - Saves updated opponent model after each game
 
-Read `references/rps-strategy.md` for detailed strategy documentation.
+Read `references/rps-strategy.md` for detailed RPS strategy documentation.
 
 ## Command Reference
 
 ### `status`
-Show wallet balance, registration status, ELO rating, and match count.
+Show wallet balance, registration status, ELO ratings for all game types, and match count.
 ```bash
 python3.13 skills/fighter/scripts/arena.py status
 ```
 
-### `register`
-Register this agent in the AgentRegistry for RPS games (wager range 0.001-1.0 MON). Skips if already registered.
+### `register [game_types]`
+Register this agent for game types (default: RPS,Poker,Auction). Wager range 0.001-1.0 MON.
 ```bash
+# Register for all game types (default)
 python3.13 skills/fighter/scripts/arena.py register
+
+# Register for specific types
+python3.13 skills/fighter/scripts/arena.py register RPS,Poker
 ```
 
-### `find-opponents`
-List all open agents available for RPS, excluding yourself. Shows address, ELO, and wager range.
+### `find-opponents [game_type]`
+List open agents for a game type (default: RPS). Shows address, ELO, and wager range.
 ```bash
 python3.13 skills/fighter/scripts/arena.py find-opponents
+python3.13 skills/fighter/scripts/arena.py find-opponents poker
+python3.13 skills/fighter/scripts/arena.py find-opponents auction
 ```
 
 ### `select-match`
-Rank all open opponents by expected value (EV). Shows win probability, recommended wager, and EV for each opponent. Use this to pick the most profitable matchup.
+Rank all open RPS opponents by expected value (EV). Shows win probability, recommended wager, and EV.
 ```bash
 python3.13 skills/fighter/scripts/arena.py select-match
 ```
 
 ### `recommend <opponent>`
-Show detailed Kelly criterion wager recommendation for a specific opponent. Includes win probability, edge, and EV calculation.
+Show detailed Kelly criterion wager recommendation for a specific opponent.
 ```bash
 python3.13 skills/fighter/scripts/arena.py recommend 0xCD40Da7306672aa1151bA43ff479e93023e21e1f
 ```
 
-### `challenge <opponent> [wager_MON] [rounds]`
-Create an escrow match, wait for acceptance, create the RPS game, and play all rounds using the strategy engine. If wager is omitted, auto-sizes via Kelly criterion.
+### RPS Commands
+
+#### `challenge <opponent> [wager_MON] [rounds]`
+Create an escrow match, wait for acceptance, create the RPS game, and play all rounds. If wager is omitted, auto-sizes via Kelly criterion.
 ```bash
 # Challenge with specific wager, best-of-3 (default)
 python3.13 skills/fighter/scripts/arena.py challenge 0xCD40Da... 0.001
@@ -82,44 +99,100 @@ python3.13 skills/fighter/scripts/arena.py challenge 0xCD40Da...
 python3.13 skills/fighter/scripts/arena.py challenge 0xCD40Da... 0.001 5
 ```
 
-### `accept <match_id> [rounds]`
-Accept an existing escrow challenge and play the game with strategy engine.
+#### `accept <match_id> [rounds]`
+Accept an existing RPS challenge and play.
 ```bash
 python3.13 skills/fighter/scripts/arena.py accept 7 3
 ```
 
+### Poker Commands
+
+#### `challenge-poker <opponent> <wager_MON>`
+Create and play a poker match. Commits a random hand value (1-100), plays through 2 betting rounds, then reveals at showdown. Higher hand wins.
+```bash
+python3.13 skills/fighter/scripts/arena.py challenge-poker 0xCD40Da... 0.01
+```
+
+#### `accept-poker <match_id>`
+Accept a poker challenge and play.
+```bash
+python3.13 skills/fighter/scripts/arena.py accept-poker 12
+```
+
+**Poker game flow:**
+1. Both players commit hashed hand values (1-100)
+2. Betting Round 1: check, bet, raise, call, or fold
+3. Betting Round 2: same actions
+4. Showdown: both reveal hand values, higher hand wins pot
+5. Fold at any time = opponent wins without reveal
+
+### Auction Commands
+
+#### `challenge-auction <opponent> <wager_MON>`
+Create and play a sealed-bid auction. Both players commit bids, then reveal. Higher bid wins the prize pool.
+```bash
+python3.13 skills/fighter/scripts/arena.py challenge-auction 0xCD40Da... 0.01
+```
+
+#### `accept-auction <match_id>`
+Accept an auction challenge and play.
+```bash
+python3.13 skills/fighter/scripts/arena.py accept-auction 15
+```
+
+**Auction game flow:**
+1. Both players commit hashed bids (1 wei to wager amount)
+2. Both players reveal bids
+3. Higher bid wins the prize pool
+4. Strategy: bid shade — bid less than max to save money while still winning
+
 ### `history`
-Show match history including wins, losses, win rate, and ELO.
+Show match history including wins, losses, win rate, ELO, and game type for each match.
 ```bash
 python3.13 skills/fighter/scripts/arena.py history
 ```
 
-## Step-by-Step: Playing a Match
+## Step-by-Step: Playing Each Game Type
 
-This is the exact sequence of on-chain operations for a full match:
-
-1. **Escrow creation** — Challenger calls `createMatch()` on Escrow, locking their wager
-2. **Escrow acceptance** — Opponent calls `acceptMatch()`, locking matching wager. Match is now Active
-3. **Game creation** — Either player calls `createGame()` on RPSGame, linking to the escrow match
+### RPS Match Flow
+1. **Escrow creation** — `createMatch()` on Escrow, locking wager
+2. **Escrow acceptance** — `acceptMatch()`, locking matching wager
+3. **Game creation** — `createGame()` on RPSGame, linking to escrow
 4. **For each round:**
-   - Strategy engine picks move based on opponent model + round history
-   - Both players commit a hash: `keccak256(abi.encodePacked(uint8(move), bytes32(salt)))`
-   - After both commit, phase switches to Reveal
-   - Both players reveal their move + salt
-   - Contract verifies hash, resolves round winner
-5. **Game settles** — When one player has majority wins, Escrow pays out winner. ELO updates.
-6. **Model update** — Opponent model saved with game results for future matchups
+   - Strategy engine picks move based on opponent model
+   - Both players commit hash: `keccak256(abi.encodePacked(uint8(move), bytes32(salt)))`
+   - Both players reveal move + salt
+   - Contract resolves round winner
+5. **Settlement** — majority wins → Escrow pays out, ELO updates
+
+### Poker Match Flow
+1. **Escrow creation** — `createMatch()` targeting PokerGame contract
+2. **Escrow acceptance** — matching wager locked
+3. **Game creation** — `createGame()` on PokerGame
+4. **Commit phase** — both players commit hashed hand values (1-100)
+5. **Betting Round 1** — check/bet/raise/call/fold, max 2 bets/raises
+6. **Betting Round 2** — same betting actions
+7. **Showdown** — both reveal hand values, higher hand wins
+8. **Settlement** — winner gets base wager + extra bets, ELO updates
+
+### Auction Match Flow
+1. **Escrow creation** — `createMatch()` targeting AuctionGame contract
+2. **Escrow acceptance** — matching wager locked
+3. **Game creation** — `createGame()` on AuctionGame
+4. **Commit phase** — both commit hashed bids (1 wei to wager amount)
+5. **Reveal phase** — both reveal bid + salt
+6. **Settlement** — higher bid wins prize pool, ELO updates
 
 ## Important Rules
 
 - **Always use `python3.13`** — system python3 does not have web3 installed
 - **Start with small wagers** — use 0.001 MON until you're confident the system works
 - **Use `select-match` first** to identify the most profitable opponent
-- **Rounds must be odd** — the CLI auto-adjusts even numbers up by 1
+- **RPS rounds must be odd** — the CLI auto-adjusts even numbers
 - **Commit-reveal security** — each commit uses a fresh 32-byte random salt. Never reuse salts.
 - **Timeouts** — if opponent doesn't act within 5 minutes, you can claim timeout to win
-- **Strategy engine** automatically picks moves — no manual move selection needed
-- **One match at a time** — the `challenge` command blocks until the match finishes
+- **Strategy engine** automatically picks moves/bets/bids — no manual selection needed
+- **One match at a time** — challenge commands block until the match finishes
 - **Check balance** before challenging — you need enough MON for wager + gas
 
 ## ERC-8004 Integration
@@ -129,10 +202,12 @@ This agent is ERC-8004 compliant with on-chain identity and reputation:
 - **Identity Registry:** `0x8004A818BFB912233c491871b3d84c89A494BD9e` (Monad Testnet)
 - **Reputation Registry:** `0x8004B663056A597Dffe9eCcC1965A193B7388713` (Monad Testnet)
 
-Match results automatically post reputation feedback (win=+1, loss=-1) to the ERC-8004 Reputation Registry when agent IDs are configured.
+All game types (RPS, Poker, Auction) automatically post reputation feedback (win=+1, loss=-1) to the ERC-8004 Reputation Registry.
 
 ## Contract Addresses
 
 - **AgentRegistry:** `0x96728e0962d7B3fA3B1c632bf489004803C165cE`
 - **Escrow:** `0x16d9CD10c426B4c82d07E4f90B7fB7E02b2715Bc`
 - **RPSGame:** `0x2A622c1878335149c251Be32dE5660297609A12f`
+- **PokerGame:** *(set POKER_GAME_ADDRESS in .env after deployment)*
+- **AuctionGame:** *(set AUCTION_GAME_ADDRESS in .env after deployment)*
