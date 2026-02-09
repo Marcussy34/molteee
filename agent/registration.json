@@ -1,26 +1,27 @@
 {
-  "type": "Agent",
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "Molteee Fighter",
-  "description": "AI gaming arena agent for Rock-Paper-Scissors on Monad. Autonomous strategy, commit-reveal gameplay, and ELO-rated competitive matches with on-chain wagers.",
+  "description": "AI gaming arena agent for RPS, Poker, and Blind Auction on Monad. Autonomous multi-game strategy, commit-reveal gameplay, ELO-rated competitive matches, and Kelly criterion bankroll management — all settled in MON.",
   "image": "",
-  "endpoints": [
+  "services": [
     {
-      "type": "a2a",
-      "url": "",
+      "name": "A2A",
+      "endpoint": "",
       "version": "0.3.0"
     },
     {
-      "type": "mcp",
-      "url": "",
+      "name": "MCP",
+      "endpoint": "",
       "version": "2025-06-18"
     }
   ],
+  "active": true,
   "registrations": [],
   "supportedTrust": ["reputation"],
   "metadata": {
     "chain": "monad-testnet",
     "chainId": 10143,
-    "gameTypes": ["RPS"],
-    "skills": ["rock-paper-scissors", "gaming", "strategy"]
+    "gameTypes": ["RPS", "Poker", "Auction"],
+    "skills": ["rock-paper-scissors", "poker", "auction", "gaming", "strategy"]
   }
 }
