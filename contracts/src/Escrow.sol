@@ -32,6 +32,9 @@ contract Escrow is Ownable, ReentrancyGuard {
     /// @dev Contracts authorized to call settle / settleDraw
     mapping(address => bool) public authorizedContracts;
 
+    /// @dev matchId => winner address (address(0) for draws or unsettled)
+    mapping(uint256 => address) public winners;
+
     /// @dev Timeout period — if opponent doesn't accept within this, challenger can cancel
     uint256 public constant ACCEPT_TIMEOUT = 1 hours;
 
@@ -106,6 +109,7 @@ contract Escrow is Ownable, ReentrancyGuard {
         require(msg.sender == m.gameContract, "Escrow: wrong game contract");
 
         m.status = MatchStatus.Settled;
+        winners[_matchId] = _winner;
         uint256 payout = m.wager * 2;
 
         // Transfer winnings
