@@ -4,14 +4,70 @@
 
 Phases 1-6 are COMPLETE. 6 contracts deployed, 124 tests passing, 17 CLI commands, 5 opponent bots, ERC-8004 integration. Deadline: Feb 15, 2026 (6 days). Phase 8 is treated as CORE. Goal: ship everything before submission.
 
+**Production-grade design:** PredictionMarket resolution must be fully trustless on-chain. This requires adding a `winners` mapping to Escrow.sol so any contract can read the winner of a settled match without trust assumptions. This triggers a full contract redeployment (v3).
+
+---
+
+## Block 0: Escrow v3 + Full Redeployment
+
+**CRITICAL PREREQUISITE — must happen before PredictionMarket or TournamentV2.**
+
+### Escrow.sol Changes (2 lines)
+
+```solidity
+// Add to storage section:
+mapping(uint256 => address) public winners;
+
+// Add to settle() function, before payout:
+winners[_matchId] = _winner;
+```
+
+`settleDraw()` needs no change — `winners[matchId]` stays `address(0)` (naturally means draw).
+
+### Redeployment Chain
+
+| Contract | Action | Reason |
+|----------|--------|--------|
+| AgentRegistry | **KEEP** existing `0x9672...` | No Escrow dependency. Re-authorize new game contracts. |
+| ERC-8004 Registries | **KEEP** existing | Singletons, no change |
+| Escrow | **REDEPLOY** | Add `winners` mapping |
+| RPSGame | **REDEPLOY** | Constructor takes Escrow address (immutable) |
+| PokerGame | **REDEPLOY** | Constructor takes Escrow address (immutable) |
+| AuctionGame | **REDEPLOY** | Constructor takes Escrow address (immutable) |
+| Tournament | **REDEPLOY** | Points to Escrow + game contracts |
+| PredictionMarket | **NEW DEPLOY** | Reads `escrow.winners()` — fully trustless |
+| TournamentV2 | **NEW DEPLOY** | Points to new Escrow + game contracts |
+
+### Deployment Script
+
+**New file:** `contracts/script/DeployV3.s.sol` — deploys full stack in one tx:
+1. Deploy Escrow (with `winners` mapping)
+2. Deploy RPSGame, PokerGame, AuctionGame (pointing to new Escrow + existing Registry)
+3. Deploy Tournament (pointing to new Escrow + existing Registry + new game contracts)
+4. Deploy PredictionMarket (pointing to new Escrow)
+5. Deploy TournamentV2 (pointing to new Escrow + existing Registry + new game contracts)
+6. Authorize RPSGame, PokerGame, AuctionGame on new Escrow
+7. Authorize RPSGame, PokerGame, AuctionGame on existing AgentRegistry (re-authorize)
+8. Print all new addresses
+
+### Post-Deploy Updates
+
+- `.env` — update all addresses except AGENT_REGISTRY_ADDRESS and ERC-8004 addresses
+- `.env.example` — add PREDICTION_MARKET_ADDRESS, TOURNAMENT_V2_ADDRESS
+- Python `contracts.py` — addresses auto-read from env, no code change needed
+- Opponent bots — read addresses from env, no code change needed
+- Existing match history — preserved on old contracts (queryable forever)
+- ELO/registration — preserved (AgentRegistry kept)
+
 ---
 
 ## Summary of What Needs to Be Built
 
 | # | Feature | Phase | New Files | Modified Files |
 |---|---------|-------|-----------|----------------|
-| 1 | PredictionMarket.sol (AMM) | 8 | 3 sol | contracts.py, arena.py, .env |
-| 2 | TournamentV2.sol (round-robin + double-elim) | 8 | 3 sol | contracts.py, arena.py, .env |
+| 0 | Escrow v3 + full redeployment | 8 | 1 sol script | Escrow.sol, .env |
+| 1 | PredictionMarket.sol (AMM) | 8 | 2 sol | contracts.py, arena.py |
+| 2 | TournamentV2.sol (round-robin + double-elim) | 8 | 2 sol | contracts.py, arena.py |
 | 3 | Spectator Skill | 8 | 4 py + SKILL.md | — |
 | 4 | Psychology Module | 7 | 1 py | arena.py, strategy.py |
 | 5 | Enhanced Terminal Output | 7 | 1 py | arena.py |
@@ -22,12 +78,13 @@ Phases 1-6 are COMPLETE. 6 contracts deployed, 124 tests passing, 17 CLI command
 
 ---
 
-## Block 1: PredictionMarket.sol + Tests + Deploy
+## Block 1: PredictionMarket.sol + Tests
 
 **New files:**
 - `contracts/src/PredictionMarket.sol` (~200 lines)
 - `contracts/test/PredictionMarket.t.sol` (~400 lines)
-- `contracts/script/DeployPredictionMarket.s.sol`
+
+(Deployment handled by `DeployV3.s.sol` in Block 0)
 
 **Design: Constant-product AMM (x*y=k)**
 - Simpler than LMSR (no log/exp math). Pure integer mul/div.
@@ -57,12 +114,22 @@ Functions:
   getMarket(marketId) → Market
 ```
 
-**Resolution design:** `resolve(marketId, winner)` checks:
-1. Escrow match is `Settled`
-2. `winner` is player1 or player2 of that match
-3. Not already resolved
+**Resolution design (TRUSTLESS):** `resolve(marketId)` — no parameters needed:
+```solidity
+function resolve(uint256 _marketId) external {
+    Market storage m = markets[_marketId];
+    require(!m.resolved, "already resolved");
 
-This is "permissionless with verification" — anyone can call but must provide valid winner.
+    // Fully trustless — reads winner directly from Escrow v3 storage
+    address winner = escrow.winners(m.matchId);
+    require(winner != address(0), "match not settled or was a draw");
+
+    m.resolved = true;
+    m.winner = winner;
+}
+```
+Anyone can call. No trust assumptions. Reads winner from Escrow's `winners` mapping.
+For draws (`winners[matchId] == address(0)`), a separate `resolveAsDraw()` refunds all bettors proportionally.
 
 **Tests (~12):**
 - createMarket, buyYES/NO, price movement, constant product invariant
@@ -70,16 +137,15 @@ This is "permissionless with verification" — anyone can call but must provide 
 - revert: resolve unsettled, double resolve, redeem losing tokens
 - full lifecycle: create → buy → match → resolve → redeem
 
-**Deploy:** `forge script script/DeployPredictionMarket.s.sol` → update `.env`
-
 ---
 
-## Block 2: TournamentV2.sol + Tests + Deploy
+## Block 2: TournamentV2.sol + Tests
 
 **New files:**
 - `contracts/src/TournamentV2.sol` (~350 lines)
 - `contracts/test/TournamentV2.t.sol` (~500 lines)
-- `contracts/script/DeployTournamentV2.s.sol`
+
+(Deployment handled by `DeployV3.s.sol` in Block 0)
 
 **Design: Single contract with format enum**
 
@@ -119,8 +185,6 @@ mapping(tournamentId => player => lossCount) public losses;
 - Double-elim: creation, losers bracket drop, must-lose-twice, finals, 4-player full lifecycle
 - Prize distribution for both formats
 - Edge cases: odd player counts, all draws (round-robin)
-
-**Deploy:** `forge script script/DeployTournamentV2.s.sol` → update `.env`
 
 If contract size is too large, split into `TournamentRoundRobin.sol` and `TournamentDoubleElim.sol`.
 
@@ -315,15 +379,16 @@ Runs locally during demo: `npm run dev` → `localhost:5173`
 
 | Step | Block | Est. Time | Dependencies |
 |------|-------|-----------|--------------|
-| 1 | PredictionMarket.sol + tests | 3-4h | None |
-| 2 | TournamentV2.sol + tests | 3-4h | None (parallel with 1) |
-| 3 | Deploy both to Monad testnet | 30min | Blocks 1+2 |
+| 0 | Escrow v3 change + DeployV3.s.sol | 1h | None |
+| 1 | PredictionMarket.sol + tests | 3-4h | Block 0 (Escrow `winners`) |
+| 2 | TournamentV2.sol + tests | 3-4h | Block 0 (parallel with 1) |
+| 3 | `forge test` all + Deploy v3 to Monad testnet | 30min | Blocks 0+1+2 |
 | 4 | Python wrappers + CLI commands | 1.5h | Block 3 |
 | 5 | Spectator Skill | 2-3h | Block 4 (PredictionMarket wrappers) |
 | 6 | Psychology Module | 1.5-2h | None |
 | 7 | Enhanced Terminal Output | 1h | None |
 | 8 | Moltbook Integration | 1-1.5h | None |
-| 9 | React Dashboard | 4-6h | Blocks 1+2 (contract addresses needed) |
+| 9 | React Dashboard | 4-6h | Block 3 (contract addresses needed) |
 | 10 | SKILL.md + README + Demo Script | 1.5h | All above |
 | 11 | E2E testnet validation | 1-2h | All above |
 
@@ -353,12 +418,12 @@ Steps 1+2 can run in parallel. Steps 6+7+8 can run in parallel. Dashboard (9) ca
 
 | File | Action |
 |------|--------|
+| `contracts/src/Escrow.sol` | MODIFY (add `winners` mapping + 1 line in `settle()`) |
 | `contracts/src/PredictionMarket.sol` | CREATE |
 | `contracts/test/PredictionMarket.t.sol` | CREATE |
-| `contracts/script/DeployPredictionMarket.s.sol` | CREATE |
 | `contracts/src/TournamentV2.sol` | CREATE |
 | `contracts/test/TournamentV2.t.sol` | CREATE |
-| `contracts/script/DeployTournamentV2.s.sol` | CREATE |
+| `contracts/script/DeployV3.s.sol` | CREATE (full stack deploy) |
 | `skills/spectator/SKILL.md` | CREATE |
 | `skills/spectator/scripts/spectate.py` | CREATE |
 | `skills/spectator/lib/contracts.py` | CREATE |
