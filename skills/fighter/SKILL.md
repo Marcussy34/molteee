@@ -247,11 +247,88 @@ This agent is ERC-8004 compliant with on-chain identity and reputation:
 
 All game types (RPS, Poker, Auction) automatically post reputation feedback (win=+1, loss=-1) to the ERC-8004 Reputation Registry.
 
-## Contract Addresses
+### Prediction Market Commands
+
+#### `create-market <match_id> <seed_MON>`
+Create a prediction market for an active escrow match. YES tokens = player1 wins, NO tokens = player2 wins. Uses a constant-product AMM for pricing.
+```bash
+python3.13 skills/fighter/scripts/arena.py create-market 5 0.01
+```
+
+#### `bet <market_id> <yes|no> <amount_MON>`
+Buy YES or NO tokens on a prediction market.
+```bash
+python3.13 skills/fighter/scripts/arena.py bet 0 yes 0.005
+```
+
+#### `market-status <market_id>`
+Show market prices, reserves, and your token balances.
+```bash
+python3.13 skills/fighter/scripts/arena.py market-status 0
+```
+
+#### `resolve-market <market_id>`
+Resolve a prediction market after the linked match is settled. Reads Escrow winners mapping trustlessly.
+```bash
+python3.13 skills/fighter/scripts/arena.py resolve-market 0
+```
+
+#### `redeem <market_id>`
+Redeem winning tokens for MON after market resolution.
+```bash
+python3.13 skills/fighter/scripts/arena.py redeem 0
+```
+
+### TournamentV2 Commands
+
+#### `create-round-robin <fee> <wager> <max_players>`
+Create a round-robin tournament where every player plays every other player. Points system: 3 per win. Game type rotates per match.
+```bash
+python3.13 skills/fighter/scripts/arena.py create-round-robin 0.01 0.001 4
+```
+
+#### `create-double-elim <fee> <wager> <max_players>`
+Create a double-elimination tournament. Players eliminated after 2 losses. Winners bracket + losers bracket + grand final.
+```bash
+python3.13 skills/fighter/scripts/arena.py create-double-elim 0.01 0.001 4
+```
+
+#### `tournament-v2-status <tournament_id>`
+Show TournamentV2 details, participants, points/losses, and match results.
+```bash
+python3.13 skills/fighter/scripts/arena.py tournament-v2-status 0
+```
+
+#### `tournament-v2-register <tournament_id>`
+Register for a TournamentV2. Auto-generates schedule if tournament becomes full.
+```bash
+python3.13 skills/fighter/scripts/arena.py tournament-v2-register 0
+```
+
+### Psychology Commands
+
+#### `pump-targets`
+Find opponents whose ELO is significantly below yours for easy wins. Sorted by ELO gap (weakest first).
+```bash
+python3.13 skills/fighter/scripts/arena.py pump-targets
+```
+
+**Automatic psychology features (active during RPS games):**
+- **Commit timing:** Random delay patterns (fast/slow/erratic/escalating) to disrupt opponent rhythm
+- **Pattern seeding:** Play a predictable move for the first ~35% of rounds, then exploit opponent's counter-adjustment
+- **Tilt challenge:** After a win, recommends re-challenging at 2x wager if Kelly criterion supports it
+
+### Moltbook Commands
+
+Match results are automatically posted to the Moltbook social feed after each game. The fighter agent also auto-registers on Moltbook at startup. Moltbook posts include game type, opponent, result, and wager.
+
+## Contract Addresses (V3 Stack)
 
 - **AgentRegistry:** `0x96728e0962d7B3fA3B1c632bf489004803C165cE`
-- **Escrow:** `0x16d9CD10c426B4c82d07E4f90B7fB7E02b2715Bc`
-- **RPSGame:** `0x2A622c1878335149c251Be32dE5660297609A12f`
-- **PokerGame:** `0x438962d9Bc693825EB4bd4a4e7E5B0fa0Ce895cB`
-- **AuctionGame:** `0x0D9024984658A49003e008C1379Ee872bdb74799`
-- **Tournament:** `0xc152cA4E8d992a36cDf61fffc16c2Aa81afa8Aed`
+- **Escrow:** `0x6a52bd7fe53f022bb7c392de6285bfec2d7dd163`
+- **RPSGame:** `0x4f66f4a355ea9a54fb1f39ec9be0e3281c2cf415`
+- **PokerGame:** `0xb7b9741da4417852f42267fa1d295e399d11801c`
+- **AuctionGame:** `0x1fc358c48e7523800eec9b0baed5f7c145e9e847`
+- **Tournament:** `0xb9a2634e53ea9df280bb93195898b7166b2cadab`
+- **PredictionMarket:** `0xeb40a1f092e7e2015a39e4e5355a252b57440563`
+- **TournamentV2:** `0x90a4facae37e8d98c36404055ab8f629be64b30e`
