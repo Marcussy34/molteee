@@ -1,0 +1,22 @@
+{
+  "timing": {
+    "fast_delay": 0.5,
+    "slow_delay_min": 3.0,
+    "slow_delay_max": 8.0,
+    "erratic_delay_min": 0.5,
+    "erratic_delay_max": 5.0,
+    "escalating_base": 0.5,
+    "escalating_increment": 0.7
+  },
+  "seeding": {
+    "seed_fraction": 0.35,
+    "seed_move": 1
+  },
+  "tilt": {
+    "wager_multiplier": 2.0,
+    "max_bankroll_fraction": 0.10
+  },
+  "pumping": {
+    "min_elo_gap": 50
+  }
+}
