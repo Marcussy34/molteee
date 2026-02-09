@@ -209,5 +209,5 @@ All game types (RPS, Poker, Auction) automatically post reputation feedback (win
 - **AgentRegistry:** `0x96728e0962d7B3fA3B1c632bf489004803C165cE`
 - **Escrow:** `0x16d9CD10c426B4c82d07E4f90B7fB7E02b2715Bc`
 - **RPSGame:** `0x2A622c1878335149c251Be32dE5660297609A12f`
-- **PokerGame:** *(set POKER_GAME_ADDRESS in .env after deployment)*
-- **AuctionGame:** *(set AUCTION_GAME_ADDRESS in .env after deployment)*
+- **PokerGame:** `0x438962d9Bc693825EB4bd4a4e7E5B0fa0Ce895cB`
+- **AuctionGame:** `0x0D9024984658A49003e008C1379Ee872bdb74799`

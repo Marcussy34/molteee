@@ -1,0 +1,78 @@
+{
+  "opponent_addr": "0x37d06c086c9dfc48205d777b0159680ade7fefe1",
+  "move_counts": {
+    "3": 1,
+    "2": 3,
+    "1": 1,
+    "0": 1,
+    "770193987530551": 1
+  },
+  "transitions": {
+    "3": {
+      "2": 1
+    },
+    "1": {
+      "2": 1
+    },
+    "2": {
+      "2": 1
+    }
+  },
+  "match_results": [
+    {
+      "won": false,
+      "my_score": 0,
+      "opp_score": 2,
+      "timestamp": 1770635939
+    },
+    {
+      "won": false,
+      "my_score": 1,
+      "opp_score": 1,
+      "timestamp": 1770636528
+    },
+    {
+      "won": false,
+      "my_score": 0,
+      "opp_score": 1,
+      "timestamp": 1770636817
+    },
+    {
+      "won": false,
+      "my_score": 0,
+      "opp_score": 1,
+      "timestamp": 1770636873
+    }
+  ],
+  "round_history": [
+    [
+      2,
+      3
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      1,
+      1
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      3,
+      2
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      759744102948236,
+      770193987530551
+    ]
+  ],
+  "last_updated": 1770636873
+}
