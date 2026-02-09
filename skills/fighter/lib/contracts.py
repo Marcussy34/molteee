@@ -31,6 +31,7 @@ ESCROW_ADDRESS = os.getenv("ESCROW_ADDRESS", "")
 RPS_GAME_ADDRESS = os.getenv("RPS_GAME_ADDRESS", "")
 POKER_GAME_ADDRESS = os.getenv("POKER_GAME_ADDRESS", "")
 AUCTION_GAME_ADDRESS = os.getenv("AUCTION_GAME_ADDRESS", "")
+TOURNAMENT_ADDRESS = os.getenv("TOURNAMENT_ADDRESS", "")
 
 # ─── ERC-8004 Registry Addresses (deployed singletons on Monad Testnet) ─────
 
@@ -97,6 +98,13 @@ class AuctionPhase(IntEnum):
     REVEAL = 1
     COMPLETE = 2
 
+# Tournament status matching Tournament.sol
+class TournamentStatus(IntEnum):
+    REGISTRATION = 0
+    ACTIVE = 1
+    COMPLETE = 2
+    CANCELLED = 3
+
 # ─── ABI Loading ──────────────────────────────────────────────────────────────
 
 # Lazy-load ABIs (available after forge build)
@@ -105,6 +113,7 @@ ESCROW_ABI = None
 RPS_GAME_ABI = None
 POKER_GAME_ABI = None
 AUCTION_GAME_ABI = None
+TOURNAMENT_ABI = None
 _abis_loaded = False
 
 def _load_abi(contract_name: str) -> list:
@@ -119,7 +128,7 @@ def _load_abi(contract_name: str) -> list:
 
 def load_abis():
     """Load all contract ABIs. Call after forge build. Idempotent."""
-    global AGENT_REGISTRY_ABI, ESCROW_ABI, RPS_GAME_ABI, POKER_GAME_ABI, AUCTION_GAME_ABI, _abis_loaded
+    global AGENT_REGISTRY_ABI, ESCROW_ABI, RPS_GAME_ABI, POKER_GAME_ABI, AUCTION_GAME_ABI, TOURNAMENT_ABI, _abis_loaded
     if _abis_loaded:
         return
     AGENT_REGISTRY_ABI = _load_abi("AgentRegistry")
@@ -127,6 +136,7 @@ def load_abis():
     RPS_GAME_ABI = _load_abi("RPSGame")
     POKER_GAME_ABI = _load_abi("PokerGame")
     AUCTION_GAME_ABI = _load_abi("AuctionGame")
+    TOURNAMENT_ABI = _load_abi("Tournament")
     _abis_loaded = True
 
 # ─── Lazy Web3 + Account Init ────────────────────────────────────────────────
@@ -164,6 +174,7 @@ _escrow_contract = None
 _rps_contract = None
 _poker_contract = None
 _auction_contract = None
+_tournament_contract = None
 
 def get_registry():
     """Get AgentRegistry contract instance. Lazy-initialized."""
@@ -209,6 +220,15 @@ def get_auction_game():
         addr = Web3.to_checksum_address(AUCTION_GAME_ADDRESS)
         _auction_contract = get_w3().eth.contract(address=addr, abi=AUCTION_GAME_ABI)
     return _auction_contract
+
+def get_tournament():
+    """Get Tournament contract instance. Lazy-initialized."""
+    global _tournament_contract
+    if _tournament_contract is None:
+        load_abis()
+        addr = Web3.to_checksum_address(TOURNAMENT_ADDRESS)
+        _tournament_contract = get_w3().eth.contract(address=addr, abi=TOURNAMENT_ABI)
+    return _tournament_contract
 
 # ─── Transaction Helper ──────────────────────────────────────────────────────
 
@@ -600,3 +620,110 @@ def parse_auction_game_id_from_receipt(receipt) -> int:
 def make_auction_bid_hash(bid_wei: int, salt_bytes32: bytes) -> bytes:
     """Compute bid commit hash matching AuctionGame.sol."""
     return Web3.solidity_keccak(["uint256", "bytes32"], [bid_wei, salt_bytes32])
+
+
+# ─── Tournament Wrappers ──────────────────────────────────────────────────
+
+def create_tournament(entry_fee_wei: int, base_wager_wei: int, max_players: int):
+    """Create a new tournament. Returns receipt."""
+    return send_tx(
+        get_tournament().functions.createTournament(entry_fee_wei, base_wager_wei, max_players)
+    )
+
+def register_tournament(tournament_id: int, entry_fee_wei: int):
+    """Register for a tournament, locking entry fee. Returns receipt."""
+    return send_tx(
+        get_tournament().functions.register(tournament_id),
+        value=entry_fee_wei,
+    )
+
+def generate_bracket(tournament_id: int):
+    """Generate bracket once tournament is full. Returns receipt."""
+    return send_tx(
+        get_tournament().functions.generateBracket(tournament_id)
+    )
+
+def report_tournament_result(tournament_id: int, round_idx: int, match_index: int,
+                              escrow_match_id: int, winner: str):
+    """Report a match result to the tournament. Returns receipt."""
+    return send_tx(
+        get_tournament().functions.reportResult(
+            tournament_id, round_idx, match_index,
+            escrow_match_id, Web3.to_checksum_address(winner)
+        )
+    )
+
+def distribute_prizes(tournament_id: int):
+    """Distribute prizes after tournament completes. Returns receipt."""
+    return send_tx(
+        get_tournament().functions.distributePrizes(tournament_id)
+    )
+
+def cancel_tournament(tournament_id: int):
+    """Cancel a tournament during registration, refunding entry fees. Returns receipt."""
+    return send_tx(
+        get_tournament().functions.cancelTournament(tournament_id)
+    )
+
+def get_tournament_info(tournament_id: int) -> dict:
+    """
+    Get tournament info. Returns dict with keys:
+    entryFee, baseWager, maxPlayers, playerCount, prizePool,
+    currentRound, totalRounds, status, creator, winner, runnerUp
+    """
+    result = get_tournament().functions.getTournament(tournament_id).call()
+    return {
+        "entryFee": result[0],
+        "baseWager": result[1],
+        "maxPlayers": result[2],
+        "playerCount": result[3],
+        "prizePool": result[4],
+        "currentRound": result[5],
+        "totalRounds": result[6],
+        "status": int(result[7]),
+        "creator": result[8],
+        "winner": result[9],
+        "runnerUp": result[10],
+    }
+
+def get_tournament_participants(tournament_id: int) -> list[str]:
+    """Get list of participant addresses for a tournament."""
+    return get_tournament().functions.getParticipants(tournament_id).call()
+
+def get_bracket_match(tournament_id: int, round_idx: int, match_index: int) -> dict:
+    """
+    Get a bracket match. Returns dict with keys:
+    player1, player2, winner, escrowMatchId, reported
+    """
+    result = get_tournament().functions.getBracketMatch(tournament_id, round_idx, match_index).call()
+    return {
+        "player1": result[0],
+        "player2": result[1],
+        "winner": result[2],
+        "escrowMatchId": result[3],
+        "reported": result[4],
+    }
+
+def get_round_wager(tournament_id: int, round_idx: int) -> int:
+    """Get the wager for a specific round (baseWager * 2^round)."""
+    return get_tournament().functions.getRoundWager(tournament_id, round_idx).call()
+
+def get_tournament_game_type_for_round(round_idx: int) -> str:
+    """Get the game contract address for a given round (rotation: 0=RPS, 1=Poker, 2=Auction)."""
+    return get_tournament().functions.getGameTypeForRound(round_idx).call()
+
+def get_match_count_for_round(tournament_id: int, round_idx: int) -> int:
+    """Get the number of matches in a given round."""
+    return get_tournament().functions.getMatchCountForRound(tournament_id, round_idx).call()
+
+def get_next_tournament_id() -> int:
+    """Get the next tournament ID that will be assigned."""
+    return get_tournament().functions.nextTournamentId().call()
+
+def parse_tournament_id_from_receipt(receipt) -> int:
+    """Extract tournamentId from TournamentCreated event in receipt."""
+    t = get_tournament()
+    logs = t.events.TournamentCreated().process_receipt(receipt)
+    if not logs:
+        raise ValueError("No TournamentCreated event found in receipt")
+    return logs[0]["args"]["tournamentId"]

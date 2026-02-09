@@ -91,6 +91,78 @@ def estimate_win_prob(opponent_addr: str, model_store) -> float:
     return estimated
 
 
+def recommend_tournament_entry(
+    balance_wei: int,
+    entry_fee_wei: int,
+    base_wager_wei: int,
+    total_rounds: int,
+    field_size: int,
+    avg_win_prob: float = 0.5,
+) -> dict:
+    """
+    Evaluate whether to enter a tournament.
+
+    Calculates total capital at risk (entry fee + escalating wagers across rounds),
+    expected return (prize pool * win probability^rounds * 60%), and recommends
+    entry if positive EV and total cost < 20% of bankroll.
+
+    Args:
+        balance_wei: Current balance in wei
+        entry_fee_wei: Tournament entry fee in wei
+        base_wager_wei: Base wager for round 0 (escalates 2x per round)
+        total_rounds: Number of rounds to win the tournament
+        field_size: Number of players (4 or 8)
+        avg_win_prob: Average estimated win probability per match (default 0.5)
+
+    Returns:
+        dict with keys: enter (bool), total_cost, expected_return, ev,
+        cost_pct (% of bankroll), reason (str)
+    """
+    # Total wager cost across all rounds (assuming we win each one)
+    total_wagers = sum(base_wager_wei * (2 ** r) for r in range(total_rounds))
+    total_cost = entry_fee_wei + total_wagers
+
+    # Prize pool = field_size * entry_fee, winner gets 60%
+    prize_pool = field_size * entry_fee_wei
+    winner_prize = int(prize_pool * 0.60)
+
+    # Probability of winning the tournament = win_prob ^ total_rounds
+    win_tournament_prob = avg_win_prob ** total_rounds
+
+    # Expected return (gross) — weighted by tournament win probability
+    expected_return = int(winner_prize * win_tournament_prob)
+
+    # Expected value = expected return - total cost * prob of entering all rounds
+    # Simplification: we pay entry fee always, wagers only if we advance
+    # More accurate: expected cost = entry + sum(wager_r * prob_reaching_r)
+    expected_cost = entry_fee_wei
+    for r in range(total_rounds):
+        prob_reaching_round = avg_win_prob ** r
+        expected_cost += int(base_wager_wei * (2 ** r) * prob_reaching_round)
+
+    ev = expected_return - expected_cost
+    cost_pct = (total_cost / balance_wei * 100) if balance_wei > 0 else 100
+
+    # Decision: enter if positive EV AND total cost < 20% of bankroll
+    enter = ev > 0 and cost_pct < 20
+
+    if ev <= 0:
+        reason = "Negative EV — skip unless gathering data"
+    elif cost_pct >= 20:
+        reason = f"Too expensive ({cost_pct:.1f}% of bankroll) — risk of ruin"
+    else:
+        reason = f"Positive EV ({ev / 10**18:+.6f} MON) and affordable"
+
+    return {
+        "enter": enter,
+        "total_cost": total_cost,
+        "expected_return": expected_return,
+        "ev": ev,
+        "cost_pct": cost_pct,
+        "reason": reason,
+    }
+
+
 def format_recommendation(
     balance_wei: int,
     win_prob: float,
