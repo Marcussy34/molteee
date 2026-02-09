@@ -17,6 +17,13 @@ Commands:
     history                             Show match history
     select-match                        Rank opponents by expected value
     recommend <opponent>                Show Kelly-sized wager recommendation
+
+Tournament Commands:
+    tournaments                         List open tournaments
+    create-tournament <fee> <wager> <n> Create a tournament (n=4 or 8)
+    join-tournament <id>                Register for a tournament
+    play-tournament <id>                Play your next bracket match
+    tournament-status <id>              Show full bracket and results
 """
 import sys
 import time
@@ -82,6 +89,22 @@ from lib.contracts import (
     claim_auction_timeout,
     parse_auction_game_id_from_receipt,
     make_auction_bid_hash,
+    # Tournament wrappers
+    TournamentStatus,
+    TOURNAMENT_ADDRESS,
+    create_tournament,
+    register_tournament,
+    generate_bracket,
+    report_tournament_result,
+    distribute_prizes,
+    get_tournament_info,
+    get_tournament_participants,
+    get_bracket_match,
+    get_round_wager,
+    get_tournament_game_type_for_round,
+    get_match_count_for_round,
+    get_next_tournament_id,
+    parse_tournament_id_from_receipt,
 )
 from lib.strategy import (
     choose_move as strategy_choose_move,
@@ -1138,6 +1161,348 @@ def _print_auction_result(game: dict, my_addr: str):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Tournament Commands
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def cmd_tournaments():
+    """List open tournaments (Registration or Active)."""
+    next_id = get_next_tournament_id()
+    if next_id == 0:
+        print("No tournaments created yet.")
+        return
+
+    found = 0
+    for tid in range(next_id):
+        try:
+            t = get_tournament_info(tid)
+            status = TournamentStatus(t["status"])
+            # Show Registration and Active tournaments
+            if status in (TournamentStatus.REGISTRATION, TournamentStatus.ACTIVE):
+                found += 1
+                game_type_names = ["RPS", "Poker", "Auction"]
+                print(f"Tournament #{tid}")
+                print(f"  Status:      {status.name}")
+                print(f"  Players:     {t['playerCount']}/{t['maxPlayers']}")
+                print(f"  Entry Fee:   {wei_to_mon(t['entryFee']):.6f} MON")
+                print(f"  Base Wager:  {wei_to_mon(t['baseWager']):.6f} MON")
+                print(f"  Prize Pool:  {wei_to_mon(t['prizePool']):.6f} MON")
+                if status == TournamentStatus.ACTIVE:
+                    print(f"  Round:       {t['currentRound']}/{t['totalRounds']}")
+                print()
+        except Exception:
+            continue
+
+    if found == 0:
+        print("No open tournaments found.")
+
+
+def cmd_create_tournament():
+    """
+    Create a new tournament.
+    Usage: create-tournament <entry_fee_MON> <base_wager_MON> <max_players>
+    """
+    if len(sys.argv) < 5:
+        print("Usage: arena.py create-tournament <entry_fee_MON> <base_wager_MON> <max_players>")
+        print("  Example: arena.py create-tournament 0.01 0.001 4")
+        sys.exit(1)
+
+    entry_fee = mon_to_wei(float(sys.argv[2]))
+    base_wager = mon_to_wei(float(sys.argv[3]))
+    max_players = int(sys.argv[4])
+
+    print(f"Creating tournament...")
+    print(f"  Entry Fee:   {wei_to_mon(entry_fee):.6f} MON")
+    print(f"  Base Wager:  {wei_to_mon(base_wager):.6f} MON")
+    print(f"  Max Players: {max_players}")
+
+    receipt = create_tournament(entry_fee, base_wager, max_players)
+    tid = parse_tournament_id_from_receipt(receipt)
+    print(f"  Tournament ID: {tid}")
+    print(f"  TX: {receipt['transactionHash'].hex()}")
+    print("Tournament created. Waiting for players to register.")
+
+
+def cmd_join_tournament():
+    """
+    Register for a tournament. Auto-generates bracket if full after joining.
+    Usage: join-tournament <tournament_id>
+    """
+    if len(sys.argv) < 3:
+        print("Usage: arena.py join-tournament <tournament_id>")
+        sys.exit(1)
+
+    tid = int(sys.argv[2])
+    t = get_tournament_info(tid)
+
+    if t["status"] != TournamentStatus.REGISTRATION:
+        print(f"Error: Tournament #{tid} is not in Registration (status: {TournamentStatus(t['status']).name})")
+        sys.exit(1)
+
+    entry_fee = t["entryFee"]
+    print(f"Joining Tournament #{tid}")
+    print(f"  Entry Fee: {wei_to_mon(entry_fee):.6f} MON")
+    print(f"  Players:   {t['playerCount']}/{t['maxPlayers']}")
+
+    # Register
+    print("\nRegistering...")
+    receipt = register_tournament(tid, entry_fee)
+    print(f"  TX: {receipt['transactionHash'].hex()}")
+
+    # Check if tournament is now full → auto-generate bracket
+    t = get_tournament_info(tid)
+    if t["playerCount"] == t["maxPlayers"]:
+        print("\nTournament full! Generating bracket...")
+        receipt = generate_bracket(tid)
+        print(f"  TX: {receipt['transactionHash'].hex()}")
+        print("Bracket generated. Tournament is now Active!")
+    else:
+        print(f"  Registered. {t['maxPlayers'] - t['playerCount']} slots remaining.")
+
+
+def cmd_play_tournament():
+    """
+    Play the next bracket match in a tournament.
+    Finds your match, determines game type/wager, plays the game, reports result.
+    Usage: play-tournament <tournament_id>
+    """
+    if len(sys.argv) < 3:
+        print("Usage: arena.py play-tournament <tournament_id>")
+        sys.exit(1)
+
+    tid = int(sys.argv[2])
+    t = get_tournament_info(tid)
+    my_addr = get_address()
+
+    if t["status"] != TournamentStatus.ACTIVE:
+        print(f"Error: Tournament #{tid} is not Active (status: {TournamentStatus(t['status']).name})")
+        sys.exit(1)
+
+    current_round = t["currentRound"]
+    match_count = get_match_count_for_round(tid, current_round)
+
+    # Find my match in the current round
+    my_match_idx = None
+    my_match = None
+    for i in range(match_count):
+        m = get_bracket_match(tid, current_round, i)
+        if m["player1"].lower() == my_addr.lower() or m["player2"].lower() == my_addr.lower():
+            if not m["reported"]:
+                my_match_idx = i
+                my_match = m
+                break
+
+    if my_match is None:
+        print(f"No pending match found for you in round {current_round}.")
+        print("You may have already been eliminated or your match is already reported.")
+        return
+
+    # Determine game type and wager for this round
+    game_contract = get_tournament_game_type_for_round(current_round)
+    wager = get_round_wager(tid, current_round)
+
+    # Map game contract address to name
+    game_name = "Unknown"
+    if game_contract.lower() == RPS_GAME_ADDRESS.lower():
+        game_name = "RPS"
+    elif game_contract.lower() == POKER_GAME_ADDRESS.lower():
+        game_name = "Poker"
+    elif game_contract.lower() == AUCTION_GAME_ADDRESS.lower():
+        game_name = "Auction"
+
+    # Determine opponent
+    opponent = my_match["player2"] if my_match["player1"].lower() == my_addr.lower() else my_match["player1"]
+
+    print(f"Tournament #{tid} — Round {current_round}, Match {my_match_idx}")
+    print(f"  Game:     {game_name}")
+    print(f"  Wager:    {wei_to_mon(wager):.6f} MON")
+    print(f"  Opponent: {opponent}")
+
+    # Create and play the match based on game type
+    if game_name == "RPS":
+        # Create escrow match → wait for accept → create game → play
+        print("\n[1/5] Creating escrow match (RPS)...")
+        receipt = create_escrow_match(opponent, game_contract, wager)
+        escrow_match_id = parse_match_id_from_receipt(receipt)
+        print(f"  Escrow Match ID: {escrow_match_id}")
+
+        print("\n[2/5] Waiting for opponent to accept...")
+        while True:
+            em = get_escrow_match(escrow_match_id)
+            if em["status"] == MatchStatus.ACTIVE:
+                print("  Accepted!")
+                break
+            if em["status"] == MatchStatus.CANCELLED:
+                print("  Cancelled.")
+                return
+            sys.stdout.write(".")
+            sys.stdout.flush()
+            time.sleep(POLL_INTERVAL)
+
+        print("\n[3/5] Creating RPS game...")
+        receipt = create_rps_game(escrow_match_id, 3)
+        game_id = parse_game_id_from_receipt(receipt)
+        print(f"  Game ID: {game_id}")
+
+        print(f"\n[4/5] Playing RPS game {game_id}...")
+        _play_game(game_id, opponent)
+
+        # Determine winner
+        game_state = get_game(game_id)
+        i_am_p1 = game_state["player1"].lower() == my_addr.lower()
+        my_score = game_state["p1Score"] if i_am_p1 else game_state["p2Score"]
+        opp_score = game_state["p2Score"] if i_am_p1 else game_state["p1Score"]
+        winner = my_addr if my_score > opp_score else opponent
+
+        print(f"\n[5/5] Reporting result to tournament...")
+        receipt = report_tournament_result(tid, current_round, my_match_idx, escrow_match_id, winner)
+        print(f"  TX: {receipt['transactionHash'].hex()}")
+        print(f"  Winner: {'YOU' if winner.lower() == my_addr.lower() else opponent[:10] + '...'}")
+
+    elif game_name == "Poker":
+        print("\n[1/5] Creating escrow match (Poker)...")
+        receipt = create_escrow_match(opponent, game_contract, wager)
+        escrow_match_id = parse_match_id_from_receipt(receipt)
+        print(f"  Escrow Match ID: {escrow_match_id}")
+
+        print("\n[2/5] Waiting for opponent to accept...")
+        while True:
+            em = get_escrow_match(escrow_match_id)
+            if em["status"] == MatchStatus.ACTIVE:
+                print("  Accepted!")
+                break
+            if em["status"] == MatchStatus.CANCELLED:
+                print("  Cancelled.")
+                return
+            sys.stdout.write(".")
+            sys.stdout.flush()
+            time.sleep(POLL_INTERVAL)
+
+        print("\n[3/5] Creating Poker game...")
+        receipt = create_poker_game(escrow_match_id)
+        game_id = parse_poker_game_id_from_receipt(receipt)
+        print(f"  Game ID: {game_id}")
+
+        print(f"\n[4/5] Playing Poker game {game_id}...")
+        _play_poker_game(game_id, opponent, wager)
+
+        # Determine winner from poker game state
+        pstate = get_poker_game_state(game_id)
+        i_am_p1 = pstate["player1"].lower() == my_addr.lower()
+        my_hand = pstate["p1HandValue"] if i_am_p1 else pstate["p2HandValue"]
+        opp_hand = pstate["p2HandValue"] if i_am_p1 else pstate["p1HandValue"]
+        winner = my_addr if my_hand > opp_hand else opponent
+
+        print(f"\n[5/5] Reporting result to tournament...")
+        receipt = report_tournament_result(tid, current_round, my_match_idx, escrow_match_id, winner)
+        print(f"  TX: {receipt['transactionHash'].hex()}")
+        print(f"  Winner: {'YOU' if winner.lower() == my_addr.lower() else opponent[:10] + '...'}")
+
+    elif game_name == "Auction":
+        print("\n[1/5] Creating escrow match (Auction)...")
+        receipt = create_escrow_match(opponent, game_contract, wager)
+        escrow_match_id = parse_match_id_from_receipt(receipt)
+        print(f"  Escrow Match ID: {escrow_match_id}")
+
+        print("\n[2/5] Waiting for opponent to accept...")
+        while True:
+            em = get_escrow_match(escrow_match_id)
+            if em["status"] == MatchStatus.ACTIVE:
+                print("  Accepted!")
+                break
+            if em["status"] == MatchStatus.CANCELLED:
+                print("  Cancelled.")
+                return
+            sys.stdout.write(".")
+            sys.stdout.flush()
+            time.sleep(POLL_INTERVAL)
+
+        print("\n[3/5] Creating Auction game...")
+        receipt = create_auction_game(escrow_match_id)
+        game_id = parse_auction_game_id_from_receipt(receipt)
+        print(f"  Game ID: {game_id}")
+
+        print(f"\n[4/5] Playing Auction game {game_id}...")
+        _play_auction_game(game_id, opponent, wager)
+
+        # Determine winner from auction game state
+        astate = get_auction_game_state(game_id)
+        i_am_p1 = astate["player1"].lower() == my_addr.lower()
+        my_bid = astate["p1Bid"] if i_am_p1 else astate["p2Bid"]
+        opp_bid = astate["p2Bid"] if i_am_p1 else astate["p1Bid"]
+        winner = my_addr if my_bid > opp_bid else opponent
+
+        print(f"\n[5/5] Reporting result to tournament...")
+        receipt = report_tournament_result(tid, current_round, my_match_idx, escrow_match_id, winner)
+        print(f"  TX: {receipt['transactionHash'].hex()}")
+        print(f"  Winner: {'YOU' if winner.lower() == my_addr.lower() else opponent[:10] + '...'}")
+
+    # Check if tournament advanced or completed
+    t = get_tournament_info(tid)
+    if t["status"] == TournamentStatus.COMPLETE:
+        print(f"\nTournament #{tid} COMPLETE!")
+        print(f"  Winner:    {t['winner']}")
+        print(f"  Runner-Up: {t['runnerUp']}")
+        if t["prizePool"] > 0:
+            print(f"  Prize Pool: {wei_to_mon(t['prizePool']):.6f} MON (distribute with tournament-status)")
+    else:
+        print(f"\nRound {t['currentRound']} — tournament continues.")
+
+
+def cmd_tournament_status():
+    """
+    Show full tournament bracket with results per round.
+    Usage: tournament-status <tournament_id>
+    """
+    if len(sys.argv) < 3:
+        print("Usage: arena.py tournament-status <tournament_id>")
+        sys.exit(1)
+
+    tid = int(sys.argv[2])
+    t = get_tournament_info(tid)
+
+    print(f"Tournament #{tid}")
+    print(f"  Status:      {TournamentStatus(t['status']).name}")
+    print(f"  Players:     {t['playerCount']}/{t['maxPlayers']}")
+    print(f"  Entry Fee:   {wei_to_mon(t['entryFee']):.6f} MON")
+    print(f"  Base Wager:  {wei_to_mon(t['baseWager']):.6f} MON")
+    print(f"  Prize Pool:  {wei_to_mon(t['prizePool']):.6f} MON")
+
+    if t["status"] == TournamentStatus.COMPLETE:
+        print(f"  Winner:      {t['winner']}")
+        print(f"  Runner-Up:   {t['runnerUp']}")
+
+    # Show participants
+    participants = get_tournament_participants(tid)
+    if participants:
+        print(f"\nParticipants:")
+        for i, p in enumerate(participants):
+            print(f"  Seed {i+1}: {p}")
+
+    # Show bracket rounds
+    if t["status"] in (TournamentStatus.ACTIVE, TournamentStatus.COMPLETE):
+        game_names = {0: "RPS", 1: "Poker", 2: "Auction"}
+        total_rounds = t["totalRounds"]
+        for rnd in range(total_rounds):
+            mc = get_match_count_for_round(tid, rnd)
+            game_name = game_names.get(rnd % 3, "Unknown")
+            wager = get_round_wager(tid, rnd)
+            print(f"\n{'─' * 50}")
+            print(f"Round {rnd} — {game_name} (wager: {wei_to_mon(wager):.6f} MON)")
+            print(f"{'─' * 50}")
+
+            for mi in range(mc):
+                m = get_bracket_match(tid, rnd, mi)
+                p1 = m["player1"][:10] + "..." if m["player1"] != "0x" + "0" * 40 else "TBD"
+                p2 = m["player2"][:10] + "..." if m["player2"] != "0x" + "0" * 40 else "TBD"
+
+                if m["reported"]:
+                    winner_short = m["winner"][:10] + "..."
+                    print(f"  Match {mi}: {p1} vs {p2}  →  Winner: {winner_short}")
+                else:
+                    print(f"  Match {mi}: {p1} vs {p2}  →  Pending")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1161,6 +1526,12 @@ def main():
         "history": cmd_history,
         "select-match": cmd_select_match,
         "recommend": cmd_recommend,
+        # Tournament commands
+        "tournaments": cmd_tournaments,
+        "create-tournament": cmd_create_tournament,
+        "join-tournament": cmd_join_tournament,
+        "play-tournament": cmd_play_tournament,
+        "tournament-status": cmd_tournament_status,
     }
 
     if command in commands:
