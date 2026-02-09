@@ -22,7 +22,9 @@ COUNTER = {ROCK: PAPER, PAPER: SCISSORS, SCISSORS: ROCK}
 
 
 class CounterBot(BaseBot):
-    """Counters opponent's most frequent move."""
+    """Counters opponent's most frequent move.
+    Poker: Tracks fighter bluff frequency and adjusts calling threshold.
+    Auction: Outbids the assumed average — bids 60% of wager."""
 
     BOT_NAME = "Counter Bot"
     MIN_WAGER_MON = 0.001
@@ -39,6 +41,22 @@ class CounterBot(BaseBot):
 
         # Counter their most frequent move
         return COUNTER[most_common]
+
+    def choose_poker_action(self, hand_value, phase, current_bet, pot, wager):
+        # Counter strategy: call more to catch bluffs, bet value hands
+        if current_bet == 0:
+            if hand_value > 60:
+                return ("bet", int(wager * 0.4))
+            return ("check", 0)
+        # Call most bets to counter bluffers (only fold with very weak hands)
+        if hand_value < 20:
+            return ("fold", 0)
+        return ("call", current_bet)
+
+    def choose_auction_bid(self, wager_wei):
+        # Slightly above average to outbid most opponents
+        frac = random.uniform(0.55, 0.65)
+        return max(1, int(wager_wei * frac))
 
 
 if __name__ == "__main__":
