@@ -63,7 +63,11 @@ def run_bot(bot_class, wallet_num):
                 bot.known_match_ids.add(mid)
             print(f"  Skipped {next_id} existing matches.\n")
 
-            playing_games = set()
+            # Track active game IDs by type
+            playing_rps = set()
+            playing_poker = set()
+            playing_auction = set()
+
             print(f"[{bot.BOT_NAME}] Polling for challenges...\n")
 
             while not _shutdown.is_set():
@@ -72,9 +76,18 @@ def run_bot(bot_class, wallet_num):
                     challenges = bot.scan_for_challenges()
                     for match_id, match_data in challenges:
                         try:
+                            game_type = bot._determine_game_contract(match_data)
                             bot.accept_challenge(match_id, match_data)
-                            game_id = bot.wait_for_game_or_create(match_id)
-                            playing_games.add(game_id)
+
+                            if game_type == "poker" and bot.poker_game:
+                                game_id = bot.wait_for_poker_game_or_create(match_id)
+                                playing_poker.add(game_id)
+                            elif game_type == "auction" and bot.auction_game:
+                                game_id = bot.wait_for_auction_game_or_create(match_id)
+                                playing_auction.add(game_id)
+                            else:
+                                game_id = bot.wait_for_game_or_create(match_id)
+                                playing_rps.add(game_id)
                         except Exception as e:
                             print(f"  [{bot.BOT_NAME}] Error accepting match {match_id}: {e}")
 
@@ -84,24 +97,57 @@ def run_bot(bot_class, wallet_num):
                         try:
                             m = bot.escrow.functions.getMatch(mid).call()
                             if (m[1].lower() == bot.address.lower() and m[4] == 1):
-                                gid = bot.find_game_for_match(mid)
-                                if gid is not None and gid not in playing_games:
-                                    g = bot.rps_game.functions.getGame(gid).call()
-                                    if not g[9]:
-                                        playing_games.add(gid)
+                                game_type = bot._determine_game_contract(m)
+                                if game_type == "poker" and bot.poker_game:
+                                    gid = bot.find_poker_game_for_match(mid)
+                                    if gid is not None and gid not in playing_poker:
+                                        g = bot.poker_game.functions.getGame(gid).call()
+                                        if not g[8]:
+                                            playing_poker.add(gid)
+                                elif game_type == "auction" and bot.auction_game:
+                                    gid = bot.find_auction_game_for_match(mid)
+                                    if gid is not None and gid not in playing_auction:
+                                        g = bot.auction_game.functions.getGame(gid).call()
+                                        if not g[12]:
+                                            playing_auction.add(gid)
+                                else:
+                                    gid = bot.find_game_for_match(mid)
+                                    if gid is not None and gid not in playing_rps:
+                                        g = bot.rps_game.functions.getGame(gid).call()
+                                        if not g[9]:
+                                            playing_rps.add(gid)
                         except Exception:
                             continue
 
-                    # Play active games
+                    # Play active RPS games
                     finished = set()
-                    for gid in playing_games:
+                    for gid in playing_rps:
                         try:
-                            still_active = bot.play_game_tick(gid)
-                            if not still_active:
+                            if not bot.play_game_tick(gid):
                                 finished.add(gid)
                         except Exception as e:
-                            print(f"  [{bot.BOT_NAME}] Error playing game {gid}: {e}")
-                    playing_games -= finished
+                            print(f"  [{bot.BOT_NAME}] Error playing RPS game {gid}: {e}")
+                    playing_rps -= finished
+
+                    # Play active Poker games
+                    finished = set()
+                    for gid in playing_poker:
+                        try:
+                            if not bot.play_poker_tick(gid):
+                                finished.add(gid)
+                        except Exception as e:
+                            print(f"  [{bot.BOT_NAME}] Error playing Poker game {gid}: {e}")
+                    playing_poker -= finished
+
+                    # Play active Auction games
+                    finished = set()
+                    for gid in playing_auction:
+                        try:
+                            if not bot.play_auction_tick(gid):
+                                finished.add(gid)
+                        except Exception as e:
+                            print(f"  [{bot.BOT_NAME}] Error playing Auction game {gid}: {e}")
+                    playing_auction -= finished
 
                     # Wait with shutdown check
                     _shutdown.wait(timeout=5)
