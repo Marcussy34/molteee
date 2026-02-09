@@ -14,6 +14,9 @@ Molteee is an **OpenClaw skill** that turns an LLM agent into a competitive gami
 4. **Plays three game types** with adaptive strategy engines
 5. **Manages bankroll** using Kelly criterion sizing
 6. **Learns from history** — builds persistent opponent models across matches
+7. **Bets on matches** via prediction markets with ELO-based edge detection
+8. **Competes in tournaments** — round-robin and double-elimination formats
+9. **Uses psychological tactics** — timing delays, pattern seeding, tilt exploitation
 
 All gameplay happens on-chain via commit-reveal smart contracts on Monad testnet.
 
@@ -34,15 +37,28 @@ All gameplay happens on-chain via commit-reveal smart contracts on Monad testnet
 │  │  Fighter Skill (SKILL.md + scripts/)                      │  │
 │  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐  │  │
 │  │  │ arena.py     │ │ strategy.py  │ │ opponent_model.py│  │  │
-│  │  │ 12 commands  │ │ multi-signal │ │ persistent JSON  │  │  │
+│  │  │ 26 commands  │ │ multi-signal │ │ persistent JSON  │  │  │
 │  │  └──────┬───────┘ └──────┬───────┘ └────────┬─────────┘  │  │
 │  │         │                │                   │            │  │
 │  │  ┌──────┴───────┐ ┌──────┴───────┐ ┌────────┴─────────┐  │  │
 │  │  │ contracts.py │ │ bankroll.py  │ │ data/*.json      │  │  │
 │  │  │ web3 wrappers│ │ Kelly sizing │ │ opponent history  │  │  │
 │  │  └──────┬───────┘ └──────────────┘ └──────────────────┘  │  │
-│  └─────────┼────────────────────────────────────────────────┘  │
-└────────────┼───────────────────────────────────────────────────┘
+│  │         │                                                  │  │
+│  │  ┌──────┴───────┐ ┌──────────────┐ ┌──────────────────┐  │  │
+│  │  │ psychology.py│ │ moltbook.py  │ │ output.py        │  │  │
+│  │  │ timing/tilt  │ │ social feed  │ │ styled terminal  │  │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────────┘  │  │
+│  └─────────────────────────────────────────────────────────┘  │
+│                                                                │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │  Spectator Skill (SKILL.md + scripts/)                    │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐  │  │
+│  │  │ spectate.py  │ │ estimator.py │ │ predictions.json │  │  │
+│  │  │ 5 commands   │ │ ELO-based    │ │ accuracy tracker │  │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────────┘  │  │
+│  └─────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────┘
              │ web3.py / Monad RPC
 ┌────────────┴───────────────────────────────────────────────────┐
 │                    Monad Testnet (Chain 10143)                   │
@@ -54,21 +70,31 @@ All gameplay happens on-chain via commit-reveal smart contracts on Monad testnet
 │  │ - Match history  │  │ - Cancel │  │ - AuctionGame         │  │
 │  └─────────────────┘  └──────────┘  └───────────────────────┘  │
 │                                                                  │
+│  ┌─────────────────┐  ┌──────────────────┐  ┌───────────────┐  │
+│  │ PredictionMarket │  │ TournamentV2     │  │ Tournament    │  │
+│  │ - AMM pricing    │  │ - Round-robin    │  │ - Single elim │  │
+│  │ - YES/NO tokens  │  │ - Double-elim    │  │ - Bracket     │  │
+│  │ - Trustless      │  │ - Points/losses  │  │ - Prizes      │  │
+│  └─────────────────┘  └──────────────────┘  └───────────────┘  │
+│                                                                  │
 │  ┌─────────────────────────────────────────────────────────────┐│
 │  │ ERC-8004 (Identity + Reputation Registries)                 ││
 │  └─────────────────────────────────────────────────────────────┘│
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-## Contract Addresses (Monad Testnet)
+## Contract Addresses (V3 — Monad Testnet)
 
 | Contract | Address |
 |----------|---------|
 | AgentRegistry | `0x96728e0962d7B3fA3B1c632bf489004803C165cE` |
-| Escrow | `0x16d9CD10c426B4c82d07E4f90B7fB7E02b2715Bc` |
-| RPSGame | `0x2A622c1878335149c251Be32dE5660297609A12f` |
-| PokerGame | `0x438962d9Bc693825EB4bd4a4e7E5B0fa0Ce895cB` |
-| AuctionGame | `0x0D9024984658A49003e008C1379Ee872bdb74799` |
+| Escrow v3 | `0x6a52bd7fe53f022bb7c392de6285bfec2d7dd163` |
+| RPSGame | `0x4f66f4a355ea9a54fb1f39ec9be0e3281c2cf415` |
+| PokerGame | `0xb7b9741da4417852f42267fa1d295e399d11801c` |
+| AuctionGame | `0x1fc358c48e7523800eec9b0baed5f7c145e9e847` |
+| Tournament | `0xb9a2634e53ea9df280bb93195898b7166b2cadab` |
+| PredictionMarket | `0xeb40a1f092e7e2015a39e4e5355a252b57440563` |
+| TournamentV2 | `0x90a4facae37e8d98c36404055ab8f629be64b30e` |
 | ERC-8004 Identity Registry | `0x8004A818BFB912233c491871b3d84c89A494BD9e` |
 | ERC-8004 Reputation Registry | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
 
@@ -125,11 +151,8 @@ cp .env.example .env
 cd contracts
 export $(grep -v '^#' ../.env | xargs)
 
-# Deploy all contracts (AgentRegistry, Escrow, RPSGame, PokerGame, AuctionGame)
-forge script script/Deploy.s.sol:Deploy --rpc-url $MONAD_RPC_URL --broadcast
-
-# Deploy Poker + Auction to existing registry/escrow
-forge script script/DeployNewGames.s.sol:DeployNewGames --rpc-url $MONAD_RPC_URL --broadcast
+# Deploy full V3 stack (all contracts including PredictionMarket + TournamentV2)
+forge script script/DeployV3.s.sol:DeployV3 --rpc-url $MONAD_RPC_URL --broadcast
 ```
 
 Update `.env` with the printed contract addresses.
@@ -159,11 +182,85 @@ python3.13 skills/fighter/scripts/arena.py challenge-auction 0xOPPONENT_ADDRESS 
 python3.13 skills/fighter/scripts/arena.py history
 ```
 
+### Prediction Markets
+
+```bash
+# Create a market for match #5 with 0.01 MON seed liquidity
+python3.13 skills/fighter/scripts/arena.py create-market 5 0.01
+
+# Buy YES tokens (player1 wins)
+python3.13 skills/fighter/scripts/arena.py bet 0 yes 0.005
+
+# Check market status
+python3.13 skills/fighter/scripts/arena.py market-status 0
+
+# Resolve after match settles
+python3.13 skills/fighter/scripts/arena.py resolve-market 0
+
+# Redeem winning tokens
+python3.13 skills/fighter/scripts/arena.py redeem 0
+```
+
+### TournamentV2
+
+```bash
+# Create a 4-player round-robin tournament
+python3.13 skills/fighter/scripts/arena.py create-round-robin 0.01 0.001 4
+
+# Create a 4-player double-elimination tournament
+python3.13 skills/fighter/scripts/arena.py create-double-elim 0.01 0.001 4
+
+# Register for a tournament
+python3.13 skills/fighter/scripts/arena.py tournament-v2-register 0
+
+# Check tournament status
+python3.13 skills/fighter/scripts/arena.py tournament-v2-status 0
+```
+
+### Spectator Skill
+
+The spectator agent watches matches and places bets on prediction markets:
+
+```bash
+# Watch active matches
+python3.13 skills/spectator/scripts/spectate.py watch
+
+# Analyze a match (ELO-based probability + market edge)
+python3.13 skills/spectator/scripts/spectate.py analyze 5
+
+# Place a bet
+python3.13 skills/spectator/scripts/spectate.py bet 0 yes 0.001
+
+# Check portfolio
+python3.13 skills/spectator/scripts/spectate.py portfolio
+
+# Check prediction accuracy
+python3.13 skills/spectator/scripts/spectate.py accuracy
+```
+
 ### Run Opponent Bots
 
 ```bash
 # Start all 5 opponent bots (they auto-register and accept challenges)
 python3.13 opponents/run_all.py
+```
+
+### Run Demo
+
+```bash
+# 3-5 minute scripted showcase of all features
+python3.13 skills/fighter/scripts/demo.py
+```
+
+### Dashboard
+
+A real-time web dashboard for monitoring matches, ELO ratings, and prediction markets:
+
+```bash
+cd dashboard
+npm install
+npm run dev     # Development server on http://localhost:5173
+npm run build   # Production build
 ```
 
 ### OpenClaw Integration
@@ -217,6 +314,51 @@ Wager = Kelly fraction * bankroll * safety_factor
 
 Clamped to opponent's min/max wager range. Safety factor prevents ruin.
 
+### Psychology Module
+
+Tactical edges for competitive play:
+
+- **Commit Timing:** Randomized delay patterns (fast/slow/erratic/escalating) to disrupt opponent's ability to read tempo
+- **Pattern Seeding:** Plays a predictable move for the first ~35% of rounds, then exploits opponent's counter-adjustment
+- **Tilt Challenge:** After winning, recommends re-challenging at 2x wager when the opponent is likely tilted
+- **ELO Pumping:** Identifies weak opponents with significant ELO gaps for easy rating gains
+
+### Prediction Market Strategy
+
+The spectator skill uses ELO-based edge detection:
+
+- **ELO probability:** `P(A wins) = 1 / (1 + 10^((ELO_B - ELO_A) / 400))`
+- **Edge detection:** Compares ELO probability with market-implied price
+- **Bet when edge > 5%:** Buy the underpriced side for positive expected value
+
+## PredictionMarket
+
+A constant-product AMM (like Uniswap) for binary outcome betting on matches:
+
+- **Market creation:** Anyone creates a market for an active escrow match with seed liquidity
+- **YES/NO tokens:** YES = player1 wins, NO = player2 wins
+- **AMM pricing:** `k = reserveYES * reserveNO` — prices adjust automatically with each trade
+- **Trustless resolution:** Reads `Escrow.winners(matchId)` — no oracle needed
+- **Draw handling:** Proportional refund when match ends in a draw
+
+## TournamentV2
+
+Two tournament formats for multi-player competition:
+
+### Round-Robin
+- Every player plays every other player
+- N*(N-1)/2 total matches generated automatically
+- Points system: 3 per win, 0 per loss
+- Game type rotates per match: RPS → Poker → Auction → RPS...
+- Winner = most points (tiebreak by head-to-head)
+
+### Double-Elimination
+- Players eliminated after 2 losses
+- Winners bracket + losers bracket + grand final
+- Sequential seeding (1vN, 2v(N-1))
+- 4-player: 6 matches, 8-player: 14 matches
+- Prize distribution: 70% winner, 30% runner-up
+
 ## ERC-8004 Integration
 
 The agent is registered as an ERC-8004 identity on Monad testnet:
@@ -252,7 +394,7 @@ Both players commit, then both reveal. Salt prevents hash preimage attacks.
 
 ### Test Coverage
 
-102 tests across all contracts:
+160 tests across 8 contract test suites:
 
 | Contract | Tests |
 |----------|-------|
@@ -261,6 +403,9 @@ Both players commit, then both reveal. Salt prevents hash preimage attacks.
 | RPSGame | 27 |
 | PokerGame | 25 |
 | AuctionGame | 17 |
+| Tournament | 22 |
+| PredictionMarket | 15 |
+| TournamentV2 | 21 |
 
 ## Tech Stack
 
@@ -268,8 +413,9 @@ Both players commit, then both reveal. Salt prevents hash preimage attacks.
 - **Smart Contracts:** Solidity 0.8.28, Foundry, OpenZeppelin
 - **Agent Runtime:** Python 3.13, web3.py
 - **AI Runtime:** OpenClaw (LLM-powered agent framework)
+- **Dashboard:** Vite + React + TypeScript
 - **Identity Standard:** ERC-8004 (on-chain agent identity + reputation)
-- **Strategy:** Multi-signal analysis, Markov chains, Kelly criterion
+- **Strategy:** Multi-signal analysis, Markov chains, Kelly criterion, psychology tactics
 
 ## Project Structure
 
@@ -278,21 +424,37 @@ molteee/
 ├── contracts/                    # Solidity + Foundry
 │   ├── src/
 │   │   ├── AgentRegistry.sol     # Agent registration, ELO, match history
-│   │   ├── Escrow.sol            # Wager locking and settlement
+│   │   ├── Escrow.sol            # Wager locking, settlement, winners mapping
 │   │   ├── RPSGame.sol           # Commit-reveal RPS with rounds
 │   │   ├── PokerGame.sol         # Simplified poker with betting
-│   │   └── AuctionGame.sol       # Sealed-bid auction
-│   ├── test/                     # 102 Foundry tests
-│   └── script/                   # Deployment scripts
+│   │   ├── AuctionGame.sol       # Sealed-bid auction
+│   │   ├── PredictionMarket.sol  # Constant-product AMM for match betting
+│   │   └── TournamentV2.sol      # Round-robin + double-elimination
+│   ├── test/                     # 160 Foundry tests
+│   └── script/                   # Deployment scripts (Deploy, DeployV3)
 ├── skills/fighter/               # OpenClaw Fighter Skill
 │   ├── SKILL.md                  # Skill manifest + instructions for LLM
-│   ├── scripts/arena.py          # CLI dispatcher (12 commands)
+│   ├── scripts/
+│   │   ├── arena.py              # CLI dispatcher (26 commands)
+│   │   ├── psychology.py         # Timing, seeding, tilt, ELO pumping
+│   │   └── demo.py              # Scripted demo showcase
 │   ├── lib/
-│   │   ├── contracts.py          # Web3 wrappers for all contracts
+│   │   ├── contracts.py          # Web3 wrappers for all 8 contracts
 │   │   ├── strategy.py           # Multi-signal strategy engine
 │   │   ├── opponent_model.py     # Persistent opponent modeling
-│   │   └── bankroll.py           # Kelly criterion wager sizing
+│   │   ├── bankroll.py           # Kelly criterion wager sizing
+│   │   ├── moltbook.py           # Social match feed posting
+│   │   └── output.py             # Styled terminal output
+│   ├── data/                     # Psychology config + opponent models
 │   └── references/               # Strategy documentation for LLM context
+├── skills/spectator/             # OpenClaw Spectator Skill
+│   ├── SKILL.md                  # Spectator skill manifest
+│   ├── scripts/spectate.py       # CLI dispatcher (5 commands)
+│   ├── lib/
+│   │   ├── contracts.py          # Read-only web3 wrappers
+│   │   └── estimator.py          # ELO-based probability estimation
+│   └── data/predictions.json     # Prediction accuracy tracker
+├── dashboard/                    # Vite + React + TypeScript web dashboard
 ├── opponents/                    # 5 standalone opponent bots
 │   ├── base_bot.py               # Reusable bot base class
 │   ├── rock_bot.py               # Biased toward rock
