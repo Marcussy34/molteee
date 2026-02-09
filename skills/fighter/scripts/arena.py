@@ -24,6 +24,22 @@ Tournament Commands:
     join-tournament <id>                Register for a tournament
     play-tournament <id>                Play your next bracket match
     tournament-status <id>              Show full bracket and results
+
+Prediction Market Commands:
+    create-market <match_id> <seed_MON> Create a prediction market for a match
+    bet <market_id> <yes|no> <amount>   Buy YES or NO tokens
+    market-status <market_id>           Show market prices and your balances
+    resolve-market <market_id>          Resolve a market after match settles
+    redeem <market_id>                  Redeem winning tokens for MON
+
+TournamentV2 Commands:
+    create-round-robin <fee> <wager> <n>   Create a round-robin tournament
+    create-double-elim <fee> <wager> <n>   Create a double-elimination tournament
+    tournament-v2-status <id>              Show TournamentV2 details and standings
+    tournament-v2-register <id>            Register for a TournamentV2
+
+Psychology Commands:
+    pump-targets                           Find weak opponents for ELO farming
 """
 import sys
 import time
@@ -105,6 +121,41 @@ from lib.contracts import (
     get_match_count_for_round,
     get_next_tournament_id,
     parse_tournament_id_from_receipt,
+    # PredictionMarket wrappers
+    PREDICTION_MARKET_ADDRESS,
+    create_prediction_market,
+    buy_yes,
+    buy_no,
+    resolve_prediction_market,
+    resolve_prediction_market_as_draw,
+    redeem_prediction_market,
+    get_market_price,
+    get_market,
+    get_user_market_balances,
+    get_next_market_id,
+    parse_market_id_from_receipt,
+    # TournamentV2 wrappers
+    TournamentV2Format,
+    TournamentV2Status,
+    TOURNAMENT_V2_ADDRESS,
+    create_tournament_v2,
+    register_tournament_v2,
+    generate_schedule_v2,
+    report_rr_result,
+    report_de_result,
+    distribute_prizes_v2,
+    cancel_tournament_v2,
+    get_tournament_v2_info,
+    get_tournament_v2_participants,
+    get_rr_match,
+    get_de_match,
+    get_player_points,
+    get_player_losses,
+    get_game_for_match_v2,
+    get_next_tournament_v2_id,
+    get_rr_total_matches,
+    get_rr_matches_reported,
+    parse_tournament_v2_id_from_receipt,
 )
 from lib.strategy import (
     choose_move as strategy_choose_move,
@@ -115,6 +166,28 @@ from lib.strategy import (
 )
 from lib.opponent_model import OpponentModelStore
 from lib.bankroll import recommend_wager, estimate_win_prob, format_recommendation
+from lib.moltbook import (
+    register_agent as moltbook_register_agent,
+    post_match_result as moltbook_post_match_result,
+    can_post as moltbook_can_post,
+)
+from lib.output import (
+    print_match_header,
+    print_round_result,
+    print_match_summary,
+    print_strategy_reasoning,
+    print_opponent_model_state,
+)
+# Psychology module lives in same scripts/ dir — add it to path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from psychology import (
+    get_commit_delay,
+    should_seed_pattern,
+    get_seeded_move,
+    get_exploitation_move,
+    should_tilt_challenge,
+    get_elo_pumping_targets,
+)
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -503,6 +576,9 @@ def _play_game(game_id: int, opponent_addr: str = None):
     # Track round results as they happen
     game_round_history = []
 
+    # Psychology: timing state persists across rounds within this game
+    timing_state = {}
+
     while True:
         game = get_game(game_id)
 
@@ -525,6 +601,29 @@ def _play_game(game_id: int, opponent_addr: str = None):
                              my_score=my_score, opp_score=opp_score)
                 _model_store.save(opponent_addr)
                 print(f"  Opponent model updated ({model.get_total_games()} games total)")
+
+            # Auto-post match result to Moltbook (rate-limited, never fails)
+            try:
+                i_am_p1_mb = game["player1"].lower() == my_addr.lower()
+                s1 = game["p1Score"] if i_am_p1_mb else game["p2Score"]
+                s2 = game["p2Score"] if i_am_p1_mb else game["p1Score"]
+                res = "WIN" if s1 > s2 else ("LOSS" if s2 > s1 else "DRAW")
+                em = get_escrow_match(game["escrowMatchId"])
+                moltbook_post_match_result("RPS", opponent_addr or "", res, wei_to_mon(em["wager"]))
+            except Exception:
+                pass  # Never let moltbook errors break gameplay
+
+            # Psychology: check if we should tilt-challenge after a win
+            if opponent_addr and model is not None:
+                try:
+                    balance = get_balance()
+                    tilt = should_tilt_challenge(opponent_addr, model, balance)
+                    if tilt["recommend"]:
+                        tilt_mon = wei_to_mon(tilt["wager_wei"])
+                        print(f"\n  [TILT] {tilt['reason']}")
+                        print(f"  [TILT] Recommended re-challenge: {tilt_mon:.6f} MON")
+                except Exception:
+                    pass  # Never let psychology errors break gameplay
             return
 
         current_round = game["currentRound"]
@@ -568,6 +667,13 @@ def _play_game(game_id: int, opponent_addr: str = None):
                     opponent_addr or "", round_history, model
                 )
 
+                # Psychology: check if we should seed a pattern instead
+                total_rounds = game["totalRounds"]
+                if should_seed_pattern(current_round, total_rounds):
+                    move_int = get_seeded_move()
+                    strategy_name = "pattern-seed"
+                    confidence = 1.0
+
                 # Map from strategy.py int to Move enum
                 move = move_int
                 salt = generate_salt()
@@ -577,8 +683,16 @@ def _play_game(game_id: int, opponent_addr: str = None):
                 saved_moves[current_round] = move
                 saved_salts[current_round] = salt
 
+                # Psychology: apply timing delay before committing
+                delay = get_commit_delay(current_round, game["totalRounds"], timing_state)
+                if delay > 0:
+                    print(f"    [psych] Timing delay: {delay:.1f}s ({timing_state.get('mode', '?')})")
+                    time.sleep(delay)
+
+                # Show strategy reasoning before committing
+                print_strategy_reasoning(strategy_name, confidence)
                 print(f"  Round {current_round + 1}/{game['totalRounds']}: "
-                      f"[{strategy_name} {confidence:.0%}] Committing {MOVE_NAMES[move]}...")
+                      f"Committing {MOVE_NAMES[move]}...")
                 commit_move(game_id, commit_hash)
                 print(f"    Committed.")
 
@@ -652,21 +766,19 @@ def _wait_for_game_or_create(match_id: int, rounds: int) -> int:
 
 
 def _print_game_result(game: dict, my_addr: str):
-    """Print the final game result."""
+    """Print the final game result using styled output."""
     i_am_p1 = game["player1"].lower() == my_addr.lower()
     my_score = game["p1Score"] if i_am_p1 else game["p2Score"]
     opp_score = game["p2Score"] if i_am_p1 else game["p1Score"]
 
-    print(f"\n  ════════════════════════════════")
-    print(f"  Game complete! Score: {my_score} - {opp_score}")
-
     if my_score > opp_score:
-        print(f"  Result: WIN")
+        won = True
     elif opp_score > my_score:
-        print(f"  Result: LOSS")
+        won = False
     else:
-        print(f"  Result: DRAW")
-    print(f"  ════════════════════════════════\n")
+        won = None
+
+    print_match_summary(won=won, my_score=my_score, opp_score=opp_score)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -912,25 +1024,22 @@ def _play_poker_game(game_id: int, opponent_addr: str, wager_wei: int):
 
 
 def _print_poker_result(game: dict, my_addr: str):
-    """Print the final poker game result."""
+    """Print the final poker game result using styled output."""
     i_am_p1 = game["player1"].lower() == my_addr.lower()
     my_hand = game["p1HandValue"] if i_am_p1 else game["p2HandValue"]
     opp_hand = game["p2HandValue"] if i_am_p1 else game["p1HandValue"]
     pot = game["pot"]
 
-    print(f"\n  ════════════════════════════════")
-    print(f"  Poker game complete!")
-    print(f"  My hand:  {my_hand}/100")
-    print(f"  Opp hand: {opp_hand}/100")
-    print(f"  Pot:      {wei_to_mon(pot):.6f} MON")
-
     if my_hand > opp_hand:
-        print(f"  Result: WIN")
+        won = True
     elif opp_hand > my_hand:
-        print(f"  Result: LOSS")
+        won = False
     else:
-        print(f"  Result: DRAW")
-    print(f"  ════════════════════════════════\n")
+        won = None
+
+    # Use hand values as scores for the summary banner
+    print_match_summary(won=won, my_score=my_hand, opp_score=opp_hand)
+    print(f"    Pot: {wei_to_mon(pot):.6f} MON")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1503,6 +1612,384 @@ def cmd_tournament_status():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Prediction Market Commands
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def cmd_create_market():
+    """
+    Create a prediction market for an active escrow match.
+    Usage: create-market <match_id> <seed_MON>
+    """
+    if len(sys.argv) < 4:
+        print("Usage: arena.py create-market <match_id> <seed_amount_MON>")
+        print("  Example: arena.py create-market 5 0.01")
+        sys.exit(1)
+
+    match_id = int(sys.argv[2])
+    seed_mon = float(sys.argv[3])
+    seed_wei = mon_to_wei(seed_mon)
+
+    print(f"Creating prediction market for match {match_id}")
+    print(f"  Seed liquidity: {seed_mon} MON")
+
+    receipt = create_prediction_market(match_id, seed_wei)
+    market_id = parse_market_id_from_receipt(receipt)
+    print(f"  Market ID: {market_id}")
+    print(f"  TX: {receipt['transactionHash'].hex()}")
+    print("Market created. Bettors can now buy YES/NO tokens.")
+
+
+def cmd_bet():
+    """
+    Buy YES or NO tokens on a prediction market.
+    Usage: bet <market_id> <yes|no> <amount_MON>
+    """
+    if len(sys.argv) < 5:
+        print("Usage: arena.py bet <market_id> <yes|no> <amount_MON>")
+        print("  Example: arena.py bet 0 yes 0.005")
+        sys.exit(1)
+
+    market_id = int(sys.argv[2])
+    side = sys.argv[3].lower()
+    amount_mon = float(sys.argv[4])
+    amount_wei = mon_to_wei(amount_mon)
+
+    if side not in ("yes", "no"):
+        print("Error: side must be 'yes' or 'no'")
+        sys.exit(1)
+
+    # Show current prices before buying
+    prices = get_market_price(market_id)
+    yes_pct = prices["yesPrice"] / 1e18 * 100
+    no_pct = prices["noPrice"] / 1e18 * 100
+    print(f"Market #{market_id} prices: YES {yes_pct:.1f}% / NO {no_pct:.1f}%")
+    print(f"  Buying {side.upper()} with {amount_mon} MON...")
+
+    if side == "yes":
+        receipt = buy_yes(market_id, amount_wei)
+    else:
+        receipt = buy_no(market_id, amount_wei)
+
+    print(f"  TX: {receipt['transactionHash'].hex()}")
+
+    # Show updated balances
+    addr = get_address()
+    balances = get_user_market_balances(market_id, addr)
+    print(f"  Your balances: YES={balances['yes']}  NO={balances['no']}")
+
+    # Show updated prices
+    prices = get_market_price(market_id)
+    yes_pct = prices["yesPrice"] / 1e18 * 100
+    no_pct = prices["noPrice"] / 1e18 * 100
+    print(f"  New prices:    YES {yes_pct:.1f}% / NO {no_pct:.1f}%")
+
+
+def cmd_market_status():
+    """
+    Show market prices, reserves, and your token balances.
+    Usage: market-status <market_id>
+    """
+    if len(sys.argv) < 3:
+        print("Usage: arena.py market-status <market_id>")
+        sys.exit(1)
+
+    market_id = int(sys.argv[2])
+    market = get_market(market_id)
+    prices = get_market_price(market_id)
+    addr = get_address()
+    balances = get_user_market_balances(market_id, addr)
+
+    yes_pct = prices["yesPrice"] / 1e18 * 100
+    no_pct = prices["noPrice"] / 1e18 * 100
+
+    print(f"Prediction Market #{market_id}")
+    print(f"  Escrow Match: {market['matchId']}")
+    print(f"  Player 1 (YES): {market['player1']}")
+    print(f"  Player 2 (NO):  {market['player2']}")
+    print(f"  Seed Liquidity:  {wei_to_mon(market['seedLiquidity']):.6f} MON")
+    print(f"  Reserve YES:     {market['reserveYES']}")
+    print(f"  Reserve NO:      {market['reserveNO']}")
+    print(f"  Prices:          YES {yes_pct:.1f}% / NO {no_pct:.1f}%")
+    print(f"  Resolved:        {market['resolved']}")
+    if market["resolved"]:
+        zero_addr = "0x" + "0" * 40
+        if market["winner"] == zero_addr:
+            print(f"  Outcome:         DRAW")
+        else:
+            print(f"  Winner:          {market['winner']}")
+    print(f"\n  Your Balances:")
+    print(f"    YES tokens: {balances['yes']}")
+    print(f"    NO tokens:  {balances['no']}")
+
+
+def cmd_resolve_market():
+    """
+    Resolve a prediction market after the linked match is settled.
+    Usage: resolve-market <market_id>
+    """
+    if len(sys.argv) < 3:
+        print("Usage: arena.py resolve-market <market_id>")
+        sys.exit(1)
+
+    market_id = int(sys.argv[2])
+    market = get_market(market_id)
+
+    if market["resolved"]:
+        print(f"Market #{market_id} is already resolved.")
+        return
+
+    print(f"Resolving market #{market_id} (match {market['matchId']})...")
+
+    # Try normal resolve first (has a winner), fall back to draw resolution
+    try:
+        receipt = resolve_prediction_market(market_id)
+        print(f"  TX: {receipt['transactionHash'].hex()}")
+        # Re-fetch to show winner
+        market = get_market(market_id)
+        print(f"  Winner: {market['winner']}")
+    except Exception as e:
+        err = str(e)
+        if "draw" in err.lower() or "not settled" in err.lower():
+            # Try resolving as draw
+            print("  No winner found — resolving as draw...")
+            receipt = resolve_prediction_market_as_draw(market_id)
+            print(f"  TX: {receipt['transactionHash'].hex()}")
+            print("  Resolved as DRAW — all bettors can redeem proportionally.")
+        else:
+            print(f"  Error: {err}")
+            sys.exit(1)
+
+
+def cmd_redeem():
+    """
+    Redeem winning tokens for MON after market resolution.
+    Usage: redeem <market_id>
+    """
+    if len(sys.argv) < 3:
+        print("Usage: arena.py redeem <market_id>")
+        sys.exit(1)
+
+    market_id = int(sys.argv[2])
+
+    # Show balances before redeem
+    addr = get_address()
+    balances = get_user_market_balances(market_id, addr)
+    print(f"Market #{market_id} — your balances: YES={balances['yes']}  NO={balances['no']}")
+
+    if balances["yes"] == 0 and balances["no"] == 0:
+        print("  No tokens to redeem.")
+        return
+
+    print("  Redeeming...")
+    receipt = redeem_prediction_market(market_id)
+    print(f"  TX: {receipt['transactionHash'].hex()}")
+
+    # Show updated balance
+    new_balance = get_balance()
+    print(f"  Wallet balance: {wei_to_mon(new_balance):.6f} MON")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TournamentV2 Commands
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def cmd_create_round_robin():
+    """
+    Create a round-robin TournamentV2.
+    Usage: create-round-robin <entry_fee_MON> <base_wager_MON> <max_players>
+    """
+    if len(sys.argv) < 5:
+        print("Usage: arena.py create-round-robin <entry_fee_MON> <base_wager_MON> <max_players>")
+        print("  Example: arena.py create-round-robin 0.01 0.001 4")
+        sys.exit(1)
+
+    entry_fee = mon_to_wei(float(sys.argv[2]))
+    base_wager = mon_to_wei(float(sys.argv[3]))
+    max_players = int(sys.argv[4])
+
+    print(f"Creating Round-Robin TournamentV2...")
+    print(f"  Format:      RoundRobin")
+    print(f"  Entry Fee:   {wei_to_mon(entry_fee):.6f} MON")
+    print(f"  Base Wager:  {wei_to_mon(base_wager):.6f} MON")
+    print(f"  Max Players: {max_players}")
+
+    receipt = create_tournament_v2(TournamentV2Format.ROUND_ROBIN, entry_fee, base_wager, max_players)
+    tid = parse_tournament_v2_id_from_receipt(receipt)
+    print(f"  Tournament ID: {tid}")
+    print(f"  TX: {receipt['transactionHash'].hex()}")
+    print("Tournament created. Waiting for players to register.")
+
+
+def cmd_create_double_elim():
+    """
+    Create a double-elimination TournamentV2.
+    Usage: create-double-elim <entry_fee_MON> <base_wager_MON> <max_players>
+    """
+    if len(sys.argv) < 5:
+        print("Usage: arena.py create-double-elim <entry_fee_MON> <base_wager_MON> <max_players>")
+        print("  Example: arena.py create-double-elim 0.01 0.001 4")
+        sys.exit(1)
+
+    entry_fee = mon_to_wei(float(sys.argv[2]))
+    base_wager = mon_to_wei(float(sys.argv[3]))
+    max_players = int(sys.argv[4])
+
+    print(f"Creating Double-Elimination TournamentV2...")
+    print(f"  Format:      DoubleElim")
+    print(f"  Entry Fee:   {wei_to_mon(entry_fee):.6f} MON")
+    print(f"  Base Wager:  {wei_to_mon(base_wager):.6f} MON")
+    print(f"  Max Players: {max_players}")
+
+    receipt = create_tournament_v2(TournamentV2Format.DOUBLE_ELIM, entry_fee, base_wager, max_players)
+    tid = parse_tournament_v2_id_from_receipt(receipt)
+    print(f"  Tournament ID: {tid}")
+    print(f"  TX: {receipt['transactionHash'].hex()}")
+    print("Tournament created. Waiting for players to register.")
+
+
+def cmd_tournament_v2_status():
+    """
+    Show TournamentV2 details, participants, and match results.
+    Usage: tournament-v2-status <tournament_id>
+    """
+    if len(sys.argv) < 3:
+        print("Usage: arena.py tournament-v2-status <tournament_id>")
+        sys.exit(1)
+
+    tid = int(sys.argv[2])
+    t = get_tournament_v2_info(tid)
+
+    format_name = "RoundRobin" if t["format"] == TournamentV2Format.ROUND_ROBIN else "DoubleElim"
+    status_name = TournamentV2Status(t["status"]).name
+
+    print(f"TournamentV2 #{tid}")
+    print(f"  Format:      {format_name}")
+    print(f"  Status:      {status_name}")
+    print(f"  Players:     {t['playerCount']}/{t['maxPlayers']}")
+    print(f"  Entry Fee:   {wei_to_mon(t['entryFee']):.6f} MON")
+    print(f"  Base Wager:  {wei_to_mon(t['baseWager']):.6f} MON")
+    print(f"  Prize Pool:  {wei_to_mon(t['prizePool']):.6f} MON")
+    print(f"  Creator:     {t['creator']}")
+
+    zero_addr = "0x" + "0" * 40
+    if t["winner"] != zero_addr:
+        print(f"  Winner:      {t['winner']}")
+
+    # Show participants
+    participants = get_tournament_v2_participants(tid)
+    if participants:
+        print(f"\nParticipants:")
+        for i, p in enumerate(participants):
+            # Show points for round-robin, losses for double-elim
+            if t["format"] == TournamentV2Format.ROUND_ROBIN and t["status"] in (TournamentV2Status.ACTIVE, TournamentV2Status.COMPLETE):
+                pts = get_player_points(tid, p)
+                print(f"  {i+1}. {p}  (points: {pts})")
+            elif t["format"] == TournamentV2Format.DOUBLE_ELIM and t["status"] in (TournamentV2Status.ACTIVE, TournamentV2Status.COMPLETE):
+                loss_count = get_player_losses(tid, p)
+                elim = " [ELIMINATED]" if loss_count >= 2 else ""
+                print(f"  {i+1}. {p}  (losses: {loss_count}){elim}")
+            else:
+                print(f"  {i+1}. {p}")
+
+    # Show match results for round-robin
+    if t["format"] == TournamentV2Format.ROUND_ROBIN and t["status"] in (TournamentV2Status.ACTIVE, TournamentV2Status.COMPLETE):
+        total = get_rr_total_matches(tid)
+        reported = get_rr_matches_reported(tid)
+        print(f"\nRound-Robin Matches ({reported}/{total} reported):")
+
+        game_names = {0: "RPS", 1: "Poker", 2: "Auction"}
+        for mi in range(total):
+            m = get_rr_match(tid, mi)
+            p1 = m["player1"][:10] + "..."
+            p2 = m["player2"][:10] + "..."
+            game_name = game_names.get(mi % 3, "???")
+
+            if m["reported"]:
+                winner_short = m["winner"][:10] + "..."
+                print(f"  Match {mi} ({game_name}): {p1} vs {p2}  ->  Winner: {winner_short}")
+            else:
+                print(f"  Match {mi} ({game_name}): {p1} vs {p2}  ->  Pending")
+
+
+def cmd_pump_targets():
+    """
+    Find weak opponents to farm ELO against.
+    Lists opponents whose ELO is significantly below ours, sorted by gap.
+    """
+    addr = get_address()
+    agents = get_open_agents(GameType.RPS)
+    opponents = [a for a in agents if a.lower() != addr.lower()]
+
+    if not opponents:
+        print("No open opponents found for RPS.")
+        return
+
+    our_elo = get_elo(addr, GameType.RPS)
+    print(f"Your ELO: {our_elo}\n")
+
+    # Build agent list with ELO data
+    agents_data = []
+    for opp in opponents:
+        try:
+            elo_val = get_elo(opp, GameType.RPS)
+            agents_data.append({"addr": opp, "elo": elo_val})
+        except Exception:
+            continue
+
+    targets = get_elo_pumping_targets(agents_data, our_elo)
+
+    if not targets:
+        print("No ELO pumping targets found (no opponents with significant ELO gap).")
+        return
+
+    print(f"Found {len(targets)} pumping target(s):\n")
+    for i, t in enumerate(targets):
+        print(f"  #{i+1} {t['addr']}")
+        print(f"      ELO: {t['elo']}  |  Gap: -{t['gap']}")
+        print()
+
+    print(f"Recommendation: Challenge {targets[0]['addr'][:10]}... for easy ELO gains")
+
+
+def cmd_tournament_v2_register():
+    """
+    Register for a TournamentV2. Auto-generates schedule if full after joining.
+    Usage: tournament-v2-register <tournament_id>
+    """
+    if len(sys.argv) < 3:
+        print("Usage: arena.py tournament-v2-register <tournament_id>")
+        sys.exit(1)
+
+    tid = int(sys.argv[2])
+    t = get_tournament_v2_info(tid)
+
+    if t["status"] != TournamentV2Status.REGISTRATION:
+        print(f"Error: TournamentV2 #{tid} is not in Registration (status: {TournamentV2Status(t['status']).name})")
+        sys.exit(1)
+
+    entry_fee = t["entryFee"]
+    format_name = "RoundRobin" if t["format"] == TournamentV2Format.ROUND_ROBIN else "DoubleElim"
+    print(f"Joining TournamentV2 #{tid} ({format_name})")
+    print(f"  Entry Fee: {wei_to_mon(entry_fee):.6f} MON")
+    print(f"  Players:   {t['playerCount']}/{t['maxPlayers']}")
+
+    # Register
+    print("\nRegistering...")
+    receipt = register_tournament_v2(tid, entry_fee)
+    print(f"  TX: {receipt['transactionHash'].hex()}")
+
+    # Check if tournament is now full -> auto-generate schedule
+    t = get_tournament_v2_info(tid)
+    if t["playerCount"] == t["maxPlayers"]:
+        print("\nTournament full! Generating schedule...")
+        receipt = generate_schedule_v2(tid)
+        print(f"  TX: {receipt['transactionHash'].hex()}")
+        print("Schedule generated. Tournament is now Active!")
+    else:
+        print(f"  Registered. {t['maxPlayers'] - t['playerCount']} slots remaining.")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1532,6 +2019,19 @@ def main():
         "join-tournament": cmd_join_tournament,
         "play-tournament": cmd_play_tournament,
         "tournament-status": cmd_tournament_status,
+        # Prediction Market commands
+        "create-market": cmd_create_market,
+        "bet": cmd_bet,
+        "market-status": cmd_market_status,
+        "resolve-market": cmd_resolve_market,
+        "redeem": cmd_redeem,
+        # TournamentV2 commands
+        "create-round-robin": cmd_create_round_robin,
+        "create-double-elim": cmd_create_double_elim,
+        "tournament-v2-status": cmd_tournament_v2_status,
+        "tournament-v2-register": cmd_tournament_v2_register,
+        # Psychology commands
+        "pump-targets": cmd_pump_targets,
     }
 
     if command in commands:
