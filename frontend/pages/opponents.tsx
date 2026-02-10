@@ -1,9 +1,11 @@
+import { useAccount } from "wagmi";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OpponentCard, groupByOpponent } from "@/components/opponents/OpponentCard";
 import { useMatchHistory } from "@/hooks/useMatchHistory";
 
 export default function OpponentsPage() {
-  const { matches, loading } = useMatchHistory();
+  const { address } = useAccount();
+  const { matches, loading } = useMatchHistory(address);
   const opponents = groupByOpponent(matches);
 
   return (

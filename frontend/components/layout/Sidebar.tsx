@@ -9,8 +9,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Sidebar navigation items — Dashboard now points to /dashboard
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/matches", label: "Matches", icon: Swords },
   { href: "/opponents", label: "Opponents", icon: Users },
   { href: "/markets", label: "Markets", icon: TrendingUp },
@@ -31,8 +32,7 @@ export function Sidebar() {
       {/* Navigation links */}
       <nav className="flex-1 space-y-1 px-3 py-4">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const isActive =
-            href === "/" ? router.pathname === "/" : router.pathname.startsWith(href);
+          const isActive = router.pathname === href;
           return (
             <Link
               key={href}
