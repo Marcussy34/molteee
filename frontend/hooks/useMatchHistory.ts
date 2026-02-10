@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatEther } from "viem";
-import { publicClient, ADDRESSES, FIGHTER_ADDRESS } from "@/lib/contracts";
+import { publicClient, ADDRESSES } from "@/lib/contracts";
 import { agentRegistryAbi } from "@/lib/abi/AgentRegistry";
 
 export interface MatchRecord {
@@ -17,14 +17,21 @@ interface MatchHistoryData {
   loading: boolean;
 }
 
-export function useMatchHistory(): MatchHistoryData {
+// Accepts optional address — returns empty matches when no wallet is connected
+export function useMatchHistory(address?: string): MatchHistoryData {
   const [data, setData] = useState<MatchHistoryData>({
     matches: [],
-    loading: true,
+    loading: !!address,
   });
 
   useEffect(() => {
+    if (!address) {
+      setData({ matches: [], loading: false });
+      return;
+    }
+
     let cancelled = false;
+    setData((prev) => ({ ...prev, loading: true }));
 
     async function fetchData() {
       try {
@@ -32,7 +39,7 @@ export function useMatchHistory(): MatchHistoryData {
           address: ADDRESSES.agentRegistry,
           abi: agentRegistryAbi,
           functionName: "getMatchHistory",
-          args: [FIGHTER_ADDRESS],
+          args: [address as `0x${string}`],
         });
 
         if (cancelled) return;
@@ -66,7 +73,7 @@ export function useMatchHistory(): MatchHistoryData {
       cancelled = true;
       clearInterval(interval);
     };
-  }, []);
+  }, [address]);
 
   return data;
 }
