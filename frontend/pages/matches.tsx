@@ -1,9 +1,11 @@
+import { useAccount } from "wagmi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MatchTable } from "@/components/matches/MatchTable";
 import { useMatchHistory } from "@/hooks/useMatchHistory";
 
 export default function MatchesPage() {
-  const { matches, loading } = useMatchHistory();
+  const { address } = useAccount();
+  const { matches, loading } = useMatchHistory(address);
 
   return (
     <div className="space-y-6">
