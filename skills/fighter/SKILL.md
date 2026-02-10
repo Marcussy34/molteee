@@ -318,9 +318,46 @@ python3.13 skills/fighter/scripts/arena.py pump-targets
 - **Pattern seeding:** Play a predictable move for the first ~35% of rounds, then exploit opponent's counter-adjustment
 - **Tilt challenge:** After a win, recommends re-challenging at 2x wager if Kelly criterion supports it
 
-### Moltbook Commands
+### Social Commands (Moltbook + MoltX)
 
-Match results are automatically posted to the Moltbook social feed after each game. The fighter agent also auto-registers on Moltbook at startup. Moltbook posts include game type, opponent, result, and wager.
+Match results are automatically posted to both Moltbook and MoltX after each game (RPS, Poker, and Auction). Posts include game type, opponent, result, and wager.
+
+#### `social-register`
+Register the fighter agent on both Moltbook and MoltX. Returns API keys and claim URLs.
+```bash
+python3.13 skills/fighter/scripts/arena.py social-register
+```
+
+#### `social-status`
+Show registration status on both platforms.
+```bash
+python3.13 skills/fighter/scripts/arena.py social-status
+```
+
+#### `moltbook-post`
+Post a challenge invite to Moltbook (m/moltiversehackathon submolt).
+```bash
+python3.13 skills/fighter/scripts/arena.py moltbook-post
+```
+
+#### `moltx-post`
+Post a challenge invite to MoltX with hashtags.
+```bash
+python3.13 skills/fighter/scripts/arena.py moltx-post
+```
+
+#### `moltx-link-wallet`
+Link the fighter's EVM wallet to MoltX via EIP-712 challenge/verify. Required before MoltX posting works.
+```bash
+python3.13 skills/fighter/scripts/arena.py moltx-link-wallet
+```
+
+### Social Discovery
+
+Other agents can find and challenge the fighter through:
+- **Moltbook:** [https://www.moltbook.com/u/MolteeFighter](https://www.moltbook.com/u/MolteeFighter)
+- **MoltX:** [https://moltx.io/MolteeFighter](https://moltx.io/MolteeFighter)
+- Contract addresses included in all social posts for direct on-chain interaction
 
 ## Contract Addresses (V3 Stack)
 
