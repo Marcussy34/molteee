@@ -40,7 +40,15 @@ TournamentV2 Commands:
 
 Psychology Commands:
     pump-targets                           Find weak opponents for ELO farming
+
+Social Commands:
+    social-register                        Register on Moltbook + MoltX
+    social-status                          Show social platform registration status
+    moltbook-post                          Post challenge invite to Moltbook
+    moltx-post                             Post challenge invite to MoltX
+    moltx-link-wallet                      Link EVM wallet to MoltX (EIP-712)
 """
+import os
 import sys
 import time
 from pathlib import Path
@@ -169,7 +177,17 @@ from lib.bankroll import recommend_wager, estimate_win_prob, format_recommendati
 from lib.moltbook import (
     register_agent as moltbook_register_agent,
     post_match_result as moltbook_post_match_result,
+    post_challenge_invite as moltbook_post_challenge_invite,
     can_post as moltbook_can_post,
+    get_status as moltbook_get_status,
+)
+from lib.moltx import (
+    register_agent as moltx_register_agent,
+    post_match_result as moltx_post_match_result,
+    post_challenge_invite as moltx_post_challenge_invite,
+    link_wallet as moltx_link_wallet,
+    can_post as moltx_can_post,
+    get_status as moltx_get_status,
 )
 from lib.output import (
     print_match_header,
@@ -195,6 +213,21 @@ POLL_INTERVAL = 3  # seconds between game state polls
 
 # Shared model store — persists opponent data across games
 _model_store = OpponentModelStore()
+
+
+# ─── Social Posting Helper ───────────────────────────────────────────────────
+
+def _post_to_social(game_type: str, opponent: str, result: str, wager_mon: float,
+                    strategy: str = ""):
+    """Post match result to both Moltbook and MoltX. Never raises."""
+    try:
+        moltbook_post_match_result(game_type, opponent, result, wager_mon, strategy)
+    except Exception:
+        pass  # Never let social errors break gameplay
+    try:
+        moltx_post_match_result(game_type, opponent, result, wager_mon, strategy)
+    except Exception:
+        pass  # Never let social errors break gameplay
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -229,6 +262,13 @@ def cmd_status():
             print("Status:  Not registered")
         else:
             print(f"Status:  Error — {err}")
+
+    # Show social platform status
+    mb = moltbook_get_status()
+    mx = moltx_get_status()
+    mb_reg = "yes" if mb.get("registered") else "no"
+    mx_reg = "yes" if mx.get("registered") else "no"
+    print(f"Social:  Moltbook={mb_reg}, MoltX={mx_reg}")
 
 
 def cmd_register():
@@ -602,16 +642,16 @@ def _play_game(game_id: int, opponent_addr: str = None):
                 _model_store.save(opponent_addr)
                 print(f"  Opponent model updated ({model.get_total_games()} games total)")
 
-            # Auto-post match result to Moltbook (rate-limited, never fails)
+            # Auto-post match result to Moltbook + MoltX (rate-limited, never fails)
             try:
                 i_am_p1_mb = game["player1"].lower() == my_addr.lower()
                 s1 = game["p1Score"] if i_am_p1_mb else game["p2Score"]
                 s2 = game["p2Score"] if i_am_p1_mb else game["p1Score"]
                 res = "WIN" if s1 > s2 else ("LOSS" if s2 > s1 else "DRAW")
                 em = get_escrow_match(game["escrowMatchId"])
-                moltbook_post_match_result("RPS", opponent_addr or "", res, wei_to_mon(em["wager"]))
+                _post_to_social("RPS", opponent_addr or "", res, wei_to_mon(em["wager"]))
             except Exception:
-                pass  # Never let moltbook errors break gameplay
+                pass  # Never let social errors break gameplay
 
             # Psychology: check if we should tilt-challenge after a win
             if opponent_addr and model is not None:
@@ -934,6 +974,17 @@ def _play_poker_game(game_id: int, opponent_addr: str, wager_wei: int):
                              opp_score=0 if won else 1)
                 _model_store.save(opponent_addr)
                 print(f"  Opponent model updated ({model.get_total_games()} games total)")
+
+            # Auto-post poker match result to social feeds
+            try:
+                i_am_p1_pk = game["player1"].lower() == my_addr.lower()
+                my_h = game["p1HandValue"] if i_am_p1_pk else game["p2HandValue"]
+                opp_h = game["p2HandValue"] if i_am_p1_pk else game["p1HandValue"]
+                res = "WIN" if my_h > opp_h else ("LOSS" if opp_h > my_h else "DRAW")
+                _post_to_social("Poker", opponent_addr or "", res, wei_to_mon(wager_wei))
+            except Exception:
+                pass  # Never let social errors break gameplay
+
             return
 
         phase = game["phase"]
@@ -1201,6 +1252,17 @@ def _play_auction_game(game_id: int, opponent_addr: str, wager_wei: int):
                              opp_score=0 if won else 1)
                 _model_store.save(opponent_addr)
                 print(f"  Opponent model updated ({model.get_total_games()} games total)")
+
+            # Auto-post auction match result to social feeds
+            try:
+                i_am_p1_au = game["player1"].lower() == my_addr.lower()
+                my_b = game["p1Bid"] if i_am_p1_au else game["p2Bid"]
+                opp_b = game["p2Bid"] if i_am_p1_au else game["p1Bid"]
+                res = "WIN" if my_b > opp_b else ("LOSS" if opp_b > my_b else "DRAW")
+                _post_to_social("Auction", opponent_addr or "", res, wei_to_mon(wager_wei))
+            except Exception:
+                pass  # Never let social errors break gameplay
+
             return
 
         phase = game["phase"]
@@ -1999,6 +2061,116 @@ def cmd_tournament_v2_register():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Social Commands (Moltbook + MoltX)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def cmd_social_register():
+    """Register on both Moltbook and MoltX social platforms."""
+    name = "MolteeFighter"
+    description = (
+        "On-chain gaming arena agent on Monad testnet. "
+        "Plays RPS, Poker, and Auction against any agent. Challenge me!"
+    )
+
+    print("=== Registering on Moltbook ===")
+    mb_result = moltbook_register_agent(name, description)
+
+    print("\n=== Registering on MoltX ===")
+    mx_result = moltx_register_agent(
+        name=name,
+        display_name="Moltee Fighter",
+        description=description,
+        avatar_emoji="⚔️",
+    )
+
+    # Print summary
+    print("\n=== Registration Summary ===")
+    print(f"  Moltbook: {'OK' if mb_result.get('success') else 'FAILED'}")
+    if mb_result.get("api_key"):
+        print(f"    API Key: {mb_result['api_key'][:20]}...")
+    if mb_result.get("claim_url"):
+        print(f"    Claim URL: {mb_result['claim_url']}")
+
+    print(f"  MoltX:    {'OK' if mx_result.get('success') else 'FAILED'}")
+    if mx_result.get("api_key"):
+        print(f"    API Key: {mx_result['api_key'][:20]}...")
+    if mx_result.get("claim_code"):
+        print(f"    Claim code: {mx_result['claim_code']}")
+
+    print("\n  IMPORTANT: Save API keys to .env as MOLTBOOK_API_KEY and MOLTX_API_KEY")
+    print("  Then have your human claim both accounts via tweet.")
+
+
+def cmd_social_status():
+    """Show registration status on both social platforms."""
+    print("=== Social Platform Status ===\n")
+
+    # Moltbook status
+    mb = moltbook_get_status()
+    print(f"  Moltbook:")
+    print(f"    Registered: {mb.get('registered', False)}")
+    print(f"    Agent name: {mb.get('agent_name', 'N/A')}")
+    print(f"    API key:    {'set' if mb.get('api_key') else 'not set'}")
+    print(f"    Posts:       {mb.get('post_count', 0)}")
+
+    # MoltX status
+    mx = moltx_get_status()
+    print(f"\n  MoltX:")
+    print(f"    Registered:    {mx.get('registered', False)}")
+    print(f"    Agent name:    {mx.get('agent_name', 'N/A')}")
+    print(f"    API key:       {'set' if mx.get('api_key') else 'not set'}")
+    print(f"    Wallet linked: {mx.get('wallet_linked', False)}")
+    print(f"    Posts:          {mx.get('post_count', 0)}")
+
+    # Check env vars
+    print(f"\n  Env vars:")
+    print(f"    MOLTBOOK_API_KEY: {'set' if os.getenv('MOLTBOOK_API_KEY') else 'not set'}")
+    print(f"    MOLTX_API_KEY:    {'set' if os.getenv('MOLTX_API_KEY') else 'not set'}")
+
+
+def cmd_moltbook_post():
+    """Post a challenge invite to Moltbook."""
+    print("=== Posting to Moltbook ===")
+    result = moltbook_post_challenge_invite()
+    if result.get("posted"):
+        print("  Done!")
+    elif result.get("reason") == "rate_limited":
+        print("  Rate limited — wait 30 minutes between posts.")
+    else:
+        print(f"  Failed: {result.get('error', 'unknown')}")
+
+
+def cmd_moltx_post():
+    """Post a challenge invite to MoltX."""
+    print("=== Posting to MoltX ===")
+    result = moltx_post_challenge_invite()
+    if result.get("posted"):
+        print("  Done!")
+    elif result.get("reason") == "rate_limited":
+        print("  Rate limited — wait 15 minutes between posts.")
+    else:
+        print(f"  Failed: {result.get('error', 'unknown')}")
+
+
+def cmd_moltx_link_wallet():
+    """Link the fighter's EVM wallet to MoltX via EIP-712."""
+    addr = get_address()
+    private_key = os.getenv("DEPLOYER_PRIVATE_KEY", "")
+    if not private_key:
+        print("Error: DEPLOYER_PRIVATE_KEY not set in .env")
+        sys.exit(1)
+
+    print(f"=== Linking wallet {addr[:10]}... to MoltX ===")
+    result = moltx_link_wallet(addr, private_key)
+    if result.get("success"):
+        print("  Wallet linked successfully!")
+    else:
+        print(f"  Failed: {result.get('error', 'unknown')}")
+        if result.get("nonce"):
+            print(f"  Manual signing required — nonce: {result['nonce']}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Main
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -2041,6 +2213,12 @@ def main():
         "tournament-v2-register": cmd_tournament_v2_register,
         # Psychology commands
         "pump-targets": cmd_pump_targets,
+        # Social commands (Moltbook + MoltX)
+        "social-register": cmd_social_register,
+        "social-status": cmd_social_status,
+        "moltbook-post": cmd_moltbook_post,
+        "moltx-post": cmd_moltx_post,
+        "moltx-link-wallet": cmd_moltx_link_wallet,
     }
 
     if command in commands:
