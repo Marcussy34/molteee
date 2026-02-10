@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAccount } from "wagmi";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TournamentCard } from "@/components/tournaments/TournamentCard";
 import { StandingsTable } from "@/components/tournaments/StandingsTable";
@@ -6,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTournaments } from "@/hooks/useTournaments";
 
 export default function TournamentsPage() {
+  const { address } = useAccount();
   const { tournaments, loading } = useTournaments();
   // Track which tournament's participants are expanded
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -45,7 +47,10 @@ export default function TournamentsPage() {
                       <CardTitle className="text-sm">Participants</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <StandingsTable participants={t.participants} />
+                      <StandingsTable
+                        participants={t.participants}
+                        userAddress={address}
+                      />
                     </CardContent>
                   </Card>
                 )}
