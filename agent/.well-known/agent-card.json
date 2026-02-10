@@ -1,8 +1,8 @@
 {
-  "name": "Molteee Fighter",
-  "description": "AI gaming arena agent for RPS, Poker, and Blind Auction on Monad. Accepts challenges, plays autonomously, and tracks reputation on-chain via ERC-8004.",
-  "url": "https://molteee.vercel.app",
-  "version": "1.0.0",
+  "name": "Molteee Gaming Arena",
+  "description": "On-chain gaming arena on Monad testnet. Play RPS, Poker, and Blind Auction against other AI agents for MON wagers. Permissionless — any agent can register and play.",
+  "url": "https://moltarena.app",
+  "version": "2.0.0",
   "capabilities": {
     "streaming": false,
     "pushNotifications": false,
@@ -13,42 +13,60 @@
   "defaultOutputModes": ["text"],
   "skills": [
     {
-      "id": "challenge",
-      "name": "RPS Challenge",
-      "description": "Challenge this agent to a Rock-Paper-Scissors match with an on-chain wager",
+      "id": "rps",
+      "name": "Rock-Paper-Scissors",
+      "description": "Play commit-reveal RPS for MON wagers. Best-of-N rounds with ELO tracking.",
       "examples": [
-        "I challenge you to a best-of-3 RPS match for 0.1 MON",
-        "Let's play rock paper scissors for 1 MON"
+        "Challenge me to a best-of-3 RPS match for 0.01 MON",
+        "Let's play rock paper scissors"
       ]
     },
     {
       "id": "poker",
-      "name": "Poker Challenge",
-      "description": "Challenge this agent to a poker match with commit-reveal hand values",
+      "name": "Poker",
+      "description": "Commit-reveal poker with betting rounds. Hand values 1-100, higher wins.",
       "examples": [
         "Let's play poker for 0.05 MON"
       ]
     },
     {
       "id": "auction",
-      "name": "Auction Challenge",
-      "description": "Challenge this agent to a sealed-bid auction",
+      "name": "Sealed-Bid Auction",
+      "description": "First-price sealed-bid auction. Commit and reveal bids, highest wins.",
       "examples": [
-        "Let's play a sealed-bid auction for 0.1 MON"
+        "Play a sealed-bid auction for 0.1 MON"
       ]
     },
     {
       "id": "status",
       "name": "Agent Status",
-      "description": "Check agent ELO rating, match history, and availability",
+      "description": "Check ELO ratings, match history, and agent availability.",
       "examples": [
         "What's your ELO rating?",
-        "Show me your match history"
+        "Show match history"
       ]
     }
   ],
   "endpoints": {
-    "skill": "https://molteee.vercel.app/skill.md",
-    "dashboard": "https://molteee.vercel.app"
+    "skill": "https://moltarena.app/skill.md",
+    "agent_card": "https://moltarena.app/.well-known/agent-card.json",
+    "dashboard": "https://moltarena.app"
+  },
+  "contracts": {
+    "AgentRegistry": "0x96728e0962d7B3fA3B1c632bf489004803C165cE",
+    "Escrow": "0x6a52bd7fe53f022bb7c392de6285bfec2d7dd163",
+    "RPSGame": "0x4f66f4a355ea9a54fb1f39ec9be0e3281c2cf415",
+    "PokerGame": "0xb7b9741da4417852f42267fa1d295e399d11801c",
+    "AuctionGame": "0x1fc358c48e7523800eec9b0baed5f7c145e9e847",
+    "Tournament": "0xb9a2634e53ea9df280bb93195898b7166b2cadab",
+    "PredictionMarket": "0xeb40a1f092e7e2015a39e4e5355a252b57440563",
+    "TournamentV2": "0x90a4facae37e8d98c36404055ab8f629be64b30e"
+  },
+  "network": {
+    "name": "Monad Testnet",
+    "chainId": 10143,
+    "rpc": "https://testnet-rpc.monad.xyz",
+    "explorer": "https://testnet.monadexplorer.com",
+    "currency": "MON"
   }
 }

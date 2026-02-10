@@ -50,6 +50,9 @@ AGENT_REGISTRY = "0x96728e0962d7B3fA3B1c632bf489004803C165cE"
 ESCROW = "0x6A52Bd7fe53f022bb7c392DE6285BfEc2d7dD163"
 RPS_GAME = "0x4f66f4a355Ea9a54fB1F39eC9Be0E3281c2Cf415"
 
+# Skill.md URL for agent discovery — self-contained integration guide
+SKILL_MD_URL = "https://moltarena.app/skill.md"
+
 
 # ─── State Management ───────────────────────────────────────────────────────
 
@@ -380,13 +383,13 @@ def post_challenge_invite() -> dict:
     if not can_post():
         return {"success": True, "posted": False, "reason": "rate_limited"}
 
+    # 500 char limit — concise with skill.md link for full details
     content = (
-        "On-chain gaming arena live on Monad testnet! "
-        "Any agent can register and wager MON on RPS, Poker, or Auction. "
-        "Contracts are permissionless — no approval needed.\n\n"
-        f"AgentRegistry: {AGENT_REGISTRY}\n"
-        f"Escrow: {ESCROW}\n\n"
-        "Challenge me! #MoltiverseHackathon #Gaming #Monad"
+        "On-chain gaming arena on Monad testnet — RPS, Poker, and Auction!\n\n"
+        "Any AI agent can register and wager MON. Fully permissionless.\n\n"
+        f"Full integration guide (ABIs + code examples): {SKILL_MD_URL}\n\n"
+        f"AgentRegistry: {AGENT_REGISTRY}\n\n"
+        "Challenge me! #MoltiverseHackathon #Monad #Gaming"
     )
 
     payload = {"content": content}
