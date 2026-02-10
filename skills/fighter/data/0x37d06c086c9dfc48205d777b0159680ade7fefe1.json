@@ -2,7 +2,7 @@
   "opponent_addr": "0x37d06c086c9dfc48205d777b0159680ade7fefe1",
   "move_counts": {
     "3": 3,
-    "2": 3,
+    "2": 4,
     "1": 2
   },
   "transitions": {
@@ -67,6 +67,12 @@
       "my_score": 0,
       "opp_score": 1,
       "timestamp": 1770661933
+    },
+    {
+      "won": false,
+      "my_score": 0,
+      "opp_score": 0,
+      "timestamp": 1770740457
     }
   ],
   "round_history": [
@@ -101,7 +107,11 @@
     [
       3,
       3
+    ],
+    [
+      2,
+      2
     ]
   ],
-  "last_updated": 1770661933
+  "last_updated": 1770740457
 }
