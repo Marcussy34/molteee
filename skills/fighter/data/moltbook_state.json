@@ -1,6 +1,9 @@
 {
-  "registered": false,
-  "agent_id": null,
-  "last_post_time": 1770696705.441222,
-  "post_count": 3
+  "registered": true,
+  "agent_name": "MolteeFighter",
+  "api_key": "moltbook_sk_cMz5SNpEC1ujR6jeHqJ5vCXMy3iGKdDq",
+  "claim_url": "https://moltbook.com/claim/moltbook_claim_EZcL-kAw7GyLrfsLoCO0JIAscXO14Nj8",
+  "last_post_time": 1770709722.6318169,
+  "post_count": 0,
+  "verification_code": "bay-FU5D"
 }
