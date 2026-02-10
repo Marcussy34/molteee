@@ -8,12 +8,13 @@
 ## What's Done
 
 - [x] 8 smart contracts deployed to Monad testnet (160 tests passing)
-- [x] Fighter skill: 27 CLI commands, multi-signal strategy, psychology, bankroll management
+- [x] Fighter skill: 32 CLI commands, multi-signal strategy, psychology, bankroll management
 - [x] Spectator skill: 5 commands, ELO-based prediction market betting
 - [x] 5 opponent bots with distinct strategies
 - [x] Next.js dashboard reading live on-chain data (5 pages, dark mode)
 - [x] ERC-8004 agent identity registered (Agent ID 10)
-- [x] 12 matches played (58.3% win rate, ELO 1059)
+- [x] 32+ matches played (ELO 1099)
+- [x] Social integration: Moltbook + MoltX registered, MoltX posting live, wallet linked
 
 ---
 
@@ -97,10 +98,12 @@ Record a 3-5 minute demo video showing:
 
 ## Priority 4 — Polish (If Time Allows)
 
-### 4a. Moltbook integration
-- Test `arena.py moltbook-register` and `arena.py moltbook-post`
-- Verify posts appear on moltbook.com
-- Set `MOLTBOOK_API_KEY` in `.env`
+### 4a. Social integration (DONE — see task/completed/09-SOCIAL-COMPLETED.md)
+- [x] Moltbook registered, API key saved, owner account created
+- [x] MoltX registered, API key saved, wallet linked, challenge invite posted
+- [x] Both platforms wired into RPS, Poker, Auction game settlement
+- [ ] Moltbook claim pending (rate-limited, retry after cooldown)
+- [ ] MoltX claim optional (tweet claim code `molt-OK`)
 
 ### 4b. OpenClaw autonomous run
 - Start `openclaw gateway --port 18789`
@@ -131,13 +134,14 @@ Record a 3-5 minute demo video showing:
 
 ## Submission Checklist
 
-- [ ] 20+ matches played on Monad testnet
-- [ ] All 3 game types demonstrated (RPS, Poker, Auction)
+- [x] 20+ matches played on Monad testnet (32+ matches, ELO 1099)
+- [x] All 3 game types demonstrated (RPS, Poker, Auction)
 - [ ] Prediction market full lifecycle completed on-chain
 - [ ] Tournament completed on-chain
 - [ ] Dashboard shows live data at localhost:3000
 - [ ] Demo video recorded (3-5 minutes)
 - [ ] README.md updated with `frontend/` references
 - [ ] All tx hashes documented
+- [x] Social presence: Moltbook + MoltX registered, posting live
 - [ ] Code pushed to repository
 - [ ] Submitted on moltiverse.dev before Feb 15 23:59 ET
