@@ -1,16 +1,14 @@
-# Phase 7+8 Blocks 0-3 — Contracts + Next.js Dashboard (COMPLETE)
+# Phase 7+8 Blocks 0-2 — Escrow v3, PredictionMarket, TournamentV2 (COMPLETE)
 
-> **Date:** February 9-10, 2026
-> **Phase:** 7+8 (Blocks 0-3)
-> **Status:** COMPLETE — Contracts deployed (160 tests), Next.js dashboard built with live on-chain data
+> **Date:** February 9, 2026
+> **Phase:** 7+8 (Blocks 0-2)
+> **Status:** COMPLETE — Escrow v3, PredictionMarket, and TournamentV2 deployed to Monad testnet with 160 tests passing
 
 ---
-
+npx shadcn@latest init
 ## Summary
 
 Blocks 0-2 implement three major contract upgrades: (1) Escrow v3 adds a `winners` mapping so external contracts can trustlessly read match outcomes, (2) PredictionMarket.sol provides a constant-product AMM for binary outcome betting on matches, and (3) TournamentV2.sol adds round-robin and double-elimination tournament formats. All contracts were deployed in a single DeployV3 script that redeploys the full stack with the new Escrow.
-
-Block 3 adds a full Next.js dashboard (`frontend/`) that reads on-chain data from all deployed contracts via viem, displaying agent stats, match history, prediction markets, and tournaments with a dark-mode gaming aesthetic.
 
 ---
 
@@ -153,92 +151,3 @@ contracts/
 - [x] TournamentV2 address in .env: `0x90a4facae37e8d98c36404055ab8f629be64b30e`
 - [x] 160 total tests passing across 8 test suites
 - [x] .env.example updated with new address fields
-
-### Block 3 — Next.js Dashboard (`frontend/`)
-
-**Tech stack:** Next.js 16 (Pages Router) + shadcn/ui + Tailwind CSS 4 + viem + recharts
-
-Client-side dashboard reading on-chain data from all 8 deployed contracts on Monad testnet:
-
-- **Layout:** Sidebar navigation (5 pages) + header with fighter address and MON balance
-- **Dark mode:** Always-on via `class="dark"` on `<html>`, gaming aesthetic
-- **Data fetching:** 4 custom hooks with 30s polling via `useEffect` + `setInterval`
-- **No wallet connection:** Hardcoded fighter address (`0x6cCBe5f5Cf80f66a0ef286287e2A75e4aFec7Fbf`), read-only via viem `publicClient`
-
-**Pages:**
-
-| Page | Route | Data Source |
-|------|-------|-------------|
-| Dashboard | `/` | AgentRegistry (balance, ELO, match count) — 4 stat cards + ELO bar chart + recent matches |
-| Matches | `/matches` | AgentRegistry.getMatchHistory — full table with date, opponent, game type, result, wager |
-| Opponents | `/opponents` | Match history grouped by opponent — cards with win rate, record, total wagered |
-| Markets | `/markets` | PredictionMarket (all markets) — cards with YES/NO price bars, resolution status |
-| Tournaments | `/tournaments` | Tournament V1 + V2 — cards with entry fee, prize pool, players, expandable participants |
-
-**ABIs:** Extracted view-only functions from Foundry build artifacts into `lib/abi/*.ts` with `as const` for viem type inference.
-
-**Build:** `npm run build` passes with zero TypeScript errors.
-
-**Files created (~30 files):**
-
-```
-frontend/
-├── lib/
-│   ├── contracts.ts                    # CREATED — viem client, Monad testnet chain, all contract addresses
-│   └── abi/
-│       ├── AgentRegistry.ts            # CREATED — 8 view functions
-│       ├── Escrow.ts                   # CREATED — 7 view functions
-│       ├── PredictionMarket.ts         # CREATED — 13 view functions
-│       ├── Tournament.ts              # CREATED — 18 view functions
-│       └── TournamentV2.ts            # CREATED — 25 view functions
-├── hooks/
-│   ├── useAgentData.ts                 # CREATED — balance, ELO, match count, registration
-│   ├── useMatchHistory.ts              # CREATED — full match history array
-│   ├── useMarkets.ts                   # CREATED — all prediction markets + prices
-│   └── useTournaments.ts              # CREATED — V1 + V2 tournaments + participants
-├── components/
-│   ├── ui/                             # CREATED — 8 shadcn components (card, table, badge, etc.)
-│   ├── layout/
-│   │   ├── DashboardLayout.tsx         # CREATED — sidebar + header + content wrapper
-│   │   ├── Sidebar.tsx                 # CREATED — 5 nav links with active state, lucide icons
-│   │   └── Header.tsx                  # CREATED — fighter address badge + MON balance
-│   ├── dashboard/
-│   │   ├── StatCard.tsx                # CREATED — reusable icon + title + value card
-│   │   ├── RecentMatches.tsx           # CREATED — last 10 matches with result badges
-│   │   └── EloChart.tsx                # CREATED — recharts bar chart, 3 game types
-│   ├── matches/
-│   │   └── MatchTable.tsx              # CREATED — full table with date, opponent, game, result, wager
-│   ├── opponents/
-│   │   └── OpponentCard.tsx            # CREATED — per-opponent stats with groupByOpponent helper
-│   ├── markets/
-│   │   └── MarketCard.tsx              # CREATED — YES/NO price bars, resolution status
-│   └── tournaments/
-│       ├── TournamentCard.tsx          # CREATED — V1/V2 info with format labels
-│       └── StandingsTable.tsx          # CREATED — participant list with "You" highlight
-├── pages/
-│   ├── _app.tsx                        # MODIFIED — wrapped with DashboardLayout
-│   ├── _document.tsx                   # MODIFIED — added class="dark" to <html>
-│   ├── index.tsx                       # REPLACED — dashboard overview with stat cards + charts
-│   ├── matches.tsx                     # CREATED — match history table page
-│   ├── opponents.tsx                   # CREATED — opponent cards grid page
-│   ├── markets.tsx                     # CREATED — prediction market cards page
-│   └── tournaments.tsx                 # CREATED — tournament cards with expandable standings
-└── package.json                        # MODIFIED — added viem, recharts
-```
-
----
-
-## Dashboard Gate Checklist
-
-- [x] `npm run build` succeeds with zero errors
-- [x] Dashboard page shows 4 stat cards (Balance, Matches, Win Rate, Best ELO)
-- [x] ELO bar chart displays ratings across 3 game types (RPS, Poker, Auction)
-- [x] Recent matches list with WIN/LOSS badges and wager amounts
-- [x] Sidebar navigation with 5 pages and active state highlighting
-- [x] Match history table with date, opponent, game type, result, wager columns
-- [x] Opponent cards grouped by address with win rate and match records
-- [x] Prediction market cards with YES/NO price bars and resolution status
-- [x] Tournament cards (V1 + V2) with expandable participant standings
-- [x] Dark mode renders correctly with gaming aesthetic
-- [x] All data reads from Monad testnet via viem publicClient
-- [x] 30-second polling on all data hooks
