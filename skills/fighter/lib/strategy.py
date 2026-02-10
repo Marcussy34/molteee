@@ -169,7 +169,7 @@ def sequence_predict(history: list[tuple[int, int]]) -> tuple[int, float]:
                 (opp_last == SCISSORS and my_last == PAPER)
             )
 
-            if opp_won_last:
+            if opp_won_last and opp_last in COUNTER:
                 # Win-stay: opponent likely repeats
                 ws_ls_move = COUNTER[opp_last]
             else:
@@ -187,6 +187,8 @@ def sequence_predict(history: list[tuple[int, int]]) -> tuple[int, float]:
                     if opp_lost_prev and opp_curr != opp_prev:
                         switch_targets[opp_curr] += 1
 
+                # Filter out invalid moves (0 = None from unrevealed rounds)
+                switch_targets = Counter({k: v for k, v in switch_targets.items() if k in COUNTER})
                 if switch_targets:
                     predicted = switch_targets.most_common(1)[0][0]
                     ws_ls_move = COUNTER[predicted]

@@ -46,14 +46,40 @@ class OpponentModel:
             opp_score: opponent's final score
         """
         if not game_round_history:
+            # Still record match result even if no round data (e.g. poker/auction)
+            if won is not None:
+                self.match_results.append({
+                    "won": won,
+                    "my_score": my_score,
+                    "opp_score": opp_score,
+                    "timestamp": int(time.time()),
+                })
+                self.last_updated = int(time.time())
+            return
+
+        # Filter out invalid moves — only RPS moves 1-3 are valid.
+        # Poker hand values and auction bids are large ints that would corrupt the model.
+        VALID_MOVES = {1, 2, 3}
+        valid_rounds = [(m, o) for m, o in game_round_history
+                        if m in VALID_MOVES and o in VALID_MOVES]
+        if not valid_rounds:
+            # No valid RPS rounds — still record match result
+            if won is not None:
+                self.match_results.append({
+                    "won": won,
+                    "my_score": my_score,
+                    "opp_score": opp_score,
+                    "timestamp": int(time.time()),
+                })
+                self.last_updated = int(time.time())
             return
 
         # Update move counts
-        for _, opp_move in game_round_history:
+        for _, opp_move in valid_rounds:
             self.move_counts[opp_move] += 1
 
         # Update transitions (opponent's move-to-move patterns)
-        opp_moves = [opp for _, opp in game_round_history]
+        opp_moves = [opp for _, opp in valid_rounds]
         for i in range(len(opp_moves) - 1):
             from_m = str(opp_moves[i])
             to_m = str(opp_moves[i + 1])
@@ -61,8 +87,8 @@ class OpponentModel:
                 self.transitions[from_m] = Counter()
             self.transitions[from_m][to_m] += 1
 
-        # Append to cumulative history
-        self.round_history.extend(game_round_history)
+        # Append to cumulative history (only valid RPS rounds)
+        self.round_history.extend(valid_rounds)
 
         # Record match result
         if won is not None:
