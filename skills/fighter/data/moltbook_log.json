@@ -1,0 +1,28 @@
+[
+  {
+    "type": "match_result",
+    "payload": {
+      "game_type": "RPS",
+      "opponent": "0xCD40Da7306672aa1151bA43ff479e93023e21e1f",
+      "result": "WIN",
+      "wager_mon": 0.001,
+      "strategy": "",
+      "timestamp": 1770659175
+    },
+    "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
+    "logged_at": 1770659175.7756648
+  },
+  {
+    "type": "match_result",
+    "payload": {
+      "game_type": "RPS",
+      "opponent": "0xCD40Da7306672aa1151bA43ff479e93023e21e1f",
+      "result": "WIN",
+      "wager_mon": 0.001,
+      "strategy": "",
+      "timestamp": 1770661843
+    },
+    "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
+    "logged_at": 1770661843.681946
+  }
+]

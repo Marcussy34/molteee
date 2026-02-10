@@ -1,21 +1,22 @@
 {
   "opponent_addr": "0x37d06c086c9dfc48205d777b0159680ade7fefe1",
   "move_counts": {
-    "3": 1,
+    "3": 3,
     "2": 3,
-    "1": 1,
-    "0": 1,
-    "770193987530551": 1
+    "1": 2
   },
   "transitions": {
     "3": {
+      "2": 1,
+      "3": 1
+    },
+    "2": {
+      "1": 2,
       "2": 1
     },
     "1": {
-      "2": 1
-    },
-    "2": {
-      "2": 1
+      "2": 1,
+      "3": 1
     }
   },
   "match_results": [
@@ -42,6 +43,30 @@
       "my_score": 0,
       "opp_score": 1,
       "timestamp": 1770636873
+    },
+    {
+      "won": false,
+      "my_score": 0,
+      "opp_score": 0,
+      "timestamp": 1770659548
+    },
+    {
+      "won": true,
+      "my_score": 1,
+      "opp_score": 0,
+      "timestamp": 1770659778
+    },
+    {
+      "won": false,
+      "my_score": 0,
+      "opp_score": 1,
+      "timestamp": 1770660148
+    },
+    {
+      "won": false,
+      "my_score": 0,
+      "opp_score": 1,
+      "timestamp": 1770661933
     }
   ],
   "round_history": [
@@ -66,13 +91,17 @@
       2
     ],
     [
-      0,
-      0
+      1,
+      1
     ],
     [
-      759744102948236,
-      770193987530551
+      3,
+      3
+    ],
+    [
+      3,
+      3
     ]
   ],
-  "last_updated": 1770636873
+  "last_updated": 1770661933
 }
