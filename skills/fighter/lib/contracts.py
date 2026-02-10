@@ -163,13 +163,34 @@ _w3 = None
 _account = None
 
 def get_w3() -> Web3:
-    """Get Web3 instance connected to Monad RPC. Lazy-initialized."""
+    """Get or create Web3 instance connected to Monad RPC."""
     global _w3
     if _w3 is None:
-        _w3 = Web3(Web3.HTTPProvider(MONAD_RPC_URL))
-        if not _w3.is_connected():
-            raise ConnectionError(f"Cannot connect to Monad RPC at {MONAD_RPC_URL}")
+        _w3 = Web3(Web3.HTTPProvider(MONAD_RPC_URL, request_kwargs={"timeout": 30}))
     return _w3
+
+
+def reconnect_w3() -> Web3:
+    """Force reconnect to Monad RPC. Call this after RPC errors."""
+    global _w3
+    _clear_contract_cache()
+    _w3 = Web3(Web3.HTTPProvider(MONAD_RPC_URL, request_kwargs={"timeout": 30}))
+    return _w3
+
+
+def _clear_contract_cache():
+    """Clear cached contract instances so they're rebuilt with fresh w3."""
+    global _registry_contract, _escrow_contract, _rps_contract
+    global _poker_contract, _auction_contract, _tournament_contract
+    global _prediction_market_contract, _tournament_v2_contract
+    _registry_contract = None
+    _escrow_contract = None
+    _rps_contract = None
+    _poker_contract = None
+    _auction_contract = None
+    _tournament_contract = None
+    _prediction_market_contract = None
+    _tournament_v2_contract = None
 
 def get_account():
     """Get Account from DEPLOYER_PRIVATE_KEY. Lazy-initialized."""
@@ -270,20 +291,46 @@ def get_tournament_v2():
 
 # ─── Transaction Helper ──────────────────────────────────────────────────────
 
-def send_tx(func, value=0):
+def send_tx(func, value=0, retries=3):
     """
     Build, sign, send, and wait for a contract function call.
+    Retries on transient RPC errors (429, timeouts).
 
     Args:
         func: A web3 contract function call (e.g. contract.functions.register(...))
         value: Wei to send with the transaction (for payable functions)
+        retries: Number of retry attempts for transient RPC errors
 
     Returns:
         Transaction receipt
 
     Raises:
-        Exception: If transaction reverts, includes tx hash for debugging
+        Exception: If transaction reverts, includes tx hash and revert reason
     """
+    import time as _time
+
+    for attempt in range(retries):
+        try:
+            return _send_tx_once(func, value)
+        except Exception as e:
+            err_str = str(e)
+            # Retry on rate limits (429) and transient network errors
+            is_transient = ("429" in err_str or "Too Many Requests" in err_str
+                          or "timeout" in err_str.lower()
+                          or "connection" in err_str.lower())
+            if is_transient and attempt < retries - 1:
+                wait = 2 ** (attempt + 1)  # 2, 4, 8 seconds
+                print(f"    [retry] RPC error ({err_str[:60]}...), waiting {wait}s...")
+                _time.sleep(wait)
+                # Force reconnect on connection errors
+                if "connection" in err_str.lower():
+                    reconnect_w3()
+                continue
+            raise  # Re-raise on non-transient errors or final attempt
+
+
+def _send_tx_once(func, value=0):
+    """Internal: single-attempt send_tx."""
     w3 = get_w3()
     account = get_account()
 
@@ -295,23 +342,34 @@ def send_tx(func, value=0):
         "chainId": MONAD_CHAIN_ID,
     })
 
-    # Estimate gas with 1.2x buffer, fallback to 500000
+    # Estimate gas with 1.2x buffer — fail fast if call would revert
     try:
         estimated = w3.eth.estimate_gas(tx)
         tx["gas"] = int(estimated * 1.2)
-    except Exception:
+    except Exception as e:
+        err_msg = str(e)
+        # If estimate_gas reverts, the tx WILL revert on-chain — fail early
+        if "revert" in err_msg.lower() or "execution reverted" in err_msg.lower():
+            raise Exception(f"Transaction would revert (estimate_gas): {err_msg}")
+        # Non-revert errors (RPC timeout, etc.) — use fallback gas
+        print(f"    [warn] Gas estimation failed ({err_msg[:100]}), using 500k fallback")
         tx["gas"] = 500000
 
     # Sign and send
     signed = account.sign_transaction(tx)
     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
 
-    # Wait for receipt
+    # Wait for receipt with retry on 429
     receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
 
-    # Check for revert
+    # Check for revert — try to decode reason
     if receipt["status"] == 0:
-        raise Exception(f"Transaction reverted: {tx_hash.hex()}")
+        reason = ""
+        try:
+            w3.eth.call(tx, block_identifier=receipt["blockNumber"])
+        except Exception as call_err:
+            reason = str(call_err)[:200]
+        raise Exception(f"Transaction reverted: {tx_hash.hex()} — {reason}")
 
     return receipt
 
