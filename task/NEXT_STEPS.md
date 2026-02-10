@@ -136,11 +136,11 @@ Record a 3-5 minute demo video showing:
 
 - [x] 20+ matches played on Monad testnet (32+ matches, ELO 1099)
 - [x] All 3 game types demonstrated (RPS, Poker, Auction)
-- [ ] Prediction market full lifecycle completed on-chain
-- [ ] Tournament completed on-chain
-- [ ] Dashboard shows live data at localhost:3000
+- [x] Prediction market full lifecycle completed on-chain (Market ID 2, Match 33, 16 txs)
+- [x] Tournament completed on-chain (Tournament ID 1, 4 players, 6 RR matches scheduled)
+- [x] Dashboard shows live data at localhost:3000
 - [ ] Demo video recorded (3-5 minutes)
-- [ ] README.md updated with `frontend/` references
+- [x] README.md updated with `frontend/` references
 - [ ] All tx hashes documented
 - [x] Social presence: Moltbook + MoltX registered, posting live
 - [ ] Code pushed to repository

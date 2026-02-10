@@ -37,7 +37,7 @@ All gameplay happens on-chain via commit-reveal smart contracts on Monad testnet
 │  │  Fighter Skill (SKILL.md + scripts/)                      │  │
 │  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐  │  │
 │  │  │ arena.py     │ │ strategy.py  │ │ opponent_model.py│  │  │
-│  │  │ 26 commands  │ │ multi-signal │ │ persistent JSON  │  │  │
+│  │  │ 32 commands  │ │ multi-signal │ │ persistent JSON  │  │  │
 │  │  └──────┬───────┘ └──────┬───────┘ └────────┬─────────┘  │  │
 │  │         │                │                   │            │  │
 │  │  ┌──────┴───────┐ ┌──────┴───────┐ ┌────────┴─────────┐  │  │
@@ -257,9 +257,9 @@ python3.13 skills/fighter/scripts/demo.py
 A real-time web dashboard for monitoring matches, ELO ratings, and prediction markets:
 
 ```bash
-cd dashboard
+cd frontend
 npm install
-npm run dev     # Development server on http://localhost:5173
+npm run dev     # Development server on http://localhost:3000
 npm run build   # Production build
 ```
 
@@ -413,7 +413,7 @@ Both players commit, then both reveal. Salt prevents hash preimage attacks.
 - **Smart Contracts:** Solidity 0.8.28, Foundry, OpenZeppelin
 - **Agent Runtime:** Python 3.13, web3.py
 - **AI Runtime:** OpenClaw (LLM-powered agent framework)
-- **Dashboard:** Vite + React + TypeScript
+- **Dashboard:** Next.js + React + TypeScript + shadcn/ui
 - **Identity Standard:** ERC-8004 (on-chain agent identity + reputation)
 - **Strategy:** Multi-signal analysis, Markov chains, Kelly criterion, psychology tactics
 
@@ -435,7 +435,7 @@ molteee/
 ├── skills/fighter/               # OpenClaw Fighter Skill
 │   ├── SKILL.md                  # Skill manifest + instructions for LLM
 │   ├── scripts/
-│   │   ├── arena.py              # CLI dispatcher (26 commands)
+│   │   ├── arena.py              # CLI dispatcher (32 commands)
 │   │   ├── psychology.py         # Timing, seeding, tilt, ELO pumping
 │   │   └── demo.py              # Scripted demo showcase
 │   ├── lib/
@@ -454,7 +454,7 @@ molteee/
 │   │   ├── contracts.py          # Read-only web3 wrappers
 │   │   └── estimator.py          # ELO-based probability estimation
 │   └── data/predictions.json     # Prediction accuracy tracker
-├── dashboard/                    # Vite + React + TypeScript web dashboard
+├── frontend/                     # Next.js + React + TypeScript + shadcn/ui dashboard
 ├── opponents/                    # 5 standalone opponent bots
 │   ├── base_bot.py               # Reusable bot base class
 │   ├── rock_bot.py               # Biased toward rock
