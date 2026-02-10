@@ -108,7 +108,8 @@ export function useMarkets(): MarketsResult {
     }
 
     fetchData();
-    const interval = setInterval(fetchData, 30_000);
+    // Poll every 10s for near-real-time market price updates
+    const interval = setInterval(fetchData, 10_000);
     return () => {
       cancelled = true;
       clearInterval(interval);
