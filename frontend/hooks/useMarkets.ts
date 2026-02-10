@@ -84,7 +84,7 @@ export function useMarkets(): MarketsResult {
           };
           const p = price as readonly [bigint, bigint];
 
-          // Prices are in basis points (0-10000 = 0-100%)
+          // Prices are scaled to 1e18 (e.g. 0.8e18 = 80%), divide by 1e16 for percentage
           return {
             id,
             matchId: Number(m.matchId),
@@ -95,8 +95,8 @@ export function useMarkets(): MarketsResult {
             seedLiquidity: formatEther(m.seedLiquidity),
             resolved: m.resolved,
             winner: m.winner,
-            yesPrice: Number(p[0]) / 100,
-            noPrice: Number(p[1]) / 100,
+            yesPrice: Number(p[0]) / 1e16,
+            noPrice: Number(p[1]) / 1e16,
           };
         });
 
