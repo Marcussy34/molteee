@@ -31,9 +31,6 @@ export const ADDRESSES = {
   tournamentV2: "0x90a4FacAE37E8d98C36404055Ab8f629bE64b30e" as const,
 } as const;
 
-// Our fighter agent address
-export const FIGHTER_ADDRESS = "0x6cCBe5f5Cf80f66a0ef286287e2A75e4aFec7Fbf" as const;
-
 // Game type enum matching the contract
 export enum GameType {
   RPS = 0,

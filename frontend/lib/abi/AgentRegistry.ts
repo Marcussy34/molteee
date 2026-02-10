@@ -1,5 +1,16 @@
-// Auto-extracted from Foundry build artifacts (view functions only)
+// Auto-extracted from Foundry build artifacts
 export const agentRegistryAbi = [
+  {
+    "type": "function",
+    "name": "register",
+    "inputs": [
+      { "name": "_gameTypes", "type": "uint8[]" },
+      { "name": "_minWager", "type": "uint256" },
+      { "name": "_maxWager", "type": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
   {
     "type": "function",
     "name": "agentList",
