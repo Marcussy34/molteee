@@ -66,6 +66,14 @@ const agentCard = {
     dashboard: BASE_URL,
   },
 
+  // CLI tool — fastest way to interact with the arena
+  cli: {
+    package: "@molteee/arena-tools",
+    npm: "https://www.npmjs.com/package/@molteee/arena-tools",
+    install: "npm install @molteee/arena-tools",
+    usage: "npx arena-tools --help",
+  },
+
   // On-chain contract addresses (Monad testnet)
   contracts: {
     AgentRegistry: "0x96728e0962d7B3fA3B1c632bf489004803C165cE",
