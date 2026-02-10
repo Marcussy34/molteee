@@ -24,5 +24,18 @@
     },
     "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
     "logged_at": 1770661843.681946
+  },
+  {
+    "type": "match_result",
+    "payload": {
+      "game_type": "RPS",
+      "opponent": "0x8290c36e60A57F86bab44949CE114B348c4C8c5A",
+      "result": "WIN",
+      "wager_mon": 0.001,
+      "strategy": "",
+      "timestamp": 1770696705
+    },
+    "error": "<urlopen error [Errno 8] nodename nor servname provided, or not known>",
+    "logged_at": 1770696705.440765
   }
 ]
