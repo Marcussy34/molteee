@@ -8,12 +8,6 @@ import { escrowAbi } from "@/lib/abi/Escrow";
 // 0 = Open, 1 = Active, 2 = Settled, 3 = Cancelled
 const MATCH_STATUS_SETTLED = 2;
 
-// Max concurrent RPC calls per batch — Monad testnet is heavily rate-limited
-const BATCH_SIZE = 2;
-
-// Delay between batches (ms) to avoid 429s
-const BATCH_DELAY = 300;
-
 // Map game contract address → human-readable name
 const GAME_NAME_MAP: Record<string, string> = {
   [ADDRESSES.rpsGame.toLowerCase()]: "RPS",
@@ -56,25 +50,10 @@ let fetchPromise: Promise<ArenaStats> | null = null;
 let lastFetchTime = 0;
 const CACHE_TTL = 60_000; // 60 seconds
 
-// Helper: sleep for ms
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// Helper: run promises in small batches with delay to avoid RPC rate limits
-async function batchedAll<T>(fns: (() => Promise<T>)[]): Promise<PromiseSettledResult<T>[]> {
-  const results: PromiseSettledResult<T>[] = [];
-  for (let i = 0; i < fns.length; i += BATCH_SIZE) {
-    if (i > 0) await sleep(BATCH_DELAY);
-    const batch = fns.slice(i, i + BATCH_SIZE);
-    const batchResults = await Promise.allSettled(batch.map((fn) => fn()));
-    results.push(...batchResults);
-  }
-  return results;
-}
-
-// Core fetch function — minimizes RPC calls to work within Monad rate limits
+// Core fetch — RPC rate limiting is handled at the transport layer (lib/contracts.ts)
 async function fetchArenaStats(): Promise<ArenaStats> {
-  // Step 1: Get agent count using getOpenAgents (3 calls) + nextMatchId (1 call)
-  // This replaces probing 20 agentList indices with just 3 calls
+  // Step 1: Get agent count using getOpenAgents per game type + nextMatchId
+  // getOpenAgents returns arrays — we deduplicate across game types
   const [rpsAgents, pokerAgents, auctionAgents, nextMatchId] = await Promise.all([
     publicClient.readContract({
       address: ADDRESSES.agentRegistry,
@@ -101,7 +80,7 @@ async function fetchArenaStats(): Promise<ArenaStats> {
     }),
   ]);
 
-  // Deduplicate addresses across game types
+  // Deduplicate agent addresses across game types
   const uniqueAgents = new Set([
     ...(rpsAgents as string[]).map((a) => a.toLowerCase()),
     ...(pokerAgents as string[]).map((a) => a.toLowerCase()),
@@ -112,46 +91,34 @@ async function fetchArenaStats(): Promise<ArenaStats> {
   const totalMatches = Number(nextMatchId) - 1; // IDs start at 1
   const matchCount = Math.max(0, totalMatches);
 
-  // Step 2: Fetch recent matches (last 10) — getMatch + winners in small batches
+  // Step 2: Fetch recent matches (last 10) — sequentially to respect rate limits
   const recentIds = Array.from(
     { length: Math.min(10, matchCount) },
     (_, i) => matchCount - i // most recent first
   );
 
-  let recentMatches: GlobalMatch[] = [];
+  const recentMatches: GlobalMatch[] = [];
   let totalWageredWei = BigInt(0);
 
-  if (recentIds.length > 0) {
-    // Fetch match data in small batches with delay
-    const matchFns = recentIds.map((id) => () =>
-      publicClient.readContract({
-        address: ADDRESSES.escrow,
-        abi: escrowAbi,
-        functionName: "getMatch",
-        args: [BigInt(id)],
-      })
-    );
-    const matchResults = await batchedAll(matchFns);
+  // Fetch each match + winner sequentially (transport queue handles pacing)
+  for (const id of recentIds) {
+    try {
+      const [match, winner] = await Promise.all([
+        publicClient.readContract({
+          address: ADDRESSES.escrow,
+          abi: escrowAbi,
+          functionName: "getMatch",
+          args: [BigInt(id)],
+        }),
+        publicClient.readContract({
+          address: ADDRESSES.escrow,
+          abi: escrowAbi,
+          functionName: "winners",
+          args: [BigInt(id)],
+        }).catch(() => "0x0000000000000000000000000000000000000000"),
+      ]);
 
-    // Small delay before winner calls
-    await sleep(BATCH_DELAY);
-
-    // Fetch winners in small batches with delay
-    const winnerFns = recentIds.map((id) => () =>
-      publicClient.readContract({
-        address: ADDRESSES.escrow,
-        abi: escrowAbi,
-        functionName: "winners",
-        args: [BigInt(id)],
-      })
-    );
-    const winnerResults = await batchedAll(winnerFns);
-
-    for (let i = 0; i < recentIds.length; i++) {
-      const matchResult = matchResults[i];
-      if (matchResult.status !== "fulfilled") continue;
-
-      const match = matchResult.value as {
+      const m = match as {
         player1: string;
         player2: string;
         wager: bigint;
@@ -160,30 +127,26 @@ async function fetchArenaStats(): Promise<ArenaStats> {
         createdAt: bigint;
       };
 
-      const winnerResult = winnerResults[i];
-      const winner = winnerResult.status === "fulfilled"
-        ? (winnerResult.value as string)
-        : "0x0000000000000000000000000000000000000000";
-
-      const gameAddr = match.gameContract.toLowerCase();
-      const status = Number(match.status);
+      const gameAddr = m.gameContract.toLowerCase();
+      const status = Number(m.status);
 
       recentMatches.push({
-        matchId: recentIds[i],
-        player1: match.player1,
-        player2: match.player2,
-        wager: parseFloat(formatEther(match.wager)).toFixed(4),
-        wagerRaw: match.wager,
+        matchId: id,
+        player1: m.player1,
+        player2: m.player2,
+        wager: parseFloat(formatEther(m.wager)).toFixed(4),
+        wagerRaw: m.wager,
         gameType: GAME_NAME_MAP[gameAddr] || "Unknown",
-        winner,
-        createdAt: Number(match.createdAt),
+        winner: winner as string,
+        createdAt: Number(m.createdAt),
         status,
       });
 
-      // Accumulate wager for settled matches (both players stake)
       if (status === MATCH_STATUS_SETTLED) {
-        totalWageredWei += match.wager * BigInt(2);
+        totalWageredWei += m.wager * BigInt(2);
       }
+    } catch {
+      // Skip failed match reads
     }
   }
 
