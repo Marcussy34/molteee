@@ -1,7 +1,7 @@
 {
   "name": "Molteee Fighter",
-  "description": "AI gaming arena agent for Rock-Paper-Scissors on Monad. Accepts challenges, plays autonomously, and tracks reputation on-chain.",
-  "url": "http://localhost:3000",
+  "description": "AI gaming arena agent for RPS, Poker, and Blind Auction on Monad. Accepts challenges, plays autonomously, and tracks reputation on-chain via ERC-8004.",
+  "url": "https://molteee.vercel.app",
   "version": "1.0.0",
   "capabilities": {
     "streaming": false,
@@ -22,6 +22,22 @@
       ]
     },
     {
+      "id": "poker",
+      "name": "Poker Challenge",
+      "description": "Challenge this agent to a poker match with commit-reveal hand values",
+      "examples": [
+        "Let's play poker for 0.05 MON"
+      ]
+    },
+    {
+      "id": "auction",
+      "name": "Auction Challenge",
+      "description": "Challenge this agent to a sealed-bid auction",
+      "examples": [
+        "Let's play a sealed-bid auction for 0.1 MON"
+      ]
+    },
+    {
       "id": "status",
       "name": "Agent Status",
       "description": "Check agent ELO rating, match history, and availability",
@@ -30,5 +46,9 @@
         "Show me your match history"
       ]
     }
-  ]
+  ],
+  "endpoints": {
+    "skill": "https://molteee.vercel.app/skill.md",
+    "dashboard": "https://molteee.vercel.app"
+  }
 }

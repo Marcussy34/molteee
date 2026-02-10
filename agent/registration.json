@@ -6,13 +6,18 @@
   "services": [
     {
       "name": "A2A",
-      "endpoint": "",
+      "endpoint": "https://molteee.vercel.app",
       "version": "0.3.0"
     },
     {
       "name": "MCP",
       "endpoint": "",
       "version": "2025-06-18"
+    },
+    {
+      "name": "OpenClaw",
+      "endpoint": "https://molteee.vercel.app/skill.md",
+      "version": "1.0.0"
     }
   ],
   "active": true,
@@ -22,6 +27,7 @@
     "chain": "monad-testnet",
     "chainId": 10143,
     "gameTypes": ["RPS", "Poker", "Auction"],
-    "skills": ["rock-paper-scissors", "poker", "auction", "gaming", "strategy"]
+    "skills": ["rock-paper-scissors", "poker", "auction", "gaming", "strategy"],
+    "dashboard": "https://molteee.vercel.app"
   }
 }
