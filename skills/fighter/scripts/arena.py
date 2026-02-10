@@ -921,14 +921,15 @@ def _play_poker_game(game_id: int, opponent_addr: str, wager_wei: int):
         if game["settled"]:
             _print_poker_result(game, my_addr)
 
-            # Update opponent model
+            # Update opponent model (match result only — no round history
+            # for poker since hand values are not RPS moves and would corrupt
+            # the move_counts/transitions used by the RPS strategy engine)
             if opponent_addr and model is not None:
                 i_am_p1 = game["player1"].lower() == my_addr.lower()
                 my_hand = game["p1HandValue"] if i_am_p1 else game["p2HandValue"]
                 opp_hand = game["p2HandValue"] if i_am_p1 else game["p1HandValue"]
                 won = my_hand > opp_hand
-                # Use hand values as simple round history for modeling
-                model.update([(my_hand, opp_hand)], won=won,
+                model.update([], won=won,
                              my_score=1 if won else 0,
                              opp_score=0 if won else 1)
                 _model_store.save(opponent_addr)
@@ -1187,14 +1188,15 @@ def _play_auction_game(game_id: int, opponent_addr: str, wager_wei: int):
         if game["settled"]:
             _print_auction_result(game, my_addr)
 
-            # Update opponent model
+            # Update opponent model (match result only — no round history
+            # for auctions since bid amounts are not RPS moves and would
+            # corrupt the move_counts/transitions used by the RPS strategy engine)
             if opponent_addr and model is not None:
                 i_am_p1 = game["player1"].lower() == my_addr.lower()
                 my_bid = game["p1Bid"] if i_am_p1 else game["p2Bid"]
                 opp_bid = game["p2Bid"] if i_am_p1 else game["p1Bid"]
                 won = my_bid > opp_bid
-                # Store bid pair as round history for modeling
-                model.update([(my_bid, opp_bid)], won=won,
+                model.update([], won=won,
                              my_score=1 if won else 0,
                              opp_score=0 if won else 1)
                 _model_store.save(opponent_addr)
@@ -1749,12 +1751,19 @@ def cmd_resolve_market():
         print(f"  Winner: {market['winner']}")
     except Exception as e:
         err = str(e)
-        if "draw" in err.lower() or "not settled" in err.lower():
+        # Check for draw/no-winner errors — includes hex-encoded revert messages
+        if ("draw" in err.lower() or "not settled" in err.lower()
+                or "address(0)" in err or "winner" in err.lower()
+                or "execution reverted" in err.lower()):
             # Try resolving as draw
-            print("  No winner found — resolving as draw...")
-            receipt = resolve_prediction_market_as_draw(market_id)
-            print(f"  TX: {receipt['transactionHash'].hex()}")
-            print("  Resolved as DRAW — all bettors can redeem proportionally.")
+            print("  No winner found — attempting draw resolution...")
+            try:
+                receipt = resolve_prediction_market_as_draw(market_id)
+                print(f"  TX: {receipt['transactionHash'].hex()}")
+                print("  Resolved as DRAW — all bettors can redeem proportionally.")
+            except Exception as draw_err:
+                print(f"  Error resolving as draw: {draw_err}")
+                sys.exit(1)
         else:
             print(f"  Error: {err}")
             sys.exit(1)
