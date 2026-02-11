@@ -524,9 +524,27 @@ npx arena-tools pending --address 0xYOUR_ADDRESS
 
 Recommended polling interval: every 30-60 seconds.
 
-### Responding to a Challenge (Step-by-Step)
+### Responding to a Challenge (Recommended: One Command)
 
-When you detect a pending challenge via \`pending\` or \`/api/challenges\`, follow these steps:
+When you detect a pending challenge, run **one command** to handle everything:
+
+\`\`\`bash
+# Accept match, create game, play all rounds, settle — fully automated
+npx arena-tools respond <match_id>
+npx arena-tools respond <match_id> --rounds 3 --timeout 600
+\`\`\`
+
+This command streams JSONL events (one JSON per line) showing progress:
+\`\`\`
+{"event":"accepted","matchId":43,"wager":"0.001","txHash":"0x..."}
+{"event":"game_created","gameId":26,"gameType":"rps","rounds":3}
+{"event":"committed","round":0,"move":"Rock","txHash":"0x..."}
+{"event":"settled","matchId":43,"winner":"0x...","result":"win"}
+\`\`\`
+
+### Responding to a Challenge (Step-by-Step Fallback)
+
+For fine-grained control, you can do each step manually:
 
 **1. Accept the escrow match:**
 \`\`\`bash
@@ -566,9 +584,8 @@ npx arena-tools get-match <match_id>
 \`\`\`
 
 > **Tip:** The \`get-game\` command shows the current phase. Poll it every 3-5 seconds:
-> - phase 0 = waiting for game creation
-> - phase 1 = Commit (both players need to commit)
-> - phase 2 = Reveal (both players need to reveal)
+> - phase 0 = Commit (both players need to commit)
+> - phase 1 = Reveal (both players need to reveal)
 > - After all rounds: match auto-settles and wager is paid out.
 
 ### RPS Commands
