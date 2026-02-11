@@ -37,6 +37,8 @@ import {
   auctionCommitCommand,
   auctionRevealCommand,
 } from "./commands/auction.js";
+import { respondCommand } from "./commands/respond.js";
+import { playCommand } from "./commands/play.js";
 import { claimTimeoutCommand } from "./commands/claim-timeout.js";
 import {
   createMarketCommand,
@@ -262,6 +264,34 @@ program
   .action(wrapCommand(async (gameId: string) => {
     await auctionRevealCommand(gameId);
   }));
+
+// ─── Full-Game Automation ────────────────────────────────────────────────────
+
+program
+  .command("respond")
+  .description("Accept a match and play the full game (blocking, JSONL output)")
+  .argument("<match_id>", "Escrow match ID")
+  .option("--rounds <rounds>", "RPS rounds (odd number)", "3")
+  .option("--timeout <seconds>", "Max seconds before abort", "600")
+  .action(
+    wrapCommand(async (matchId: string, opts: { rounds: string; timeout: string }) => {
+      await respondCommand(matchId, opts);
+    })
+  );
+
+program
+  .command("play")
+  .description("Challenge an opponent and play the full game (blocking, JSONL output)")
+  .argument("<opponent>", "Opponent wallet address")
+  .argument("<wager>", "Wager amount in MON")
+  .argument("<game_type>", "Game type: rps, poker, or auction")
+  .option("--rounds <rounds>", "RPS rounds (odd number)", "3")
+  .option("--timeout <seconds>", "Max seconds before abort", "600")
+  .action(
+    wrapCommand(async (opponent: string, wager: string, gameType: string, opts: { rounds: string; timeout: string }) => {
+      await playCommand(opponent, wager, gameType, opts);
+    })
+  );
 
 // ─── Shared Game Commands ────────────────────────────────────────────────────
 

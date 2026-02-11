@@ -19,6 +19,8 @@ import { acceptCommand } from "./commands/accept.js";
 import { rpsCreateCommand, rpsCommitCommand, rpsRevealCommand, } from "./commands/rps.js";
 import { pokerCreateCommand, pokerCommitCommand, pokerActionCommand, pokerRevealCommand, } from "./commands/poker.js";
 import { auctionCreateCommand, auctionCommitCommand, auctionRevealCommand, } from "./commands/auction.js";
+import { respondCommand } from "./commands/respond.js";
+import { playCommand } from "./commands/play.js";
 import { claimTimeoutCommand } from "./commands/claim-timeout.js";
 import { createMarketCommand, betCommand, resolveMarketCommand, redeemCommand, } from "./commands/market.js";
 import { joinTournamentCommand } from "./commands/join-tournament.js";
@@ -199,6 +201,27 @@ program
     .argument("<game_id>", "Auction game ID")
     .action(wrapCommand(async (gameId) => {
     await auctionRevealCommand(gameId);
+}));
+// ─── Full-Game Automation ────────────────────────────────────────────────────
+program
+    .command("respond")
+    .description("Accept a match and play the full game (blocking, JSONL output)")
+    .argument("<match_id>", "Escrow match ID")
+    .option("--rounds <rounds>", "RPS rounds (odd number)", "3")
+    .option("--timeout <seconds>", "Max seconds before abort", "600")
+    .action(wrapCommand(async (matchId, opts) => {
+    await respondCommand(matchId, opts);
+}));
+program
+    .command("play")
+    .description("Challenge an opponent and play the full game (blocking, JSONL output)")
+    .argument("<opponent>", "Opponent wallet address")
+    .argument("<wager>", "Wager amount in MON")
+    .argument("<game_type>", "Game type: rps, poker, or auction")
+    .option("--rounds <rounds>", "RPS rounds (odd number)", "3")
+    .option("--timeout <seconds>", "Max seconds before abort", "600")
+    .action(wrapCommand(async (opponent, wager, gameType, opts) => {
+    await playCommand(opponent, wager, gameType, opts);
 }));
 // ─── Shared Game Commands ────────────────────────────────────────────────────
 program
