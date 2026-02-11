@@ -10,6 +10,7 @@ import { findOpponentsCommand } from "./commands/find-opponents.js";
 import { historyCommand } from "./commands/history.js";
 import { getMatchCommand } from "./commands/get-match.js";
 import { getGameCommand } from "./commands/get-game.js";
+import { pendingCommand } from "./commands/pending.js";
 import { marketStatusCommand } from "./commands/market-status.js";
 import {
   tournamentsCommand,
@@ -97,6 +98,14 @@ program
   .argument("<game_id>", "Game ID")
   .action(wrapCommand(async (gameType: string, gameId: string) => {
     await getGameCommand(gameType, gameId);
+  }));
+
+program
+  .command("pending")
+  .description("List pending challenges (incoming matches not yet accepted)")
+  .requiredOption("--address <address>", "Wallet address to check")
+  .action(wrapCommand(async (opts: { address: string }) => {
+    await pendingCommand(opts.address);
   }));
 
 program
