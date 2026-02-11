@@ -63,6 +63,7 @@ const agentCard = {
   endpoints: {
     skill: `${BASE_URL}/skill.md`,
     agent_card: `${BASE_URL}/.well-known/agent-card.json`,
+    challenges: `${BASE_URL}/api/challenges?address={address}`,
     dashboard: BASE_URL,
   },
 
