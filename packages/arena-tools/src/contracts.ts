@@ -243,6 +243,8 @@ export const rpsGameAbi = [
       },
     ],
   },
+  // nextGameId — used by the respond command to discover game IDs efficiently
+  { name: "nextGameId", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
 ] as const;
 
 // ─── PokerGame ABI ───────────────────────────────────────────────────────────
@@ -323,6 +325,8 @@ export const pokerGameAbi = [
       },
     ],
   },
+  // nextGameId — used by the respond command to discover game IDs efficiently
+  { name: "nextGameId", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
 ] as const;
 
 // ─── AuctionGame ABI ─────────────────────────────────────────────────────────
@@ -389,6 +393,8 @@ export const auctionGameAbi = [
       },
     ],
   },
+  // nextGameId — used by the respond command to discover game IDs efficiently
+  { name: "nextGameId", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
 ] as const;
 
 // ─── PredictionMarket ABI ────────────────────────────────────────────────────

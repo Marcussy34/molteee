@@ -347,6 +347,15 @@ export declare const rpsGameAbi: readonly [{
             readonly type: "bool";
         }];
     }];
+}, {
+    readonly name: "nextGameId";
+    readonly type: "function";
+    readonly stateMutability: "view";
+    readonly inputs: readonly [];
+    readonly outputs: readonly [{
+        readonly name: "";
+        readonly type: "uint256";
+    }];
 }];
 export declare const pokerGameAbi: readonly [{
     readonly name: "createGame";
@@ -472,6 +481,15 @@ export declare const pokerGameAbi: readonly [{
             readonly type: "uint256";
         }];
     }];
+}, {
+    readonly name: "nextGameId";
+    readonly type: "function";
+    readonly stateMutability: "view";
+    readonly inputs: readonly [];
+    readonly outputs: readonly [{
+        readonly name: "";
+        readonly type: "uint256";
+    }];
 }];
 export declare const auctionGameAbi: readonly [{
     readonly name: "createGame";
@@ -572,6 +590,15 @@ export declare const auctionGameAbi: readonly [{
             readonly name: "settled";
             readonly type: "bool";
         }];
+    }];
+}, {
+    readonly name: "nextGameId";
+    readonly type: "function";
+    readonly stateMutability: "view";
+    readonly inputs: readonly [];
+    readonly outputs: readonly [{
+        readonly name: "";
+        readonly type: "uint256";
     }];
 }];
 export declare const predictionMarketAbi: readonly [{
