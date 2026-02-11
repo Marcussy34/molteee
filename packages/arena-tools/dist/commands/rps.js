@@ -5,7 +5,7 @@
 import { encodeFunctionData } from "viem";
 import { CONTRACTS } from "../config.js";
 import { rpsGameAbi } from "../contracts.js";
-import { getPublicClient, getAddress } from "../client.js";
+import { getAddress } from "../client.js";
 import { sendTx } from "../utils/tx.js";
 import { generateSalt, saveSalt, loadSalt, commitHash } from "../utils/commit-reveal.js";
 import { ok, fail } from "../utils/output.js";
@@ -25,26 +25,17 @@ export async function rpsCreateCommand(matchId, rounds = "1") {
         functionName: "createGame",
         args: [BigInt(matchId), BigInt(roundsNum)],
     });
-    const { hash } = await sendTx({
+    const { hash, logs } = await sendTx({
         to: CONTRACTS.RPSGame,
         data,
     });
-    // Find the game ID by scanning forward from 0 until revert (no more games).
-    const client = getPublicClient();
+    // Parse the game ID from the GameCreated event in tx logs.
+    // The first log topic[1] is typically the gameId.
     let gameId = -1;
-    for (let i = 0; i < 10000; i++) {
-        try {
-            const game = await client.readContract({
-                address: CONTRACTS.RPSGame,
-                abi: rpsGameAbi,
-                functionName: "getGame",
-                args: [BigInt(i)],
-            });
-            if (Number(game.escrowMatchId) === parseInt(matchId)) {
-                gameId = i;
-            }
-        }
-        catch {
+    for (const log of logs) {
+        if (log.address.toLowerCase() === CONTRACTS.RPSGame.toLowerCase() && log.topics.length > 1) {
+            // First indexed param in GameCreated event is the gameId
+            gameId = Number(BigInt(log.topics[1]));
             break;
         }
     }

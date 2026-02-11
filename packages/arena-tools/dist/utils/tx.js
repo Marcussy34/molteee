@@ -1,7 +1,7 @@
 import { getPublicClient, getWalletClient } from "../client.js";
 /**
  * Send a write transaction with gas estimation.
- * Returns the transaction hash and receipt.
+ * Returns the transaction hash, gas used, and receipt logs.
  */
 export async function sendTx(params) {
     const publicClient = getPublicClient();
@@ -30,6 +30,6 @@ export async function sendTx(params) {
     if (receipt.status === "reverted") {
         throw new Error(`Transaction reverted: ${hash}`);
     }
-    return { hash, gasUsed: receipt.gasUsed };
+    return { hash, gasUsed: receipt.gasUsed, logs: receipt.logs };
 }
 //# sourceMappingURL=tx.js.map

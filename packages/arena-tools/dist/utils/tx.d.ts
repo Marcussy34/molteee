@@ -1,7 +1,7 @@
-import { type Hex } from "viem";
+import { type Hex, type Log } from "viem";
 /**
  * Send a write transaction with gas estimation.
- * Returns the transaction hash and receipt.
+ * Returns the transaction hash, gas used, and receipt logs.
  */
 export declare function sendTx(params: {
     to: `0x${string}`;
@@ -10,5 +10,6 @@ export declare function sendTx(params: {
 }): Promise<{
     hash: Hex;
     gasUsed: bigint;
+    logs: Log[];
 }>;
 //# sourceMappingURL=tx.d.ts.map

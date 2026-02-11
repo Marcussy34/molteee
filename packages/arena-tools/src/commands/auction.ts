@@ -5,7 +5,7 @@
 import { encodeFunctionData, parseEther } from "viem";
 import { CONTRACTS } from "../config.js";
 import { auctionGameAbi } from "../contracts.js";
-import { getPublicClient, getAddress } from "../client.js";
+import { getAddress } from "../client.js";
 import { sendTx } from "../utils/tx.js";
 import { generateSalt, saveSalt, loadSalt, commitBidHash } from "../utils/commit-reveal.js";
 import { ok, fail } from "../utils/output.js";
@@ -18,26 +18,16 @@ export async function auctionCreateCommand(matchId: string) {
     args: [BigInt(matchId)],
   });
 
-  const { hash } = await sendTx({
+  const { hash, logs } = await sendTx({
     to: CONTRACTS.AuctionGame as `0x${string}`,
     data,
   });
 
-  // Find the game ID by scanning forward
-  const client = getPublicClient();
+  // Parse the game ID from the GameCreated event in tx logs
   let gameId = -1;
-  for (let i = 0; i < 10000; i++) {
-    try {
-      const game = await client.readContract({
-        address: CONTRACTS.AuctionGame as `0x${string}`,
-        abi: auctionGameAbi,
-        functionName: "getGame",
-        args: [BigInt(i)],
-      });
-      if (Number((game as any).escrowMatchId) === parseInt(matchId)) {
-        gameId = i;
-      }
-    } catch {
+  for (const log of logs) {
+    if (log.address.toLowerCase() === CONTRACTS.AuctionGame.toLowerCase() && log.topics.length > 1) {
+      gameId = Number(BigInt(log.topics[1]!));
       break;
     }
   }

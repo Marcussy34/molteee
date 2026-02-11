@@ -1,17 +1,17 @@
 // Transaction helper — estimate gas, send, wait for receipt.
 // Monad has higher gas costs than Ethereum, so we always estimate.
-import { type Hex } from "viem";
+import { type Hex, type Log } from "viem";
 import { getPublicClient, getWalletClient } from "../client.js";
 
 /**
  * Send a write transaction with gas estimation.
- * Returns the transaction hash and receipt.
+ * Returns the transaction hash, gas used, and receipt logs.
  */
 export async function sendTx(params: {
   to: `0x${string}`;
   data: Hex;
   value?: bigint;
-}): Promise<{ hash: Hex; gasUsed: bigint }> {
+}): Promise<{ hash: Hex; gasUsed: bigint; logs: Log[] }> {
   const publicClient = getPublicClient();
   const walletClient = getWalletClient();
   const account = walletClient.account;
@@ -43,5 +43,5 @@ export async function sendTx(params: {
     throw new Error(`Transaction reverted: ${hash}`);
   }
 
-  return { hash, gasUsed: receipt.gasUsed };
+  return { hash, gasUsed: receipt.gasUsed, logs: receipt.logs };
 }
