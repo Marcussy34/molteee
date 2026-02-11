@@ -9,6 +9,7 @@ import { findOpponentsCommand } from "./commands/find-opponents.js";
 import { historyCommand } from "./commands/history.js";
 import { getMatchCommand } from "./commands/get-match.js";
 import { getGameCommand } from "./commands/get-game.js";
+import { findGameCommand } from "./commands/find-game.js";
 import { pendingCommand } from "./commands/pending.js";
 import { marketStatusCommand } from "./commands/market-status.js";
 import { tournamentsCommand, tournamentStatusCommand, } from "./commands/tournaments.js";
@@ -30,7 +31,7 @@ const program = new Command();
 program
     .name("arena-tools")
     .description("CLI for the Molteee Gaming Arena on Monad testnet. All output is JSON.")
-    .version("0.1.4");
+    .version("0.1.5");
 // ═══════════════════════════════════════════════════════════════════════════
 // READ-ONLY COMMANDS (no PRIVATE_KEY needed)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -69,6 +70,13 @@ program
     .argument("<game_id>", "Game ID")
     .action(wrapCommand(async (gameType, gameId) => {
     await getGameCommand(gameType, gameId);
+}));
+program
+    .command("find-game")
+    .description("Find the game ID for a match (use after accepting a challenge)")
+    .argument("<match_id>", "Match ID to look up")
+    .action(wrapCommand(async (matchId) => {
+    await findGameCommand(matchId);
 }));
 program
     .command("pending")
