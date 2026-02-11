@@ -27,32 +27,41 @@ Play live matches and verify every feature works end-to-end on Monad testnet. Th
 # Start opponent bots
 python3.13 opponents/run_all.py
 
-# Play RPS, Poker, Auction matches against all 5 bots
-python3.13 skills/fighter/scripts/arena.py challenge <opponent> 0.001
-python3.13 skills/fighter/scripts/arena.py challenge-poker <opponent> 0.001
-python3.13 skills/fighter/scripts/arena.py challenge-auction <opponent> 0.001
+# Challenge to RPS, Poker, Auction using arena-tools CLI
+npx arena-tools challenge <opponent> 0.001 rps
+npx arena-tools challenge <opponent> 0.001 poker
+npx arena-tools challenge <opponent> 0.001 auction
+
+# After opponent accepts + you create game, play rounds:
+npx arena-tools rps-round <game_id> rock
+npx arena-tools poker-step <game_id> 75
+npx arena-tools auction-round <game_id> 0.0005
 ```
 **Goal:** 20+ total matches, positive win rate, all 3 game types played.
 
 ### 1b. Test prediction market lifecycle
 ```bash
+# List existing markets
+npx arena-tools list-markets
+
 # While a match is Active, create a market
-python3.13 skills/fighter/scripts/arena.py create-market <match_id> 0.01
+npx arena-tools create-market <match_id> 0.01
 
 # Buy tokens
-python3.13 skills/fighter/scripts/arena.py bet <market_id> yes 0.005
+npx arena-tools bet <market_id> yes 0.005
 
 # After match settles, resolve + redeem
-python3.13 skills/fighter/scripts/arena.py resolve-market <market_id>
-python3.13 skills/fighter/scripts/arena.py redeem <market_id>
+npx arena-tools resolve-market <market_id>
+npx arena-tools redeem <market_id>
 ```
 
 ### 1c. Test tournament lifecycle
 ```bash
 # Create a 4-player round-robin
-python3.13 skills/fighter/scripts/arena.py create-round-robin 0.01 0.001 4
+npx arena-tools create-tournament round-robin 4 --entry-fee 0.01 --base-wager 0.001
 
-# Register fighter + 3 bots, then play all matches
+# Join the tournament
+npx arena-tools join-tournament <tournament_id>
 ```
 
 ### 1d. Verify dashboard shows real data
