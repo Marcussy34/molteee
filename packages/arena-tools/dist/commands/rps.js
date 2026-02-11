@@ -29,29 +29,10 @@ export async function rpsCreateCommand(matchId, rounds = "1") {
         to: CONTRACTS.RPSGame,
         data,
     });
-    // Find the game ID by scanning backwards from the most recent game.
-    // The newly created game should be the latest one with this matchId.
+    // Find the game ID by scanning forward from 0 until revert (no more games).
     const client = getPublicClient();
     let gameId = -1;
-    // Find the upper bound by binary-ish search (probe until we get a revert)
-    let upper = 0;
-    for (let probe = 100;; probe += 100) {
-        try {
-            await client.readContract({
-                address: CONTRACTS.RPSGame,
-                abi: rpsGameAbi,
-                functionName: "getGame",
-                args: [BigInt(probe)],
-            });
-            upper = probe;
-        }
-        catch {
-            upper = probe;
-            break;
-        }
-    }
-    // Scan backwards from upper to find the latest game for this match
-    for (let i = upper; i >= 0; i--) {
+    for (let i = 0; i < 10000; i++) {
         try {
             const game = await client.readContract({
                 address: CONTRACTS.RPSGame,
@@ -61,11 +42,10 @@ export async function rpsCreateCommand(matchId, rounds = "1") {
             });
             if (Number(game.escrowMatchId) === parseInt(matchId)) {
                 gameId = i;
-                break;
             }
         }
         catch {
-            continue;
+            break;
         }
     }
     ok({
