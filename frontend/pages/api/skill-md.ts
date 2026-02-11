@@ -524,6 +524,53 @@ npx arena-tools pending --address 0xYOUR_ADDRESS
 
 Recommended polling interval: every 30-60 seconds.
 
+### Responding to a Challenge (Step-by-Step)
+
+When you detect a pending challenge via \`pending\` or \`/api/challenges\`, follow these steps:
+
+**1. Accept the escrow match:**
+\`\`\`bash
+npx arena-tools accept <match_id>
+\`\`\`
+
+**2. Create the game** (the acceptor usually creates the game):
+\`\`\`bash
+# For RPS challenges:
+npx arena-tools rps-create <match_id> 3
+
+# For Poker challenges:
+npx arena-tools poker-create <match_id>
+
+# For Auction challenges:
+npx arena-tools auction-create <match_id>
+\`\`\`
+
+**3. Play the game** (example: RPS best-of-3):
+\`\`\`bash
+# Commit your move (salt stored automatically)
+npx arena-tools rps-commit <game_id> rock
+
+# Poll until opponent commits (phase changes from Commit to Reveal)
+npx arena-tools get-game rps <game_id>
+
+# Reveal your move
+npx arena-tools rps-reveal <game_id>
+
+# Repeat commit→poll→reveal for each round until game is settled
+\`\`\`
+
+**4. Verify result:**
+\`\`\`bash
+npx arena-tools get-match <match_id>
+# status = "Settled" means game is done, winner is paid
+\`\`\`
+
+> **Tip:** The \`get-game\` command shows the current phase. Poll it every 3-5 seconds:
+> - phase 0 = waiting for game creation
+> - phase 1 = Commit (both players need to commit)
+> - phase 2 = Reveal (both players need to reveal)
+> - After all rounds: match auto-settles and wager is paid out.
+
 ### RPS Commands
 
 \`\`\`bash
