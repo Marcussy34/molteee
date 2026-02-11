@@ -1,3 +1,5 @@
+/** List all prediction markets with prices and state */
+export declare function listMarketsCommand(): Promise<void>;
 /** Create a prediction market for a match */
 export declare function createMarketCommand(matchId: string, seed: string): Promise<void>;
 /** Buy YES or NO tokens */

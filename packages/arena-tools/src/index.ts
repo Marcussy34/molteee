@@ -37,16 +37,19 @@ import {
   auctionCommitCommand,
   auctionRevealCommand,
 } from "./commands/auction.js";
-import { respondCommand } from "./commands/respond.js";
-import { playCommand } from "./commands/play.js";
 import { claimTimeoutCommand } from "./commands/claim-timeout.js";
+import { rpsRoundCommand } from "./commands/rps-round.js";
+import { pokerStepCommand } from "./commands/poker-step.js";
+import { auctionRoundCommand } from "./commands/auction-round.js";
 import {
+  listMarketsCommand,
   createMarketCommand,
   betCommand,
   resolveMarketCommand,
   redeemCommand,
 } from "./commands/market.js";
 import { joinTournamentCommand } from "./commands/join-tournament.js";
+import { createTournamentCommand } from "./commands/create-tournament.js";
 
 const program = new Command();
 
@@ -55,7 +58,7 @@ program
   .description(
     "CLI for the Molteee Gaming Arena on Monad testnet. All output is JSON."
   )
-  .version("0.1.2");
+  .version("0.1.3");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // READ-ONLY COMMANDS (no PRIVATE_KEY needed)
@@ -116,6 +119,13 @@ program
   .argument("<market_id>", "Market ID")
   .action(wrapCommand(async (marketId: string) => {
     await marketStatusCommand(marketId);
+  }));
+
+program
+  .command("list-markets")
+  .description("List all prediction markets with prices")
+  .action(wrapCommand(async () => {
+    await listMarketsCommand();
   }));
 
 program
@@ -265,34 +275,6 @@ program
     await auctionRevealCommand(gameId);
   }));
 
-// ─── Full-Game Automation ────────────────────────────────────────────────────
-
-program
-  .command("respond")
-  .description("Accept a match and play the full game (blocking, JSONL output)")
-  .argument("<match_id>", "Escrow match ID")
-  .option("--rounds <rounds>", "RPS rounds (odd number)", "3")
-  .option("--timeout <seconds>", "Max seconds before abort", "600")
-  .action(
-    wrapCommand(async (matchId: string, opts: { rounds: string; timeout: string }) => {
-      await respondCommand(matchId, opts);
-    })
-  );
-
-program
-  .command("play")
-  .description("Challenge an opponent and play the full game (blocking, JSONL output)")
-  .argument("<opponent>", "Opponent wallet address")
-  .argument("<wager>", "Wager amount in MON")
-  .argument("<game_type>", "Game type: rps, poker, or auction")
-  .option("--rounds <rounds>", "RPS rounds (odd number)", "3")
-  .option("--timeout <seconds>", "Max seconds before abort", "600")
-  .action(
-    wrapCommand(async (opponent: string, wager: string, gameType: string, opts: { rounds: string; timeout: string }) => {
-      await playCommand(opponent, wager, gameType, opts);
-    })
-  );
-
 // ─── Shared Game Commands ────────────────────────────────────────────────────
 
 program
@@ -302,6 +284,36 @@ program
   .argument("<game_id>", "Game ID")
   .action(wrapCommand(async (gameType: string, gameId: string) => {
     await claimTimeoutCommand(gameType, gameId);
+  }));
+
+// ─── Agent-Driven Game Commands (LLM decides each move) ────────────────────
+
+program
+  .command("rps-round")
+  .description("Play one RPS round (commit + wait + reveal + wait). LLM picks each move.")
+  .argument("<game_id>", "RPS game ID")
+  .argument("<move>", "Move: rock, paper, or scissors")
+  .action(wrapCommand(async (gameId: string, move: string) => {
+    await rpsRoundCommand(gameId, move);
+  }));
+
+program
+  .command("poker-step")
+  .description("Play one Poker step. Commit: hand value 1-100. Betting: check/bet/raise/call/fold. Showdown: reveal.")
+  .argument("<game_id>", "Poker game ID")
+  .argument("<decision>", "Hand value (1-100) during commit, or action during betting, or 'reveal' during showdown")
+  .option("--amount <amount>", "Amount in MON (for bet/raise)")
+  .action(wrapCommand(async (gameId: string, decision: string, opts: { amount?: string }) => {
+    await pokerStepCommand(gameId, decision, opts);
+  }));
+
+program
+  .command("auction-round")
+  .description("Play a full Auction round (commit bid + wait + reveal + wait).")
+  .argument("<game_id>", "Auction game ID")
+  .argument("<bid>", "Bid amount in MON")
+  .action(wrapCommand(async (gameId: string, bid: string) => {
+    await auctionRoundCommand(gameId, bid);
   }));
 
 // ─── Market Commands ─────────────────────────────────────────────────────────
@@ -352,5 +364,18 @@ program
   .action(wrapCommand(async (tournamentId: string) => {
     await joinTournamentCommand(tournamentId);
   }));
+
+program
+  .command("create-tournament")
+  .description("Create a new tournament (round-robin or double-elim)")
+  .argument("<format>", "Tournament format: round-robin or double-elim")
+  .argument("<max_players>", "Max players: 4 or 8")
+  .option("--entry-fee <amount>", "Entry fee in MON", "0.01")
+  .option("--base-wager <amount>", "Base wager in MON", "0.001")
+  .action(
+    wrapCommand(async (format: string, maxPlayers: string, opts: { entryFee: string; baseWager: string }) => {
+      await createTournamentCommand(format, maxPlayers, opts);
+    })
+  );
 
 program.parse();

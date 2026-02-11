@@ -1,9 +1,58 @@
-// arena-tools market commands — create-market, bet, resolve-market, redeem
-import { encodeFunctionData, parseEther } from "viem";
+// arena-tools market commands — create-market, list-markets, bet, resolve-market, redeem
+import { encodeFunctionData, parseEther, formatEther } from "viem";
 import { CONTRACTS } from "../config.js";
 import { predictionMarketAbi } from "../contracts.js";
+import { getPublicClient } from "../client.js";
 import { sendTx } from "../utils/tx.js";
 import { ok, fail } from "../utils/output.js";
+
+/** List all prediction markets with prices and state */
+export async function listMarketsCommand() {
+  const client = getPublicClient();
+
+  // Get the next market ID to know how many exist
+  const nextId = (await client.readContract({
+    address: CONTRACTS.PredictionMarket as `0x${string}`,
+    abi: predictionMarketAbi,
+    functionName: "nextMarketId",
+  })) as bigint;
+
+  // Fetch each market's data and prices
+  const markets = [];
+  for (let i = 1n; i < nextId; i++) {
+    const [market, prices] = await Promise.all([
+      client.readContract({
+        address: CONTRACTS.PredictionMarket as `0x${string}`,
+        abi: predictionMarketAbi,
+        functionName: "getMarket",
+        args: [i],
+      }),
+      client.readContract({
+        address: CONTRACTS.PredictionMarket as `0x${string}`,
+        abi: predictionMarketAbi,
+        functionName: "getPrice",
+        args: [i],
+      }),
+    ]);
+
+    const [yesPrice, noPrice] = prices as readonly [bigint, bigint];
+    markets.push({
+      id: Number(i),
+      matchId: Number(market.matchId),
+      player1: market.player1,
+      player2: market.player2,
+      resolved: market.resolved,
+      winner: market.winner,
+      reserveYES: formatEther(market.reserveYES as bigint),
+      reserveNO: formatEther(market.reserveNO as bigint),
+      seedLiquidity: formatEther(market.seedLiquidity as bigint),
+      yesPriceRaw: yesPrice.toString(),
+      noPriceRaw: noPrice.toString(),
+    });
+  }
+
+  ok({ count: markets.length, markets });
+}
 
 /** Create a prediction market for a match */
 export async function createMarketCommand(matchId: string, seed: string) {

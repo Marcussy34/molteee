@@ -811,5 +811,26 @@ export declare const tournamentV2Abi: readonly [{
         readonly name: "";
         readonly type: "bool";
     }];
+}, {
+    readonly name: "createTournament";
+    readonly type: "function";
+    readonly stateMutability: "nonpayable";
+    readonly inputs: readonly [{
+        readonly name: "_format";
+        readonly type: "uint8";
+    }, {
+        readonly name: "_entryFee";
+        readonly type: "uint256";
+    }, {
+        readonly name: "_baseWager";
+        readonly type: "uint256";
+    }, {
+        readonly name: "_maxPlayers";
+        readonly type: "uint256";
+    }];
+    readonly outputs: readonly [{
+        readonly name: "tournamentId";
+        readonly type: "uint256";
+    }];
 }];
 //# sourceMappingURL=contracts.d.ts.map

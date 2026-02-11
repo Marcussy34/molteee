@@ -532,5 +532,17 @@ export const tournamentV2Abi = [
         ],
         outputs: [{ name: "", type: "bool" }],
     },
+    {
+        name: "createTournament",
+        type: "function",
+        stateMutability: "nonpayable",
+        inputs: [
+            { name: "_format", type: "uint8" },
+            { name: "_entryFee", type: "uint256" },
+            { name: "_baseWager", type: "uint256" },
+            { name: "_maxPlayers", type: "uint256" },
+        ],
+        outputs: [{ name: "tournamentId", type: "uint256" }],
+    },
 ];
 //# sourceMappingURL=contracts.js.map
