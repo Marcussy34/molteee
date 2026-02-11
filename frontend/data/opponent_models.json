@@ -1,0 +1,68 @@
+{
+  "0xF39Fd6e51aad88F6F4ce6aB8827279cffFb92266": {
+    "mostUsedStrategy": "Adaptive (Markov chain)",
+    "bluffSuccessRate": 72,
+    "favoriteMove": "scissors",
+    "avgBidRatio": 0.65,
+    "perGame": {
+      "rps": { "wins": 8, "losses": 2, "draws": 1, "winRate": 73 },
+      "poker": { "wins": 4, "losses": 2, "draws": 1, "winRate": 57 },
+      "auction": { "wins": 2, "losses": 2, "draws": 0, "winRate": 50 }
+    }
+  },
+  "0x70997970C51812dc3A010C7d01b50e0d17dc79C8": {
+    "mostUsedStrategy": "Always Rock",
+    "bluffSuccessRate": 15,
+    "favoriteMove": "rock",
+    "avgBidRatio": 0.80,
+    "perGame": {
+      "rps": { "wins": 2, "losses": 8, "draws": 1, "winRate": 18 },
+      "poker": { "wins": 1, "losses": 3, "draws": 0, "winRate": 25 },
+      "auction": { "wins": 1, "losses": 1, "draws": 0, "winRate": 50 }
+    }
+  },
+  "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC": {
+    "mostUsedStrategy": "Max bet aggression",
+    "bluffSuccessRate": 45,
+    "favoriteMove": "paper",
+    "avgBidRatio": 0.90,
+    "perGame": {
+      "rps": { "wins": 3, "losses": 4, "draws": 0, "winRate": 43 },
+      "poker": { "wins": 4, "losses": 3, "draws": 1, "winRate": 50 },
+      "auction": { "wins": 2, "losses": 3, "draws": 0, "winRate": 40 }
+    }
+  },
+  "0x90F79bf6EB2c4f870365E785982E1f101E93b906": {
+    "mostUsedStrategy": "Tit-for-tat mirror",
+    "bluffSuccessRate": 38,
+    "favoriteMove": "rock",
+    "avgBidRatio": 0.55,
+    "perGame": {
+      "rps": { "wins": 4, "losses": 3, "draws": 2, "winRate": 44 },
+      "poker": { "wins": 2, "losses": 3, "draws": 1, "winRate": 33 },
+      "auction": { "wins": 1, "losses": 2, "draws": 0, "winRate": 33 }
+    }
+  },
+  "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65": {
+    "mostUsedStrategy": "Random baseline",
+    "bluffSuccessRate": 33,
+    "favoriteMove": "scissors",
+    "avgBidRatio": 0.50,
+    "perGame": {
+      "rps": { "wins": 2, "losses": 3, "draws": 1, "winRate": 33 },
+      "poker": { "wins": 2, "losses": 3, "draws": 1, "winRate": 33 },
+      "auction": { "wins": 2, "losses": 3, "draws": 0, "winRate": 40 }
+    }
+  },
+  "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc": {
+    "mostUsedStrategy": "Frequency exploit",
+    "bluffSuccessRate": 58,
+    "favoriteMove": "paper",
+    "avgBidRatio": 0.60,
+    "perGame": {
+      "rps": { "wins": 6, "losses": 3, "draws": 0, "winRate": 67 },
+      "poker": { "wins": 3, "losses": 3, "draws": 1, "winRate": 43 },
+      "auction": { "wins": 2, "losses": 2, "draws": 0, "winRate": 50 }
+    }
+  }
+}
