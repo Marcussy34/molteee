@@ -22,7 +22,7 @@ import { event, ok, fail } from "../utils/output.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const POLL_INTERVAL_MS = 8_000;       // Time between state reads (higher to avoid 429s)
+const POLL_INTERVAL_MS = 2_000;       // Reduced from 8s — WS transport avoids rate limits
 const GAME_CREATION_WAIT_MS = 20_000; // Wait for opponent to create game before we do
 const MAX_RETRIES = 8;                // Retry count for transient RPC errors
 const RETRY_BASE_MS = 1_500;          // Base backoff for retries (doubles each attempt + jitter)

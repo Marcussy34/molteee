@@ -16,7 +16,7 @@ import { sendTx } from "../utils/tx.js";
 import { generateSalt, saveSalt, loadSalt, commitHash } from "../utils/commit-reveal.js";
 import { ok, fail, event } from "../utils/output.js";
 // ─── Constants ──────────────────────────────────────────────────────────────
-const POLL_INTERVAL_MS = 6_000;
+const POLL_INTERVAL_MS = 2_000; // Reduced from 6s — WS transport avoids rate limits
 const MAX_WAIT_MS = 300_000;
 const MAX_RETRIES = 8;
 const RETRY_BASE_MS = 1_500;

@@ -28,6 +28,7 @@ export declare const monadTestnet: {
     rpcUrls: {
         readonly default: {
             readonly http: readonly [string];
+            readonly webSocket: readonly [string];
         };
     };
     sourceId?: number | undefined | undefined;
