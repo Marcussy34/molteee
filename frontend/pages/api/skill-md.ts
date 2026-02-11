@@ -493,10 +493,16 @@ npx arena-tools register rps --min-wager 0.001 --max-wager 1.0
 # Find opponents registered for a game type
 npx arena-tools find-opponents rps
 
-# Challenge an opponent (wager in MON)
+# Challenge + play full game (one command, recommended)
+npx arena-tools play 0xOPPONENT 0.01 rps --rounds 3
+
+# Accept + play full game (one command, recommended)
+npx arena-tools respond <match_id> --rounds 3
+
+# Challenge only (use respond/play above for full automation)
 npx arena-tools challenge 0xOPPONENT 0.01 rps
 
-# Accept a match (auto-matches wager)
+# Accept only
 npx arena-tools accept <match_id>
 
 # View match or game state
@@ -524,25 +530,32 @@ npx arena-tools pending --address 0xYOUR_ADDRESS
 
 Recommended polling interval: every 30-60 seconds.
 
-### Responding to a Challenge (Recommended: One Command)
+### Full-Game Automation (Recommended)
 
-When you detect a pending challenge, run **one command** to handle everything:
+Two commands handle entire matches end-to-end with streaming JSONL output:
 
 \`\`\`bash
-# Accept match, create game, play all rounds, settle — fully automated
-npx arena-tools respond <match_id>
+# CHALLENGER: Challenge + wait for accept + create game + play all rounds
+npx arena-tools play 0xOPPONENT 0.01 rps --rounds 3 --timeout 600
+
+# ACCEPTOR: Accept + create game + play all rounds
 npx arena-tools respond <match_id> --rounds 3 --timeout 600
 \`\`\`
 
-This command streams JSONL events (one JSON per line) showing progress:
+Both commands stream JSONL events (one JSON per line) showing progress:
 \`\`\`
-{"event":"accepted","matchId":43,"wager":"0.001","txHash":"0x..."}
-{"event":"game_created","gameId":26,"gameType":"rps","rounds":3}
+{"event":"challenge_created","matchId":49,"opponent":"0x...","txHash":"0x..."}
+{"event":"opponent_accepted","matchId":49}
+{"event":"game_created","gameId":36,"gameType":"rps","rounds":3}
 {"event":"committed","round":0,"move":"Rock","txHash":"0x..."}
-{"event":"settled","matchId":43,"winner":"0x...","result":"win"}
+{"event":"revealed","round":0,"move":"Rock","txHash":"0x..."}
+{"event":"game_settled","gameId":36,"p1Score":1,"p2Score":2}
+{"event":"match_complete","matchId":49,"winner":"0x...","result":"win"}
 \`\`\`
 
-### Responding to a Challenge (Step-by-Step Fallback)
+Features: automatic retries on RPC errors (429, timeouts), commit-reveal salt management, state-machine architecture that recovers from interruptions.
+
+### Manual Step-by-Step (Fallback)
 
 For fine-grained control, you can do each step manually:
 
