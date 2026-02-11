@@ -92,8 +92,10 @@ export async function rpsRoundCommand(gameId, move) {
         const salt = generateSalt();
         const hash = commitHash(moveNum, salt);
         const { hash: txHash } = await retry(() => sendTx({ to: addr, data: encodeFunctionData({ abi: rpsGameAbi, functionName: "commit", args: [gid, hash] }) }), "commit");
-        // Save salt for reveal
+        // Save salt for reveal — both round-specific key (for our own reveal)
+        // and generic key (so rps-reveal can recover if this process crashes)
         saveSalt(saltKey, salt, JSON.stringify({ moveNum }), "rps-round");
+        saveSalt(`rps-${gameId}-${myAddress}`, salt, JSON.stringify({ moveNum }), "rps-round");
         event({ event: "committed", round, move: MOVE_NAMES[moveNum], txHash });
     }
     else if (Number(game.phase) === PHASE_COMMIT) {
@@ -133,8 +135,35 @@ export async function rpsRoundCommand(gameId, move) {
             fail(`Salt not found for round ${round}. Cannot reveal.`, "SALT_LOST");
             return;
         }
-        const { hash: txHash } = await retry(() => sendTx({ to: addr, data: encodeFunctionData({ abi: rpsGameAbi, functionName: "reveal", args: [gid, storedMoveNum, salt] }) }), "reveal");
-        event({ event: "revealed", round, move: MOVE_NAMES[storedMoveNum], txHash });
+        // Reveal with graceful handling for contract reverts — re-check state before giving up
+        let revealed = false;
+        for (let revealAttempt = 0; revealAttempt < 3; revealAttempt++) {
+            try {
+                const { hash: txHash } = await retry(() => sendTx({ to: addr, data: encodeFunctionData({ abi: rpsGameAbi, functionName: "reveal", args: [gid, storedMoveNum, salt] }) }), "reveal");
+                event({ event: "revealed", round, move: MOVE_NAMES[storedMoveNum], txHash });
+                revealed = true;
+                break;
+            }
+            catch (err) {
+                // Re-read game state to decide if we should retry or bail
+                const gCheck = await retry(() => client.readContract({ address: addr, abi: rpsGameAbi, functionName: "getGame", args: [gid] }), "getGame-after-revert");
+                // Game settled or round advanced — reveal is no longer needed
+                if (gCheck.settled || Number(gCheck.currentRound) > round) {
+                    event({ event: "reveal_skipped", round, reason: "state_advanced" });
+                    revealed = true; // Not actually revealed, but state moved past it
+                    break;
+                }
+                // Still in reveal phase — wait briefly and retry
+                if (Number(gCheck.phase) === PHASE_REVEAL && revealAttempt < 2) {
+                    event({ event: "reveal_retry", round, attempt: revealAttempt + 1, error: err instanceof Error ? err.message : String(err) });
+                    await sleep(3_000);
+                    continue;
+                }
+                // Not in reveal phase anymore or exhausted retries
+                fail(`Reveal failed after ${revealAttempt + 1} attempts: ${err instanceof Error ? err.message : String(err)}`, "REVEAL_FAILED");
+                return;
+            }
+        }
     }
     else {
         event({ event: "already_revealed", round });
