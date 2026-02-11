@@ -59,7 +59,7 @@ program
   .description(
     "CLI for the Molteee Gaming Arena on Monad testnet. All output is JSON."
   )
-  .version("0.1.7");
+  .version("0.1.8");
 
 // ═══════════════════════════════════════════════════════════════════════════
 // READ-ONLY COMMANDS (no PRIVATE_KEY needed)

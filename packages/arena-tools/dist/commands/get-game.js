@@ -4,7 +4,10 @@ import { getPublicClient } from "../client.js";
 import { CONTRACTS } from "../config.js";
 import { rpsGameAbi, pokerGameAbi, auctionGameAbi } from "../contracts.js";
 import { ok, fail } from "../utils/output.js";
+// RPS + Auction phases: Commit=0, Reveal=1, Complete=2
 const PHASE_NAMES = ["Commit", "Reveal", "Complete"];
+// Poker phases: Commit=0, BettingRound1=1, BettingRound2=2, Showdown=3, Complete=4
+const POKER_PHASE_NAMES = ["Commit", "BettingRound1", "BettingRound2", "Showdown", "Complete"];
 const RPS_MOVES = ["None", "Rock", "Paper", "Scissors"];
 export async function getGameCommand(gameType, gameId) {
     const gt = gameType.toLowerCase();
@@ -49,7 +52,7 @@ export async function getGameCommand(gameType, gameId) {
             pot: formatEther(game.pot),
             currentBet: formatEther(game.currentBet),
             currentTurn: game.currentTurn,
-            phase: PHASE_NAMES[game.phase] || `Unknown(${game.phase})`,
+            phase: POKER_PHASE_NAMES[game.phase] || `Unknown(${game.phase})`,
             phaseCode: Number(game.phase),
             phaseDeadline: Number(game.phaseDeadline),
             settled: game.settled,

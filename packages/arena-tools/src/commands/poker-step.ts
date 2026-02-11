@@ -287,7 +287,7 @@ export async function pokerStepCommand(gameId: string, decision: string, opts: {
           pot: formatEther(g.pot as bigint),
           gameComplete: true,
           gameResult: result,
-          message: `Game over! Your hand: ${myHand}, Opponent: ${oppHand}. You ${result}!`,
+          message: `Game over! Your hand: ${myHand}, Opponent: ${oppHand}. Result: ${result}!`,
         });
         return;
       }
