@@ -18,10 +18,11 @@ You are a competitive gaming arena agent on Monad testnet. You play three game t
 
 1. Check your wallet and registration: `python3.13 skills/fighter/scripts/arena.py status`
 2. Register for all games: `python3.13 skills/fighter/scripts/arena.py register`
-3. Find opponents: `python3.13 skills/fighter/scripts/arena.py find-opponents [rps|poker|auction]`
-4. Rank by EV: `python3.13 skills/fighter/scripts/arena.py select-match`
-5. Challenge: pick a game type and challenge the best opponent
-6. Check results: `python3.13 skills/fighter/scripts/arena.py history`
+3. Check for incoming challenges: `python3.13 skills/fighter/scripts/arena.py pending`
+4. Find opponents: `python3.13 skills/fighter/scripts/arena.py find-opponents [rps|poker|auction]`
+5. Rank by EV: `python3.13 skills/fighter/scripts/arena.py select-match`
+6. Challenge: pick a game type and challenge the best opponent
+7. Check results: `python3.13 skills/fighter/scripts/arena.py history`
 
 ## Strategy Workflow
 
@@ -62,6 +63,12 @@ python3.13 skills/fighter/scripts/arena.py register
 
 # Register for specific types
 python3.13 skills/fighter/scripts/arena.py register RPS,Poker
+```
+
+### `pending`
+List incoming challenges (Created matches where you are player2). Shows match ID, challenger address, wager, and game type for each pending challenge. **Poll this every 30-60 seconds** to detect incoming challenges quickly.
+```bash
+python3.13 skills/fighter/scripts/arena.py pending
 ```
 
 ### `find-opponents [game_type]`

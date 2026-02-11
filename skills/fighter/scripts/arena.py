@@ -6,6 +6,7 @@ Usage: python3.13 skills/fighter/scripts/arena.py <command> [args]
 
 Commands:
     status                              Show wallet balance, ELO, registration status
+    pending                             List incoming challenges waiting for acceptance
     register [game_types]               Register this agent (default: RPS,Poker,Auction)
     find-opponents [game_type]          List open agents (default: RPS)
     challenge <opponent> <wager> [rounds]  Create and play an RPS match
@@ -233,6 +234,58 @@ def _post_to_social(game_type: str, opponent: str, result: str, wager_mon: float
 # ═══════════════════════════════════════════════════════════════════════════════
 # Commands
 # ═══════════════════════════════════════════════════════════════════════════════
+
+def cmd_pending():
+    """List pending incoming challenges (Created matches where we are player2).
+    Scans all match IDs and filters to Created status where player2 = our address."""
+    from lib.contracts import get_next_match_id
+
+    addr = get_address().lower()
+    next_id = get_next_match_id()
+
+    if next_id == 0:
+        print("No matches exist yet.")
+        return
+
+    # Game contract address → type name mapping
+    game_type_map = {
+        RPS_GAME_ADDRESS.lower(): "RPS",
+        POKER_GAME_ADDRESS.lower(): "Poker",
+        AUCTION_GAME_ADDRESS.lower(): "Auction",
+    }
+
+    # Scan all matches, filter to Created status where we are player2
+    pending = []
+    for match_id in range(next_id):
+        try:
+            match = get_escrow_match(match_id)
+        except Exception:
+            continue
+        # Only show matches in Created status (waiting for acceptance) addressed to us
+        if (match["status"] == MatchStatus.CREATED
+                and match["player2"].lower() == addr):
+            gc = match["gameContract"].lower()
+            pending.append({
+                "matchId": match_id,
+                "challenger": match["player1"],
+                "wager": match["wager"],
+                "gameType": game_type_map.get(gc, "unknown"),
+                "createdAt": match["createdAt"],
+            })
+
+    if not pending:
+        print("No pending challenges found.")
+        return
+
+    print(f"=== {len(pending)} Pending Challenge(s) ===\n")
+    for ch in pending:
+        print(f"  Match #{ch['matchId']}")
+        print(f"    Challenger: {ch['challenger']}")
+        print(f"    Wager:      {wei_to_mon(ch['wager']):.6f} MON")
+        print(f"    Game:       {ch['gameType']}")
+        print(f"    Created:    {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(ch['createdAt']))}")
+        print()
+
 
 def cmd_status():
     """Show wallet balance, registration info, and ELO."""
@@ -2183,6 +2236,7 @@ def main():
 
     commands = {
         "status": cmd_status,
+        "pending": cmd_pending,
         "register": cmd_register,
         "find-opponents": cmd_find_opponents,
         "challenge": cmd_challenge,
