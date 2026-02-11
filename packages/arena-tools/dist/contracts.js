@@ -135,6 +135,18 @@ export const escrowAbi = [
         inputs: [],
         outputs: [{ name: "", type: "uint256" }],
     },
+    // ─── Events ────────────────────────────────────────────────────────────────
+    {
+        type: "event",
+        name: "MatchCreated",
+        inputs: [
+            { name: "matchId", type: "uint256", indexed: true },
+            { name: "player1", type: "address", indexed: true },
+            { name: "player2", type: "address", indexed: true },
+            { name: "wager", type: "uint256", indexed: false },
+            { name: "gameContract", type: "address", indexed: false },
+        ],
+    },
 ];
 // ─── RPSGame ABI ─────────────────────────────────────────────────────────────
 export const rpsGameAbi = [

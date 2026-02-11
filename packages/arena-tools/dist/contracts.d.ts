@@ -194,6 +194,30 @@ export declare const escrowAbi: readonly [{
         readonly name: "";
         readonly type: "uint256";
     }];
+}, {
+    readonly type: "event";
+    readonly name: "MatchCreated";
+    readonly inputs: readonly [{
+        readonly name: "matchId";
+        readonly type: "uint256";
+        readonly indexed: true;
+    }, {
+        readonly name: "player1";
+        readonly type: "address";
+        readonly indexed: true;
+    }, {
+        readonly name: "player2";
+        readonly type: "address";
+        readonly indexed: true;
+    }, {
+        readonly name: "wager";
+        readonly type: "uint256";
+        readonly indexed: false;
+    }, {
+        readonly name: "gameContract";
+        readonly type: "address";
+        readonly indexed: false;
+    }];
 }];
 export declare const rpsGameAbi: readonly [{
     readonly name: "createGame";
