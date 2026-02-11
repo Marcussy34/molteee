@@ -28,7 +28,7 @@ const program = new Command();
 program
     .name("arena-tools")
     .description("CLI for the Molteee Gaming Arena on Monad testnet. All output is JSON.")
-    .version("0.1.1");
+    .version("0.1.2");
 // ═══════════════════════════════════════════════════════════════════════════
 // READ-ONLY COMMANDS (no PRIVATE_KEY needed)
 // ═══════════════════════════════════════════════════════════════════════════
