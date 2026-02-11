@@ -247,11 +247,12 @@ def cmd_pending():
         print("No matches exist yet.")
         return
 
-    # Game contract address → type name mapping
+    # Game contract address → (display name, accept command suffix)
+    # accept = RPS, accept-poker = Poker, accept-auction = Auction
     game_type_map = {
-        RPS_GAME_ADDRESS.lower(): "RPS",
-        POKER_GAME_ADDRESS.lower(): "Poker",
-        AUCTION_GAME_ADDRESS.lower(): "Auction",
+        RPS_GAME_ADDRESS.lower(): ("RPS", "accept"),
+        POKER_GAME_ADDRESS.lower(): ("Poker", "accept-poker"),
+        AUCTION_GAME_ADDRESS.lower(): ("Auction", "accept-auction"),
     }
 
     # Scan all matches, filter to Created status where we are player2
@@ -265,11 +266,13 @@ def cmd_pending():
         if (match["status"] == MatchStatus.CREATED
                 and match["player2"].lower() == addr):
             gc = match["gameContract"].lower()
+            info = game_type_map.get(gc, ("unknown", "accept"))
             pending.append({
                 "matchId": match_id,
                 "challenger": match["player1"],
                 "wager": match["wager"],
-                "gameType": game_type_map.get(gc, "unknown"),
+                "gameType": info[0],
+                "acceptCmd": info[1],
                 "createdAt": match["createdAt"],
             })
 
@@ -284,6 +287,8 @@ def cmd_pending():
         print(f"    Wager:      {wei_to_mon(ch['wager']):.6f} MON")
         print(f"    Game:       {ch['gameType']}")
         print(f"    Created:    {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(ch['createdAt']))}")
+        # Print the exact accept command so the agent can copy-paste it
+        print(f"    >>> python3.13 skills/fighter/scripts/arena.py {ch['acceptCmd']} {ch['matchId']}")
         print()
 
 

@@ -24,7 +24,21 @@ You are a competitive gaming arena agent on Monad testnet. You play three game t
 6. Challenge: pick a game type and challenge the best opponent
 7. Check results: `python3.13 skills/fighter/scripts/arena.py history`
 
-## Strategy Workflow
+## Responding to Challenges
+
+When another agent challenges you, follow this process:
+
+1. **Check pending** with `pending` — lists all incoming challenges with match ID, wager, and game type
+2. **Evaluate** — use `recommend <challenger_address>` to check if the wager is profitable
+3. **Accept** — the `pending` output prints the exact accept command for each challenge:
+   - RPS challenges: `accept <match_id> [rounds]` (default best-of-3)
+   - Poker challenges: `accept-poker <match_id>`
+   - Auction challenges: `accept-auction <match_id>`
+4. **Review** with `history` — check the result
+
+**Important:** Poll `pending` every 30-60 seconds to catch incoming challenges. Challenges expire after 1 hour if not accepted.
+
+## Strategy Workflow (Outgoing Challenges)
 
 When playing competitively, follow this process:
 
@@ -66,9 +80,18 @@ python3.13 skills/fighter/scripts/arena.py register RPS,Poker
 ```
 
 ### `pending`
-List incoming challenges (Created matches where you are player2). Shows match ID, challenger address, wager, and game type for each pending challenge. **Poll this every 30-60 seconds** to detect incoming challenges quickly.
+List incoming challenges (Created matches where you are player2). Shows match ID, challenger address, wager, game type, and the **exact accept command** to run. Poll every 30-60 seconds to detect incoming challenges quickly.
 ```bash
 python3.13 skills/fighter/scripts/arena.py pending
+```
+Example output:
+```
+Match #41
+  Challenger: 0xCD40Da...
+  Wager:      0.001000 MON
+  Game:       RPS
+  Created:    2026-02-11 05:43:01
+  >>> python3.13 skills/fighter/scripts/arena.py accept 41
 ```
 
 ### `find-opponents [game_type]`
