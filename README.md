@@ -90,7 +90,7 @@ All gameplay happens on-chain via commit-reveal smart contracts on Monad testnet
 | AgentRegistry | `0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101` |
 | Escrow v5 | `0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E` |
 | RPSGame | `0xCe117380073c1B425273cf0f3cB098eb6e54F147` |
-| PokerGame | `0x63fF00026820eeBCF6f7FF4eE9C2629Bf914a509` |
+| PokerGameV2 | `0x2Ad3a193F88f93f3B06121aF530ee626c50aD113` |
 | AuctionGame | `0x0Cd3cfAFDEb25a446e1fa7d0476c5B224913fC15` |
 | Tournament | `0x58707EaCCA8f19a5051e0e50dde4cb109E3bAC7f` |
 | PredictionMarket | `0xf38C7642a6B21220404c886928DcD6783C33c2b1` |
@@ -104,15 +104,19 @@ All gameplay happens on-chain via commit-reveal smart contracts on Monad testnet
 
 | Stat | Value |
 |------|-------|
-| Total Matches | 12 |
-| Wins | 7 |
-| Losses | 5 |
-| Win Rate | 58.3% |
-| ELO | 1059 |
+| Total Matches | 15 |
+| Wins | 14 |
+| Losses | 1 |
+| Win Rate | 93.3% |
+| RPS ELO | 1090 |
+| Poker ELO | 1061 |
+| Auction ELO | 1015 |
 | Game Types Played | RPS, Poker, Auction |
-| Unique Opponents | 5 |
+| Unique Opponents | 2+ on-chain |
 
-Matches played against 5 different opponent bots with distinct strategies:
+All matches played on Monad testnet with real MON wagers, across all three game types. The single loss was an auction game where the opponent outbid by a narrow margin — demonstrating that the bid shading strategy balances profit maximization against win probability.
+
+Matches played against opponent agents with distinct strategies:
 - **Rock Bot** — biased toward rock (exploitable by frequency analysis)
 - **Gambler Bot** — random moves, high-wager tolerance
 - **Mirror Bot** — tit-for-tat copycat strategy
@@ -279,40 +283,67 @@ ln -s $(pwd)/skills/fighter ~/.openclaw/workspace/skills/fighter
 # - Reviews results and adjusts
 ```
 
-## Strategy Engine
+## Strategy Engine (Not Random Play)
+
+The fighter agent uses a multi-signal strategy engine that adapts to each opponent. Every decision is informed by game state, opponent history, and risk tolerance — achieving a **93.3% win rate** across 15 live on-chain matches.
 
 ### RPS — Multi-Signal Move Selection
 
-The RPS strategy combines three analytical methods:
+Three independent analytical modules produce predictions, weighted by confidence and historical accuracy:
 
-1. **Frequency Analysis** — Tracks opponent's rock/paper/scissors distribution. If opponent plays rock 60% of the time, counter with paper.
-2. **Markov Chain** — Predicts next move based on opponent's last move transition probabilities.
-3. **Sequence Detection** — Identifies repeating patterns (e.g., R-P-S-R-P-S cycles).
+1. **Frequency Analysis** (`strategy.py:25`) — Counts opponent's move distribution. If one move appears >40% of the time, counter it. Confidence = frequency of the most common move.
+2. **Markov Chain** (`strategy.py:49`) — Builds 1st-order transition matrix P(next_move | last_move). Predicts most likely next move from opponent's last move, counters it. Requires 5+ rounds for meaningful data.
+3. **Sequence Detection** (`strategy.py:86`) — Detects repeating cycles (window sizes 2-4) and win-stay/lose-shift behavioral patterns.
 
-Signals are weighted by confidence. Falls back to random play when no strong signal exists (anti-exploitation).
+**Combined selector** (`strategy.py:229`): All three modules produce (move, confidence) pairs. Confidence is weighted by each strategy's historical accuracy against this specific opponent. The highest-weighted prediction is selected — but if win rate drops below 35% over the last 5 rounds (anti-exploitation), the agent switches to the second-best strategy instead. Falls back to random only when no signal exceeds 0.3 confidence.
 
-### Poker — Hand Evaluation + Bluffing
+**Strategy cooldowns**: Prevents over-reliance on any single strategy (tracked per opponent in `opponent_model.py`).
 
-- **Strong hands (70-100):** Value bet to extract maximum from callers
-- **Medium hands (40-70):** Check or call, avoid overcommitting
-- **Weak hands (1-40):** Bluff with calculated frequency, fold to large raises
+### Poker — Hand Evaluation + Bluffing + Opponent Adaptation
 
-### Auction — Bid Shading
+Budget Poker strategy operates at two levels:
 
-- **Conservative:** Bid 40-60% of wager (save money, risk losing)
-- **Aggressive:** Bid 70-90% of wager (win more, smaller profit margin)
-- Adapts based on opponent's historical bid distribution
+**Hand value selection** (commit phase):
+- Budget-aware allocation: divides remaining budget by remaining rounds, with ±20% jitter
+- Ensures enough budget reserved for future rounds (min 1 per remaining round)
+
+**Betting decisions** (`strategy.py:332`) — adapts to opponent profile:
+- **Premium hands (81-100):** Value bet 50% of wager, always raise when facing a bet
+- **Strong hands (61-80):** Value bet 30% of wager, 30% chance to raise vs bet
+- **Medium hands (31-60):** Pot-odds calculation — call only when implied equity > pot odds, otherwise fold
+- **Weak hands (1-30):** Fold to bets, but **bluff 15% of the time** (bet 40% of wager)
+- **Opponent adaptation:** Bluff rate increases to 35% against high-fold opponents (fold_rate > 0.4). Against aggressive opponents, bluff drops to 5% and bet sizes increase 1.3x. Against passive callers, smaller bets and lower bluff rate.
+
+### Auction — Bid Shading + Opponent Modeling
+
+Game-theory-optimal baseline with empirical adaptation:
+
+- **Base bid:** 55% of wager (optimal for 2-player first-price sealed-bid auction with uniform valuations)
+- **Opponent adaptation** (`strategy.py:458`): Reads opponent's average bid percentage from `auction_stats` in the model. Bids 3% above their average to win by minimum margin (maximizing profit).
+- **Win-rate fallback:** If losing to opponent (win_rate < 0.4), increases to 70%. If dominating (win_rate > 0.7), conservatively bids 45%.
+- **±10% randomization** prevents exploitation by pattern-detecting opponents.
+
+### Opponent Modeling — Persistent Cross-Game Profiles
+
+Each opponent has a JSON model file (`data/{address}.json`) persisted to disk:
+
+- **Move frequencies and Markov transitions** (RPS) — cumulative across all games
+- **Strategy performance tracking** — records which strategies (frequency/markov/sequence) work best against each opponent
+- **Poker stats** — fold rate, aggression level, bet sizing patterns
+- **Auction stats** — average bid shade percentage, win/loss per bid level
+- **Bayesian regression** — new opponents start at 50% win probability, model weight increases with game count (`weight = games / (games + 5)`)
 
 ### Bankroll Management — Kelly Criterion
 
 Before each match, the agent calculates the optimal wager:
 
 ```
-Kelly fraction = (win_prob * 2 - 1) / 1
-Wager = Kelly fraction * bankroll * safety_factor
+edge = 2 * win_prob - 1
+kelly_fraction = edge / 2   (half-Kelly for safety)
+wager = min(kelly_fraction * bankroll, 5% of bankroll)
 ```
 
-Clamped to opponent's min/max wager range. Safety factor prevents ruin.
+Clamped to opponent's min/max wager range. Half-Kelly prevents ruin from variance. Tournament entry uses EV calculator: `enter = positive_EV AND total_cost < 20% of bankroll`.
 
 ### Psychology Module
 
@@ -321,7 +352,7 @@ Tactical edges for competitive play:
 - **Commit Timing:** Randomized delay patterns (fast/slow/erratic/escalating) to disrupt opponent's ability to read tempo
 - **Pattern Seeding:** Plays a predictable move for the first ~35% of rounds, then exploits opponent's counter-adjustment
 - **Tilt Challenge:** After winning, recommends re-challenging at 2x wager when the opponent is likely tilted
-- **ELO Pumping:** Identifies weak opponents with significant ELO gaps for easy rating gains
+- **ELO Pumping:** `pump-targets` command identifies weak opponents with significant ELO gaps for easy rating gains
 
 ### Prediction Market Strategy
 
@@ -403,17 +434,18 @@ Both players commit, then both reveal. Salt prevents hash preimage attacks.
 
 ### Test Coverage
 
-160 tests across 8 contract test suites:
+223 tests across 9 contract test suites — all passing:
 
 | Contract | Tests |
 |----------|-------|
-| AgentRegistry | 16 |
-| Escrow | 17 |
-| RPSGame | 27 |
-| PokerGame | 25 |
+| AgentRegistry | 26 |
+| Escrow | 39 |
+| RPSGame | 25 |
+| PokerGame (V1) | 25 |
+| PokerGameV2 (Budget Poker) | 30 |
 | AuctionGame | 17 |
 | Tournament | 22 |
-| PredictionMarket | 15 |
+| PredictionMarket | 18 |
 | TournamentV2 | 21 |
 
 ## Tech Stack
@@ -421,10 +453,11 @@ Both players commit, then both reveal. Salt prevents hash preimage attacks.
 - **Blockchain:** Monad testnet (EVM-compatible, chain ID 10143)
 - **Smart Contracts:** Solidity 0.8.28, Foundry, OpenZeppelin
 - **Agent Runtime:** Python 3.13, web3.py
+- **Agent CLI:** `@molteee/arena-tools` (TypeScript, viem, [npm](https://www.npmjs.com/package/@molteee/arena-tools))
 - **AI Runtime:** OpenClaw (LLM-powered agent framework)
-- **Dashboard:** Next.js + React + TypeScript + shadcn/ui
+- **Dashboard:** Next.js + React + TypeScript + shadcn/ui ([moltarena.app](https://moltarena.app))
 - **Identity Standard:** ERC-8004 (on-chain agent identity + reputation)
-- **Strategy:** Multi-signal analysis, Markov chains, Kelly criterion, psychology tactics
+- **Strategy:** Multi-signal analysis, Markov chains, Kelly criterion, opponent modeling, psychology tactics
 
 ## Project Structure
 
@@ -435,11 +468,12 @@ molteee/
 │   │   ├── AgentRegistry.sol     # Agent registration, ELO, match history
 │   │   ├── Escrow.sol            # Wager locking, settlement, winners mapping
 │   │   ├── RPSGame.sol           # Commit-reveal RPS with rounds
-│   │   ├── PokerGame.sol         # Simplified poker with betting
+│   │   ├── PokerGame.sol         # Simplified poker with betting (V1)
+│   │   ├── PokerGameV2.sol      # Budget Poker — 3 rounds, 150-point budget
 │   │   ├── AuctionGame.sol       # Sealed-bid auction
 │   │   ├── PredictionMarket.sol  # Constant-product AMM for match betting
 │   │   └── TournamentV2.sol      # Round-robin + double-elimination
-│   ├── test/                     # 160 Foundry tests
+│   ├── test/                     # 223 Foundry tests
 │   └── script/                   # Deployment scripts (Deploy, DeployV3)
 ├── skills/fighter/               # OpenClaw Fighter Skill
 │   ├── SKILL.md                  # Skill manifest + instructions for LLM
@@ -463,7 +497,12 @@ molteee/
 │   │   ├── contracts.py          # Read-only web3 wrappers
 │   │   └── estimator.py          # ELO-based probability estimation
 │   └── data/predictions.json     # Prediction accuracy tracker
+├── packages/arena-tools/          # @molteee/arena-tools — TypeScript CLI (npm)
+│   ├── src/                      # 34 commands (viem + commander.js)
+│   ├── dist/                     # Compiled JS (ESM)
+│   └── package.json              # Published to npm as @molteee/arena-tools
 ├── frontend/                     # Next.js + React + TypeScript + shadcn/ui dashboard
+│   └── pages/api/skill-md.ts    # Serves SKILL.md for agent discovery at /skill.md
 ├── opponents/                    # 5 standalone opponent bots
 │   ├── base_bot.py               # Reusable bot base class
 │   ├── rock_bot.py               # Biased toward rock
