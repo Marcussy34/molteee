@@ -3,10 +3,10 @@
 // poker-commit: Commit a hand value (1-100)
 // poker-action: Take a betting action (check, bet, raise, call, fold)
 // poker-reveal: Reveal the committed hand
-import { encodeFunctionData, parseEther } from "viem";
+import { encodeFunctionData, parseEther, formatEther } from "viem";
 import { CONTRACTS } from "../config.js";
 import { pokerGameAbi } from "../contracts.js";
-import { getAddress } from "../client.js";
+import { getAddress, getPublicClient } from "../client.js";
 import { sendTx } from "../utils/tx.js";
 import { generateSalt, saveSalt, loadSalt, commitHash } from "../utils/commit-reveal.js";
 import { ok, fail } from "../utils/output.js";
@@ -84,10 +84,22 @@ export async function pokerActionCommand(gameId, action, amount) {
         functionName: "takeAction",
         args: [BigInt(gameId), actionNum],
     });
-    // Bet and raise require sending MON as msg.value
-    const value = (actionLower === "bet" || actionLower === "raise") && amount
-        ? parseEther(amount)
-        : 0n;
+    // Bet/raise send explicit amount; call auto-reads currentBet from contract
+    let value = 0n;
+    if ((actionLower === "bet" || actionLower === "raise") && amount) {
+        value = parseEther(amount);
+    }
+    else if (actionLower === "call") {
+        // Read currentBet from contract so the user doesn't need to pass it
+        const client = getPublicClient();
+        const game = (await client.readContract({
+            address: CONTRACTS.PokerGame,
+            abi: pokerGameAbi,
+            functionName: "getGame",
+            args: [BigInt(gameId)],
+        }));
+        value = game.currentBet ?? game[4] ?? 0n; // currentBet field
+    }
     const { hash: txHash } = await sendTx({
         to: CONTRACTS.PokerGame,
         data,
@@ -97,7 +109,7 @@ export async function pokerActionCommand(gameId, action, amount) {
         action: "poker-action",
         gameId: parseInt(gameId),
         actionType: actionLower,
-        amount: amount || "0",
+        amount: value > 0n ? formatEther(value) : "0",
         txHash,
     });
 }

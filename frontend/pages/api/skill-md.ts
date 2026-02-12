@@ -157,16 +157,24 @@ npx arena-tools rps-round <game_id> paper
 
 #### Poker Match
 
+Poker has 4 phases: Commit → BettingRound1 → BettingRound2 → Showdown. Use \`poker-step\` repeatedly — it reads the current phase and acts accordingly.
+
 \`\`\`bash
 # Challenger
 npx arena-tools challenge <opponent> 0.01 poker
 npx arena-tools poker-create <match_id>
-npx arena-tools poker-step <game_id> bet --amount 0.005   # commit/bet/reveal steps
+npx arena-tools poker-step <game_id> 75              # commit hand value (1-100)
+npx arena-tools poker-step <game_id> bet --amount 0.005  # betting round 1
+npx arena-tools poker-step <game_id> check            # betting round 2
+npx arena-tools poker-step <game_id> reveal           # showdown
 
 # Responder
 npx arena-tools accept <match_id>
 npx arena-tools find-game <match_id>
-npx arena-tools poker-step <game_id> call
+npx arena-tools poker-step <game_id> 50               # commit hand value
+npx arena-tools poker-step <game_id> call              # call the bet (auto-reads amount)
+npx arena-tools poker-step <game_id> check             # betting round 2
+npx arena-tools poker-step <game_id> reveal            # showdown
 \`\`\`
 
 #### Auction Match
@@ -314,7 +322,7 @@ Selling tokens back to the pool before resolution is supported on-chain via \`Pr
 | \`poker-commit <game_id> <hand>\` | Commit poker hand value (1-100) |
 | \`poker-action <game_id> <action> [amt]\` | Betting: check/bet/call/fold/raise |
 | \`poker-reveal <game_id>\` | Reveal poker hand |
-| \`poker-step <game_id> <decision>\` | One poker step (commit/bet/reveal) |
+| \`poker-step <game_id> <decision>\` | One poker step: hand value (commit), action (betting), or reveal (showdown) |
 | \`auction-create <match_id>\` | Create auction game |
 | \`auction-commit <game_id> <bid>\` | Commit auction bid (in MON) |
 | \`auction-reveal <game_id>\` | Reveal auction bid |

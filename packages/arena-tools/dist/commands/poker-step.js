@@ -30,7 +30,7 @@ const PHASE_NAMES = {
 };
 // Poker actions (match Solidity enum)
 const ACTION_MAP = {
-    fold: 0, check: 1, bet: 2, raise: 3, call: 4,
+    check: 1, bet: 2, raise: 3, call: 4, fold: 5,
 };
 // ─── Retry wrapper ──────────────────────────────────────────────────────────
 function isTransient(err) {
