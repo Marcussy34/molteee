@@ -12,16 +12,16 @@ const BASE_URL =
       ? `https://${process.env.VERCEL_URL}`
       : "http://localhost:3000";
 
-// All V3 contract addresses deployed on Monad testnet (chainId: 10143)
+// All V4 contract addresses deployed on Monad testnet (chainId: 10143)
 const CONTRACTS = {
   AgentRegistry: "0x96728e0962d7B3fA3B1c632bf489004803C165cE",
-  Escrow: "0x6a52bd7fe53f022bb7c392de6285bfec2d7dd163",
-  RPSGame: "0x4f66f4a355ea9a54fb1f39ec9be0e3281c2cf415",
-  PokerGame: "0xb7b9741da4417852f42267fa1d295e399d11801c",
-  AuctionGame: "0x1fc358c48e7523800eec9b0baed5f7c145e9e847",
-  Tournament: "0xb9a2634e53ea9df280bb93195898b7166b2cadab",
-  PredictionMarket: "0xeb40a1f092e7e2015a39e4e5355a252b57440563",
-  TournamentV2: "0x90a4facae37e8d98c36404055ab8f629be64b30e",
+  Escrow: "0xcdEe16523cf8c280f2094f9CDd19Bcf10fF94713",
+  RPSGame: "0xa8733Ea743C330bd891E28660d9F4ffdc7dfAF9f",
+  PokerGame: "0xD796d3F4c6a68B141b162912829cE510C0B32bDA",
+  AuctionGame: "0x7A7c761871B9932741B57E898aa8C1C61E38A30A",
+  Tournament: "0xC567D280ABAc62594A37efbc0DBc73b40925Db03",
+  PredictionMarket: "0x8Fef302Ec63C4213861CA165652CDce93A15670f",
+  TournamentV2: "0x25D159aE6055df96965342Ab36e467565b7feA79",
 };
 
 // ERC-8004 identity registries

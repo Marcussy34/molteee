@@ -327,6 +327,43 @@ contract PredictionMarket is ReentrancyGuard {
         emit Redeemed(_marketId, msg.sender, payout);
     }
 
+    // ─── Match-Based Resolution (called by Escrow) ─────────────────────
+
+    /// @notice Resolve a market by match ID — convenience wrapper for Escrow auto-resolve
+    /// @dev Looks up the market for this match and resolves it. No-op if no market exists.
+    /// @param _matchId Escrow match ID
+    function resolveByMatch(uint256 _matchId) external {
+        require(marketExists[_matchId], "PM: no market for match");
+        uint256 marketId = matchToMarket[_matchId];
+        Market storage m = markets[marketId];
+        require(!m.resolved, "PM: already resolved");
+
+        address winner = escrow.winners(m.matchId);
+        require(winner != address(0), "PM: match not settled or was draw");
+
+        m.resolved = true;
+        m.winner = winner;
+
+        emit MarketResolved(marketId, winner);
+    }
+
+    /// @notice Resolve a market as draw by match ID — convenience wrapper for Escrow auto-resolve
+    /// @param _matchId Escrow match ID
+    function resolveDrawByMatch(uint256 _matchId) external {
+        require(marketExists[_matchId], "PM: no market for match");
+        uint256 marketId = matchToMarket[_matchId];
+        Market storage m = markets[marketId];
+        require(!m.resolved, "PM: already resolved");
+
+        Escrow.Match memory escrowMatch = escrow.getMatch(m.matchId);
+        require(escrowMatch.status == Escrow.MatchStatus.Settled, "PM: match not settled");
+        require(escrow.winners(m.matchId) == address(0), "PM: match has a winner");
+
+        m.resolved = true;
+
+        emit MarketResolvedDraw(marketId);
+    }
+
     // ─── View Functions ──────────────────────────────────────────────────
 
     /// @notice Get current YES/NO prices (scaled to 1e18 = 1.0)

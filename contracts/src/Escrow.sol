@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./interfaces/IPredictionMarket.sol";
 
 /// @title Escrow — Wager locking and payout for arena matches
 /// @notice Handles MON escrow for all game types.
@@ -38,6 +39,17 @@ contract Escrow is Ownable, ReentrancyGuard {
     /// @dev Timeout period — if opponent doesn't accept within this, challenger can cancel
     uint256 public constant ACCEPT_TIMEOUT = 1 hours;
 
+    // ─── Prediction Market Auto-Creation ────────────────────────────────
+
+    /// @dev PredictionMarket contract (address(0) = auto-market disabled)
+    IPredictionMarket public predictionMarket;
+
+    /// @dev Protocol treasury balance for seeding prediction markets
+    uint256 public treasuryBalance;
+
+    /// @dev MON amount per auto-created market (0 = auto-market disabled)
+    uint256 public marketSeed;
+
     // ─── Events ──────────────────────────────────────────────────────────
 
     event MatchCreated(uint256 indexed matchId, address indexed player1, address indexed player2, uint256 wager, address gameContract);
@@ -46,6 +58,14 @@ contract Escrow is Ownable, ReentrancyGuard {
     event MatchDraw(uint256 indexed matchId);
     event MatchCancelled(uint256 indexed matchId);
     event ContractAuthorized(address indexed contractAddr, bool authorized);
+    event MarketAutoCreated(uint256 indexed matchId, uint256 indexed marketId);
+    event MarketAutoCreateFailed(uint256 indexed matchId, bytes reason);
+    event TreasuryFunded(address indexed funder, uint256 amount);
+    event TreasuryWithdrawn(address indexed to, uint256 amount);
+    event PredictionMarketSet(address indexed predictionMarketAddr);
+    event MarketSeedSet(uint256 seed);
+    event MarketAutoResolved(uint256 indexed matchId);
+    event MarketAutoResolveFailed(uint256 indexed matchId, bytes reason);
 
     // ─── Modifiers ───────────────────────────────────────────────────────
 
@@ -96,6 +116,21 @@ contract Escrow is Ownable, ReentrancyGuard {
 
         m.status = MatchStatus.Active;
         emit MatchAccepted(_matchId, msg.sender);
+
+        // Auto-create prediction market (best-effort, never blocks match acceptance)
+        if (
+            address(predictionMarket) != address(0) &&
+            marketSeed > 0 &&
+            treasuryBalance >= marketSeed
+        ) {
+            treasuryBalance -= marketSeed; // CEI: deduct before external call
+            try predictionMarket.createMarket{value: marketSeed}(_matchId) returns (uint256 marketId) {
+                emit MarketAutoCreated(_matchId, marketId);
+            } catch (bytes memory reason) {
+                treasuryBalance += marketSeed; // refund on failure
+                emit MarketAutoCreateFailed(_matchId, reason);
+            }
+        }
     }
 
     /// @notice Settle a match — winner receives both wagers
@@ -117,6 +152,9 @@ contract Escrow is Ownable, ReentrancyGuard {
         require(success, "Escrow: payout transfer failed");
 
         emit MatchSettled(_matchId, _winner, payout);
+
+        // Auto-resolve prediction market (best-effort, never blocks settlement)
+        _autoResolveMarket(_matchId, false);
     }
 
     /// @notice Settle a draw — both players get their wager back
@@ -136,6 +174,9 @@ contract Escrow is Ownable, ReentrancyGuard {
         require(s2, "Escrow: refund to player2 failed");
 
         emit MatchDraw(_matchId);
+
+        // Auto-resolve prediction market as draw (best-effort)
+        _autoResolveMarket(_matchId, true);
     }
 
     /// @notice Cancel a match if opponent hasn't accepted within timeout
@@ -162,11 +203,63 @@ contract Escrow is Ownable, ReentrancyGuard {
         return matches[_matchId];
     }
 
+    // ─── Internal Helpers ────────────────────────────────────────────────
+
+    /// @dev Auto-resolve prediction market for a settled match (best-effort, never reverts)
+    function _autoResolveMarket(uint256 _matchId, bool _isDraw) internal {
+        if (address(predictionMarket) == address(0)) return;
+
+        if (_isDraw) {
+            try predictionMarket.resolveDrawByMatch(_matchId) {
+                emit MarketAutoResolved(_matchId);
+            } catch (bytes memory reason) {
+                emit MarketAutoResolveFailed(_matchId, reason);
+            }
+        } else {
+            try predictionMarket.resolveByMatch(_matchId) {
+                emit MarketAutoResolved(_matchId);
+            } catch (bytes memory reason) {
+                emit MarketAutoResolveFailed(_matchId, reason);
+            }
+        }
+    }
+
     // ─── Owner Functions ─────────────────────────────────────────────────
 
     /// @notice Authorize or revoke a game contract
     function authorizeContract(address _contract, bool _authorized) external onlyOwner {
         authorizedContracts[_contract] = _authorized;
         emit ContractAuthorized(_contract, _authorized);
+    }
+
+    // ─── Prediction Market Configuration ────────────────────────────────
+
+    /// @notice Set the PredictionMarket contract address (address(0) to disable)
+    function setPredictionMarket(address _predictionMarket) external onlyOwner {
+        predictionMarket = IPredictionMarket(_predictionMarket);
+        emit PredictionMarketSet(_predictionMarket);
+    }
+
+    /// @notice Set the MON seed amount per auto-created market (0 to disable)
+    function setMarketSeed(uint256 _seed) external onlyOwner {
+        marketSeed = _seed;
+        emit MarketSeedSet(_seed);
+    }
+
+    /// @notice Deposit MON into the protocol treasury for seeding markets
+    function fundTreasury() external payable {
+        require(msg.value > 0, "Escrow: must send MON");
+        treasuryBalance += msg.value;
+        emit TreasuryFunded(msg.sender, msg.value);
+    }
+
+    /// @notice Withdraw MON from the protocol treasury (owner only)
+    function withdrawTreasury(uint256 _amount, address _to) external onlyOwner {
+        require(_amount <= treasuryBalance, "Escrow: insufficient treasury");
+        require(_to != address(0), "Escrow: invalid recipient");
+        treasuryBalance -= _amount;
+        (bool success, ) = _to.call{value: _amount}("");
+        require(success, "Escrow: withdrawal failed");
+        emit TreasuryWithdrawn(_to, _amount);
     }
 }

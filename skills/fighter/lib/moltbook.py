@@ -44,8 +44,8 @@ RATE_LIMIT_SECONDS = 1800
 # ─── Contract addresses for discovery posts ─────────────────────────────────
 
 AGENT_REGISTRY = "0x96728e0962d7B3fA3B1c632bf489004803C165cE"
-ESCROW = "0x6A52Bd7fe53f022bb7c392DE6285BfEc2d7dD163"
-RPS_GAME = "0x4f66f4a355Ea9a54fB1F39eC9Be0E3281c2Cf415"
+ESCROW = "0xcdEe16523cf8c280f2094f9CDd19Bcf10fF94713"
+RPS_GAME = "0xa8733Ea743C330bd891E28660d9F4ffdc7dfAF9f"
 
 
 # ─── State Management ───────────────────────────────────────────────────────

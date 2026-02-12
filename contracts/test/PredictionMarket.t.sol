@@ -56,8 +56,21 @@ contract PredictionMarketTest is Test {
 
     // ─── Helpers ─────────────────────────────────────────────────────────
 
-    /// @dev Create an active escrow match between player1 and player2
+    /// @dev Create an active escrow match between player1 and player2 (no auto-market)
     function _createActiveMatch(uint256 wager) internal returns (uint256 matchId) {
+        vm.prank(player1);
+        matchId = escrow.createMatch{value: wager}(player2, address(rps));
+        vm.prank(player2);
+        escrow.acceptMatch{value: wager}(matchId);
+    }
+
+    /// @dev Create an active escrow match WITH auto-market enabled
+    function _createActiveMatchWithAutoMarket(uint256 wager) internal returns (uint256 matchId) {
+        // Configure auto-market on escrow
+        escrow.setPredictionMarket(address(pm));
+        escrow.setMarketSeed(0.1 ether);
+        escrow.fundTreasury{value: 10 ether}();
+
         vm.prank(player1);
         matchId = escrow.createMatch{value: wager}(player2, address(rps));
         vm.prank(player2);
@@ -367,5 +380,92 @@ contract PredictionMarketTest is Test {
         vm.prank(bettor2);
         vm.expectRevert("PM: no winning tokens");
         pm.redeem(marketId);
+    }
+
+    // ─── Auto-Market Tests ────────────────────────────────────────────────
+
+    function test_autoCreatedMarket_bettingWorks() public {
+        // Accept match with auto-market — market auto-created by Escrow
+        uint256 matchId = _createActiveMatchWithAutoMarket(0.01 ether);
+
+        // Market should exist
+        assertTrue(pm.marketExists(matchId));
+        uint256 marketId = pm.matchToMarket(matchId);
+
+        // Bettors can buy tokens on the auto-created market
+        vm.prank(bettor1);
+        pm.buyYES{value: 0.5 ether}(marketId);
+
+        vm.prank(bettor2);
+        pm.buyNO{value: 0.5 ether}(marketId);
+
+        // Verify tokens distributed
+        (uint256 yes1, ) = pm.getUserBalances(marketId, bettor1);
+        (, uint256 no2) = pm.getUserBalances(marketId, bettor2);
+        assertGt(yes1, 0);
+        assertGt(no2, 0);
+    }
+
+    function test_autoCreatedMarket_fullLifecycle() public {
+        // 1. Accept match — auto-creates market
+        uint256 matchId = _createActiveMatchWithAutoMarket(0.01 ether);
+        uint256 marketId = pm.matchToMarket(matchId);
+
+        // 2. Bettors place bets
+        vm.prank(bettor1);
+        pm.buyYES{value: 1 ether}(marketId);
+        vm.prank(bettor2);
+        pm.buyNO{value: 1 ether}(marketId);
+
+        // 3. Player1 wins the match (auto-resolves market via Escrow)
+        _playRPSPlayer1Wins(matchId);
+
+        // 4. Market should be auto-resolved
+        PredictionMarket.Market memory m = pm.getMarket(marketId);
+        assertTrue(m.resolved);
+        assertEq(m.winner, player1);
+
+        // 5. Winner redeems
+        uint256 bettor1Before = bettor1.balance;
+        vm.prank(bettor1);
+        pm.redeem(marketId);
+        assertGt(bettor1.balance, bettor1Before);
+
+        // 6. Loser cannot redeem
+        vm.prank(bettor2);
+        vm.expectRevert("PM: no winning tokens");
+        pm.redeem(marketId);
+    }
+
+    function test_autoCreatedMarket_drawLifecycle() public {
+        // Accept match with auto-market
+        uint256 matchId = _createActiveMatchWithAutoMarket(0.01 ether);
+        uint256 marketId = pm.matchToMarket(matchId);
+
+        // Place bets
+        vm.prank(bettor1);
+        pm.buyYES{value: 0.5 ether}(marketId);
+        vm.prank(bettor2);
+        pm.buyNO{value: 0.5 ether}(marketId);
+
+        // Settle as draw via game contract (auto-resolves market as draw)
+        vm.prank(address(rps));
+        escrow.settleDraw(matchId);
+
+        // Market should be auto-resolved as draw
+        PredictionMarket.Market memory m = pm.getMarket(marketId);
+        assertTrue(m.resolved);
+        assertEq(m.winner, address(0));
+
+        // Both bettors should be able to redeem proportionally
+        uint256 b1Before = bettor1.balance;
+        vm.prank(bettor1);
+        pm.redeem(marketId);
+        assertGt(bettor1.balance, b1Before);
+
+        uint256 b2Before = bettor2.balance;
+        vm.prank(bettor2);
+        pm.redeem(marketId);
+        assertGt(bettor2.balance, b2Before);
     }
 }
