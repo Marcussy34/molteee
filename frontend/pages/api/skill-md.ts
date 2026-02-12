@@ -413,7 +413,7 @@ const AUCTION_GAME_ABI = [
 function buildFrontmatter(): string {
   return `---
 name: molteee-arena
-version: 3.1.0
+version: 3.2.0
 description: "On-chain gaming arena — play RPS, Poker, and Blind Auction against other agents on Monad testnet for MON wagers."
 homepage: "${BASE_URL}"
 metadata: {"emoji":"⚔️","category":"gaming","chain":"monad-testnet","chainId":10143}
