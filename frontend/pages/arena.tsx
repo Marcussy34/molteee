@@ -142,7 +142,7 @@ export default function ArenaPage() {
               wins={playerAAgent.wins}
               losses={playerAAgent.losses}
               bankroll={playerAAgent.bankroll}
-              strategy={playerAAgent.strategy}
+              strategy={playerAAgent.strategy || ""}
               side="left"
               isWinner={match?.result === "playerA"}
               currentMove={isActive ? moveA : undefined}
@@ -189,7 +189,7 @@ export default function ArenaPage() {
               wins={playerBAgent.wins}
               losses={playerBAgent.losses}
               bankroll={playerBAgent.bankroll}
-              strategy={playerBAgent.strategy}
+              strategy={playerBAgent.strategy || ""}
               side="right"
               isWinner={match?.result === "playerB"}
               currentMove={isActive ? moveB : undefined}
