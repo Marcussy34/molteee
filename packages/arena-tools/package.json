@@ -1,0 +1,43 @@
+{
+  "name": "@molteee/arena-tools",
+  "version": "0.2.0",
+  "description": "CLI tool for interacting with the Molteee Gaming Arena on Monad testnet",
+  "type": "module",
+  "bin": {
+    "arena-tools": "bin/arena.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "monad",
+    "gaming",
+    "arena",
+    "rps",
+    "poker",
+    "auction",
+    "agent",
+    "cli"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^13.1.0",
+    "dotenv": "^16.4.7",
+    "viem": "^2.45.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ]
+}

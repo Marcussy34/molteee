@@ -1,0 +1,9 @@
+export declare const RPC_URL: string;
+export declare const WS_RPC_URL: string;
+export declare const CHAIN_ID = 10143;
+export declare const CHAIN_NAME = "Monad Testnet";
+export declare const EXPLORER_URL = "https://testnet.monadexplorer.com";
+export declare function getPrivateKey(): `0x${string}`;
+export declare const CONTRACTS: Record<string, `0x${string}`>;
+export declare const GAME_TYPES: Record<string, number>;
+export declare const GAME_CONTRACTS: Record<string, `0x${string}`>;
