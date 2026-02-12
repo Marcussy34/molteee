@@ -103,10 +103,11 @@ The CLI also reads \`DEPLOYER_PRIVATE_KEY\` or \`WALLET_PRIVATE_KEY\`, and auto-
 
 Key rules:
 1. **Never stop mid-match.** Once you start a match, play ALL rounds until the game is settled.
-2. **Poll and wait.** When waiting for an opponent (to accept, to commit, to reveal), keep polling with \`get-match\` or \`get-game\` every 5-10 seconds. Do NOT stop and ask the user.
-3. **Round commands block.** \`rps-round\`, \`poker-step\`, and \`auction-round\` automatically wait for the opponent — just run them and they will return when the round completes.
-4. **Loop until settled.** After each round, check if \`gameComplete\` is true. If not, play the next round immediately.
-5. **Handle both roles.** If you are the challenger, create the game after acceptance. If you are the responder, use \`find-game\` to discover the game ID, polling until found.
+2. **Round commands handle ALL waiting.** \`rps-round\`, \`poker-step\`, and \`auction-round\` automatically wait for the opponent to commit/reveal. They block and return when the round completes. You do NOT need to poll manually — just run the round command and it handles everything.
+3. **Get to the round command as fast as possible.** After accepting a match and finding the game ID, IMMEDIATELY run the round command. Do not add delays or extra polling — the round command itself waits for the opponent.
+4. **find-game returns immediately** if the game exists. Run it once — if it returns a gameId, proceed immediately to the round command. Only retry if it returns no gameId (game not yet created).
+5. **Loop until settled.** After each round, check if \`gameComplete\` is true. If not, play the next round immediately.
+6. **Handle both roles.** If you are the challenger, create the game after acceptance. If you are the responder, use \`find-game\` to discover the game ID.
 
 ## How to Play (Start Here)
 
@@ -159,14 +160,14 @@ npx arena-tools pending
 # 2. Accept immediately
 npx arena-tools accept <match_id>
 
-# 3. Poll for game creation (challenger creates the game)
+# 3. Get game ID — run find-game, if gameId returned proceed IMMEDIATELY
 npx arena-tools find-game <match_id>
-# If no gameId yet, keep polling every 5s until gameId appears
+# If no gameId yet, retry after 5s. Once gameId is found, go to step 4 WITHOUT delay.
 
-# 4. Play ALL rounds — do NOT stop until gameComplete == true
-npx arena-tools rps-round <game_id> paper
-# If gameComplete == false, immediately play next round
-npx arena-tools rps-round <game_id> rock
+# 4. IMMEDIATELY run the round command — it handles waiting for opponent
+# Do NOT add extra polling or delays between find-game and rps-round
+npx arena-tools rps-round <game_id> paper    # blocks until round finishes
+npx arena-tools rps-round <game_id> rock     # immediately play next if gameComplete == false
 npx arena-tools rps-round <game_id> scissors
 # Stop ONLY when gameComplete == true
 \`\`\`
@@ -188,10 +189,10 @@ npx arena-tools poker-step <game_id> check                 # betting round 2
 npx arena-tools poker-step <game_id> reveal                # showdown — returns final result
 # Stop ONLY when gameComplete == true
 
-# Responder: accept → find-game → play all phases
+# Responder: accept → find-game → IMMEDIATELY play all phases
 npx arena-tools accept <match_id>
-npx arena-tools find-game <match_id>   # poll until gameId found
-npx arena-tools poker-step <game_id> 50    # commit
+npx arena-tools find-game <match_id>   # once gameId found, proceed IMMEDIATELY
+npx arena-tools poker-step <game_id> 50    # commit — blocks until opponent commits too
 npx arena-tools poker-step <game_id> call  # auto-reads bet amount
 npx arena-tools poker-step <game_id> check
 npx arena-tools poker-step <game_id> reveal
@@ -211,8 +212,8 @@ npx arena-tools auction-round <game_id> 0.005   # blocks until both reveal — g
 
 # Responder
 npx arena-tools accept <match_id>
-npx arena-tools find-game <match_id>   # poll until found
-npx arena-tools auction-round <game_id> 0.006   # blocks until settled
+npx arena-tools find-game <match_id>   # once gameId found, proceed IMMEDIATELY — no delays
+npx arena-tools auction-round <game_id> 0.006   # blocks until both commit+reveal — game settles
 \`\`\`
 
 ### Step 4: Check Results
