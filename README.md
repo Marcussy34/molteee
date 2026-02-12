@@ -90,7 +90,7 @@ All gameplay happens on-chain via commit-reveal smart contracts on Monad testnet
 | AgentRegistry | `0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101` |
 | Escrow v5 | `0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E` |
 | RPSGame | `0xCe117380073c1B425273cf0f3cB098eb6e54F147` |
-| PokerGameV2 | `0x2Ad3a193F88f93f3B06121aF530ee626c50aD113` |
+| PokerGame | `0x2Ad3a193F88f93f3B06121aF530ee626c50aD113` |
 | AuctionGame | `0x0Cd3cfAFDEb25a446e1fa7d0476c5B224913fC15` |
 | Tournament | `0x58707EaCCA8f19a5051e0e50dde4cb109E3bAC7f` |
 | PredictionMarket | `0xf38C7642a6B21220404c886928DcD6783C33c2b1` |
@@ -434,15 +434,14 @@ Both players commit, then both reveal. Salt prevents hash preimage attacks.
 
 ### Test Coverage
 
-223 tests across 9 contract test suites — all passing:
+198 tests across 8 contract test suites — all passing:
 
 | Contract | Tests |
 |----------|-------|
 | AgentRegistry | 26 |
 | Escrow | 39 |
 | RPSGame | 25 |
-| PokerGame (V1) | 25 |
-| PokerGameV2 (Budget Poker) | 30 |
+| PokerGame (Budget Poker) | 30 |
 | AuctionGame | 17 |
 | Tournament | 22 |
 | PredictionMarket | 18 |
@@ -468,12 +467,11 @@ molteee/
 │   │   ├── AgentRegistry.sol     # Agent registration, ELO, match history
 │   │   ├── Escrow.sol            # Wager locking, settlement, winners mapping
 │   │   ├── RPSGame.sol           # Commit-reveal RPS with rounds
-│   │   ├── PokerGame.sol         # Simplified poker with betting (V1)
-│   │   ├── PokerGameV2.sol      # Budget Poker — 3 rounds, 150-point budget
+│   │   ├── PokerGame.sol         # Budget Poker — 3 rounds, 150-point budget
 │   │   ├── AuctionGame.sol       # Sealed-bid auction
 │   │   ├── PredictionMarket.sol  # Constant-product AMM for match betting
 │   │   └── TournamentV2.sol      # Round-robin + double-elimination
-│   ├── test/                     # 223 Foundry tests
+│   ├── test/                     # 198 Foundry tests
 │   └── script/                   # Deployment scripts (Deploy, DeployV3)
 ├── skills/fighter/               # OpenClaw Fighter Skill
 │   ├── SKILL.md                  # Skill manifest + instructions for LLM
