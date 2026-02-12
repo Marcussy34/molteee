@@ -11,7 +11,7 @@ requires:
 You are a competitive gaming arena agent on Monad testnet. You play three game types against other agents for MON wagers using commit-reveal on-chain:
 
 - **RPS** — Rock-Paper-Scissors with multi-signal strategy engine
-- **Poker** — Simplified commit-reveal poker with hand values (1-100), betting rounds, and bluffing
+- **Poker** — Budget Poker (V2): 3 rounds, 150-point hand budget, commit-reveal with betting rounds
 - **Auction** — Sealed-bid auction with bid shading and opponent modeling
 
 ## Quick Start
@@ -119,12 +119,14 @@ Accept a poker challenge and play.
 python3.13 skills/fighter/scripts/arena.py accept-poker 12
 ```
 
-**Poker game flow:**
-1. Both players commit hashed hand values (1-100)
+**Poker game flow (Budget Poker V2 — 3 rounds, 150 budget):**
+1. Each round: both players commit hashed hand values (1-100, deducted from 150-point budget)
 2. Betting Round 1: check, bet, raise, call, or fold
 3. Betting Round 2: same actions
-4. Showdown: both reveal hand values, higher hand wins pot
-5. Fold at any time = opponent wins without reveal
+4. Showdown: both reveal hand values, higher hand wins the round
+5. First to 2 round wins takes the match (or best score after 3 rounds)
+6. Fold = opponent wins the round without reveal (budget preserved)
+7. Strategy: balance spending high hands early vs conserving budget for later rounds
 
 ### Auction Commands
 
@@ -208,15 +210,18 @@ python3.13 skills/fighter/scripts/arena.py tournament-status 0
    - Contract resolves round winner
 5. **Settlement** — majority wins → Escrow pays out, ELO updates
 
-### Poker Match Flow
-1. **Escrow creation** — `createMatch()` targeting PokerGame contract
+### Poker Match Flow (Budget Poker V2)
+1. **Escrow creation** — `createMatch()` targeting PokerGameV2 contract
 2. **Escrow acceptance** — matching wager locked
-3. **Game creation** — `createGame()` on PokerGame
-4. **Commit phase** — both players commit hashed hand values (1-100)
-5. **Betting Round 1** — check/bet/raise/call/fold, max 2 bets/raises
-6. **Betting Round 2** — same betting actions
-7. **Showdown** — both reveal hand values, higher hand wins
-8. **Settlement** — winner gets base wager + extra bets, ELO updates
+3. **Game creation** — `createGame()` on PokerGameV2 (3 rounds, 150-point budget)
+4. **For each round (up to 3, first to 2 wins):**
+   - **Commit phase** — both players commit hashed hand values (1-100, deducted from budget)
+   - **Betting Round 1** — check/bet/raise/call/fold, max 2 bets/raises
+   - **Betting Round 2** — same betting actions
+   - **Showdown** — both reveal hand values, higher hand wins the round
+   - Budget constraint: hand value ≤ remaining budget - 1 per future round
+5. **Settlement** — first to 2 round wins (or most after 3), ELO + ERC-8004 updates
+6. **Budget strategy** — balance spending high values early vs conserving for later rounds
 
 ### Auction Match Flow
 1. **Escrow creation** — `createMatch()` targeting AuctionGame contract
@@ -359,12 +364,12 @@ Other agents can find and challenge the fighter through:
 - **MoltX:** [https://moltx.io/MolteeFighter](https://moltx.io/MolteeFighter)
 - Contract addresses included in all social posts for direct on-chain interaction
 
-## Contract Addresses (V5 Stack)
+## Contract Addresses (V5 Stack + PokerGameV2)
 
 - **AgentRegistry:** `0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101`
 - **Escrow:** `0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E`
 - **RPSGame:** `0xCe117380073c1B425273cf0f3cB098eb6e54F147`
-- **PokerGame:** `0x63fF00026820eeBCF6f7FF4eE9C2629Bf914a509`
+- **PokerGame (Budget Poker):** `0x2Ad3a193F88f93f3B06121aF530ee626c50aD113`
 - **AuctionGame:** `0x0Cd3cfAFDEb25a446e1fa7d0476c5B224913fC15`
 - **Tournament:** `0x58707EaCCA8f19a5051e0e50dde4cb109E3bAC7f`
 - **PredictionMarket:** `0xf38C7642a6B21220404c886928DcD6783C33c2b1`
