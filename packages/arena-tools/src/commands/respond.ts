@@ -16,7 +16,7 @@ import {
 } from "../contracts.js";
 import { getPublicClient, getAddress } from "../client.js";
 import { sendTx } from "../utils/tx.js";
-import { generateSalt, saveSalt, loadSalt, commitHash, commitBidHash } from "../utils/commit-reveal.js";
+import { generateSalt, saveSalt, loadSalt, deleteSalt, commitHash, commitBidHash } from "../utils/commit-reveal.js";
 import { event, ok, fail } from "../utils/output.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────

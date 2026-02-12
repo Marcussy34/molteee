@@ -7,7 +7,7 @@ import { CONTRACTS } from "../config.js";
 import { auctionGameAbi } from "../contracts.js";
 import { getAddress } from "../client.js";
 import { sendTx } from "../utils/tx.js";
-import { generateSalt, saveSalt, loadSalt, commitBidHash } from "../utils/commit-reveal.js";
+import { generateSalt, saveSalt, loadSalt, deleteSalt, commitBidHash } from "../utils/commit-reveal.js";
 import { ok, fail } from "../utils/output.js";
 /** Create a new Auction game for a match */
 export async function auctionCreateCommand(matchId) {
@@ -78,6 +78,8 @@ export async function auctionRevealCommand(gameId) {
         to: CONTRACTS.AuctionGame,
         data,
     });
+    // Only delete salt after successful reveal TX
+    deleteSalt(`auction-${gameId}-${myAddress}`);
     ok({
         action: "auction-reveal",
         gameId: parseInt(gameId),

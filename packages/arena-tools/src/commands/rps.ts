@@ -7,7 +7,7 @@ import { CONTRACTS } from "../config.js";
 import { rpsGameAbi } from "../contracts.js";
 import { getAddress } from "../client.js";
 import { sendTx } from "../utils/tx.js";
-import { generateSalt, saveSalt, loadSalt, commitHash } from "../utils/commit-reveal.js";
+import { generateSalt, saveSalt, loadSalt, deleteSalt, commitHash } from "../utils/commit-reveal.js";
 import { ok, fail } from "../utils/output.js";
 
 const MOVE_MAP: Record<string, number> = {
@@ -111,6 +111,9 @@ export async function rpsRevealCommand(gameId: string) {
         to: CONTRACTS.RPSGame,
         data,
     });
+
+    // Only delete salt after successful reveal TX
+    deleteSalt(`rps-${gameId}-${myAddress}`);
 
     ok({
         action: "rps-reveal",

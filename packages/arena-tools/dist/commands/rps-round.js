@@ -8,7 +8,7 @@ import { CONTRACTS } from "../config.js";
 import { rpsGameAbi } from "../contracts.js";
 import { getPublicClient, getAddress } from "../client.js";
 import { sendTx } from "../utils/tx.js";
-import { generateSalt, saveSalt, loadSalt, commitHash } from "../utils/commit-reveal.js";
+import { generateSalt, saveSalt, loadSalt, deleteSalt, commitHash } from "../utils/commit-reveal.js";
 import { ok, fail, event } from "../utils/output.js";
 // ─── Constants ──────────────────────────────────────────────────────────────
 const POLL_INTERVAL_MS = 2_000; // Reduced from 6s — WS transport avoids rate limits
@@ -140,6 +140,9 @@ export async function rpsRoundCommand(gameId, move) {
         for (let revealAttempt = 0; revealAttempt < 3; revealAttempt++) {
             try {
                 const { hash: txHash } = await retry(() => sendTx({ to: addr, data: encodeFunctionData({ abi: rpsGameAbi, functionName: "reveal", args: [gid, storedMoveNum, salt] }) }), "reveal");
+                // Only delete salt after successful reveal TX
+                deleteSalt(saltKey);
+                deleteSalt(`rps-${gameId}-${myAddress}`);
                 event({ event: "revealed", round, move: MOVE_NAMES[storedMoveNum], txHash });
                 revealed = true;
                 break;

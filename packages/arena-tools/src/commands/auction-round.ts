@@ -7,7 +7,7 @@ import { CONTRACTS } from "../config.js";
 import { auctionGameAbi } from "../contracts.js";
 import { getPublicClient, getAddress } from "../client.js";
 import { sendTx } from "../utils/tx.js";
-import { generateSalt, saveSalt, loadSalt, commitBidHash } from "../utils/commit-reveal.js";
+import { generateSalt, saveSalt, loadSalt, deleteSalt, commitBidHash } from "../utils/commit-reveal.js";
 import { ok, fail, event } from "../utils/output.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -70,8 +70,9 @@ export async function auctionRoundCommand(gameId: string, bid: string) {
     if (phase === PHASE_COMMIT && !myCommitted) {
         const salt = generateSalt();
         const hash = commitBidHash(bidWei, salt);
-        const saltKey = `auctionround-${gameId}-${myAddress}`;
-        saveSalt(saltKey, salt, JSON.stringify({ bidWei: bidWei.toString() }), "auction-round");
+        // Use "auction-" prefix so auction-reveal can find the salt, store bid in MON (not wei)
+        const saltKey = `auction-${gameId}-${myAddress}`;
+        saveSalt(saltKey, salt, bid, "auction-round");
         const { hash: txHash } = await retry(() => sendTx({ to: addr, data: encodeFunctionData({ abi: auctionGameAbi, functionName: "commitBid", args: [gid, hash] }) }), "commit");
         event({ event: "committed", bid, txHash });
     }
@@ -102,17 +103,20 @@ export async function auctionRoundCommand(gameId: string, bid: string) {
     const myRevealed = isPlayer1 ? game2.p1Revealed : game2.p2Revealed;
 
     if (!myRevealed) {
-        const saltKey = `auctionround-${gameId}-${myAddress}`;
+        // Use "auction-" prefix consistent with commit and auction-reveal command
+        const saltKey = `auction-${gameId}-${myAddress}`;
         const entry = loadSalt(saltKey);
         if (!entry) {
             fail("Salt not found for auction reveal.", "SALT_LOST");
             return;
         }
-        const storedBid = BigInt(JSON.parse(entry.value).bidWei);
+        const storedBid = parseEther(entry.value);
         const { hash: txHash } = await retry(() => sendTx({
             to: addr,
             data: encodeFunctionData({ abi: auctionGameAbi, functionName: "revealBid", args: [gid, storedBid, entry.salt] }),
         }), "reveal");
+        // Only delete salt after successful reveal TX
+        deleteSalt(saltKey);
         event({ event: "revealed", bid: formatEther(storedBid), txHash });
     }
     else {

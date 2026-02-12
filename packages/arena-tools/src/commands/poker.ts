@@ -8,7 +8,7 @@ import { CONTRACTS } from "../config.js";
 import { pokerGameAbi } from "../contracts.js";
 import { getAddress, getPublicClient } from "../client.js";
 import { sendTx } from "../utils/tx.js";
-import { generateSalt, saveSalt, loadSalt, commitHash } from "../utils/commit-reveal.js";
+import { generateSalt, saveSalt, loadSalt, deleteSalt, commitHash } from "../utils/commit-reveal.js";
 import { ok, fail } from "../utils/output.js";
 
 const ACTION_MAP: Record<string, number> = {
@@ -149,6 +149,9 @@ export async function pokerRevealCommand(gameId: string) {
         to: CONTRACTS.PokerGame,
         data,
     });
+
+    // Only delete salt after successful reveal TX
+    deleteSalt(`poker-${gameId}-${myAddress}`);
 
     ok({
         action: "poker-reveal",

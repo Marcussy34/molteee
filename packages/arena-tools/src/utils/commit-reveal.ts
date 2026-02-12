@@ -35,25 +35,39 @@ export function saveSalt(key: string, salt: string, value: string, gameType: str
     fs.writeFileSync(SALT_FILE, JSON.stringify(store, null, 2));
 }
 
-/** Load a saved salt and remove it from storage */
+/** Load a saved salt WITHOUT deleting it.
+ *  Salt persists until explicitly deleted via deleteSalt() after a successful reveal TX.
+ *  This prevents salt loss when reveal transactions fail (e.g. insufficient gas). */
 export function loadSalt(key: string): { salt: `0x${string}`; value: string; gameType: string } | null {
     // Try per-key file first (race-safe)
     const keyFile = path.join(SALT_DIR, `salt-${key.replace(/[^a-zA-Z0-9_-]/g, "_")}.json`);
     if (fs.existsSync(keyFile)) {
-        const entry = JSON.parse(fs.readFileSync(keyFile, "utf-8"));
-        fs.unlinkSync(keyFile); // single-use
-        return entry;
+        return JSON.parse(fs.readFileSync(keyFile, "utf-8"));
     }
     // Fall back to shared salts.json
     if (!fs.existsSync(SALT_FILE)) return null;
     let store: any;
     try { store = JSON.parse(fs.readFileSync(SALT_FILE, "utf-8")); } catch { return null; }
-    const entry = store[key];
-    if (!entry) return null;
-    // Remove after loading (single-use)
-    delete store[key];
-    fs.writeFileSync(SALT_FILE, JSON.stringify(store, null, 2));
-    return entry;
+    return store[key] || null;
+}
+
+/** Delete a salt after successful reveal TX. Call this ONLY after the on-chain reveal succeeds. */
+export function deleteSalt(key: string): void {
+    // Remove per-key file
+    const keyFile = path.join(SALT_DIR, `salt-${key.replace(/[^a-zA-Z0-9_-]/g, "_")}.json`);
+    if (fs.existsSync(keyFile)) {
+        try { fs.unlinkSync(keyFile); } catch { /* ignore */ }
+    }
+    // Remove from shared salts.json
+    if (fs.existsSync(SALT_FILE)) {
+        try {
+            const store = JSON.parse(fs.readFileSync(SALT_FILE, "utf-8"));
+            if (store[key]) {
+                delete store[key];
+                fs.writeFileSync(SALT_FILE, JSON.stringify(store, null, 2));
+            }
+        } catch { /* ignore */ }
+    }
 }
 
 // ─── Hash Generation ─────────────────────────────────────────────────────────

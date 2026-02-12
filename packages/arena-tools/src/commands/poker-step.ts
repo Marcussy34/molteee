@@ -13,7 +13,7 @@ import { CONTRACTS } from "../config.js";
 import { pokerGameAbi } from "../contracts.js";
 import { getPublicClient, getAddress } from "../client.js";
 import { sendTx } from "../utils/tx.js";
-import { generateSalt, saveSalt, loadSalt, commitHash } from "../utils/commit-reveal.js";
+import { generateSalt, saveSalt, loadSalt, deleteSalt, commitHash } from "../utils/commit-reveal.js";
 import { ok, fail, event } from "../utils/output.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -224,6 +224,8 @@ export async function pokerStepCommand(gameId: string, decision: string, opts: a
                 to: addr,
                 data: encodeFunctionData({ abi: pokerGameAbi, functionName: "revealHand", args: [gid, handValue, entry.salt] }),
             }), "reveal");
+            // Only delete salt after successful reveal TX
+            deleteSalt(saltKey);
             event({ event: "revealed", handValue, txHash });
         }
         else {
