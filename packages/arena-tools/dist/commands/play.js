@@ -8,7 +8,6 @@
 import { encodeFunctionData, parseEther, getAddress as checksumAddress } from "viem";
 import { CONTRACTS, GAME_CONTRACTS, GAME_TYPES } from "../config.js";
 import { escrowAbi } from "../contracts.js";
-import { getPublicClient, getAddress } from "../client.js";
 import { sendTx } from "../utils/tx.js";
 import { event, fail } from "../utils/output.js";
 import { respondCommand } from "./respond.js";
@@ -19,7 +18,6 @@ export async function playCommand(opponent, wager, gameType, opts) {
     }
     const gameContract = GAME_CONTRACTS[gt];
     const wagerWei = parseEther(wager);
-    const myAddress = getAddress();
     // Step 1: Create the challenge
     event({ event: "challenging", opponent, wager, gameType: gt });
     const data = encodeFunctionData({
@@ -27,19 +25,20 @@ export async function playCommand(opponent, wager, gameType, opts) {
         functionName: "createMatch",
         args: [checksumAddress(opponent), gameContract],
     });
-    const { hash } = await sendTx({
+    const { hash, logs } = await sendTx({
         to: CONTRACTS.Escrow,
         data,
         value: wagerWei,
     });
-    // Get the match ID from nextMatchId
-    const client = getPublicClient();
-    const nextId = (await client.readContract({
-        address: CONTRACTS.Escrow,
-        abi: escrowAbi,
-        functionName: "nextMatchId",
-    }));
-    const matchId = Number(nextId) - 1;
+    // Parse matchId from MatchCreated event in tx logs (topics[1]).
+    // Race-safe — reads directly from our own tx receipt, not from global state.
+    let matchId = -1;
+    for (const log of logs) {
+        if (log.address.toLowerCase() === CONTRACTS.Escrow.toLowerCase() && log.topics.length > 1) {
+            matchId = Number(BigInt(log.topics[1]));
+            break;
+        }
+    }
     event({ event: "challenge_created", matchId, opponent, wager, gameType: gt, txHash: hash });
     // Step 2: Delegate to respond — it handles waiting for acceptance, game creation, and play
     await respondCommand(String(matchId), opts);
