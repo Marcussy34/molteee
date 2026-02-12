@@ -613,6 +613,7 @@ def _play_game(game_id: int, opponent_addr: str = None):
     # Track our secrets per round
     saved_moves = {}
     saved_salts = {}
+    saved_strategies = {}  # {round_num: strategy_name} for adaptive learning
     # Track round results as they happen
     game_round_history = []
 
@@ -639,6 +640,30 @@ def _play_game(game_id: int, opponent_addr: str = None):
                 )
                 model.update(full_history, won=won,
                              my_score=my_score, opp_score=opp_score)
+
+                # Record per-round strategy performance for adaptive learning
+                for r_idx, (my_m, opp_m) in enumerate(full_history):
+                    strat = saved_strategies.get(r_idx)
+                    if strat and strat not in ("random", "anti-exploit", "pattern-seed"):
+                        # Determine round result
+                        from lib.strategy import COUNTER
+                        if COUNTER[opp_m] == my_m:
+                            model.record_rps_strategy(strat, "wins")
+                        elif COUNTER[my_m] == opp_m:
+                            model.record_rps_strategy(strat, "losses")
+                        else:
+                            model.record_rps_strategy(strat, "draws")
+
+                # Manage strategy cooldowns: decrement existing, apply new ones
+                for s_name in list(model.strategy_cooldowns.keys()):
+                    model.strategy_cooldowns[s_name] -= 1
+                    if model.strategy_cooldowns[s_name] <= 0:
+                        del model.strategy_cooldowns[s_name]
+                # Cooldown strategies with 3+ losses and 0 wins vs this opponent
+                for s_name, perf in model.strategy_performance.items():
+                    if perf.get("losses", 0) >= 3 and perf.get("wins", 0) == 0:
+                        model.strategy_cooldowns[s_name] = 2
+
                 _model_store.save(opponent_addr)
                 print(f"  Opponent model updated ({model.get_total_games()} games total)")
 
@@ -722,6 +747,7 @@ def _play_game(game_id: int, opponent_addr: str = None):
                 # Save for reveal
                 saved_moves[current_round] = move
                 saved_salts[current_round] = salt
+                saved_strategies[current_round] = strategy_name
 
                 # Psychology: apply timing delay before committing
                 delay = get_commit_delay(current_round, game["totalRounds"], timing_state)
@@ -972,6 +998,16 @@ def _play_poker_game(game_id: int, opponent_addr: str, wager_wei: int):
                 model.update([], won=won,
                              my_score=1 if won else 0,
                              opp_score=0 if won else 1)
+
+                # Profile poker opponent: capture hand, betting aggression, fold status
+                opp_extra = game.get("p2ExtraBets", 0) if i_am_p1 else game.get("p1ExtraBets", 0)
+                folded = game.get("p2Folded", False) if i_am_p1 else game.get("p1Folded", False)
+                em = get_escrow_match(game["escrowMatchId"])
+                model.update_poker_stats(
+                    opp_hand=opp_hand, opp_extra_bets=opp_extra,
+                    folded=folded, won=won, wager=em["wager"],
+                )
+
                 _model_store.save(opponent_addr)
                 print(f"  Opponent model updated ({model.get_total_games()} games total)")
 
@@ -1250,6 +1286,13 @@ def _play_auction_game(game_id: int, opponent_addr: str, wager_wei: int):
                 model.update([], won=won,
                              my_score=1 if won else 0,
                              opp_score=0 if won else 1)
+
+                # Profile auction opponent: capture revealed bid for shade modeling
+                em = get_escrow_match(game["escrowMatchId"])
+                model.update_auction_stats(
+                    opp_bid=opp_bid, wager=em["wager"], won=won,
+                )
+
                 _model_store.save(opponent_addr)
                 print(f"  Opponent model updated ({model.get_total_games()} games total)")
 

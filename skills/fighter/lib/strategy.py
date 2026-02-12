@@ -247,11 +247,6 @@ def choose_move(
     # more recent data is weighted by being at the end)
     all_history = all_history + round_history
 
-    # Anti-exploitation check: if we're losing badly, go random
-    if len(round_history) > 5 and recent_win_rate(round_history) < 0.35:
-        move = random.choice([ROCK, PAPER, SCISSORS])
-        return (move, "anti-exploit", 0.0)
-
     # Try all strategies on the full history
     seq_move, seq_conf = sequence_predict(all_history)
     mkv_move, mkv_conf = markov_predict(all_history)
@@ -263,10 +258,37 @@ def choose_move(
         (freq_move, freq_conf, "frequency"),
     ]
 
-    # Pick highest confidence strategy (minimum threshold 0.4)
-    best = max(candidates, key=lambda x: x[1])
+    # Weight each strategy's confidence by its historical accuracy vs this opponent
+    # and filter out strategies on cooldown
+    cooldowns = model.strategy_cooldowns if model else {}
+    weighted = []
+    for move_val, raw_conf, name in candidates:
+        # Skip strategies on cooldown
+        if cooldowns.get(name, 0) > 0:
+            continue
+        # Boost/penalize by historical accuracy (0.5 = neutral default)
+        accuracy = model.get_strategy_accuracy(name) if model else 0.5
+        weighted_conf = raw_conf * (0.5 + accuracy)
+        weighted.append((move_val, weighted_conf, name))
 
-    if best[1] >= 0.4:
+    # Anti-exploitation: if losing badly, try next-best strategy instead of random
+    if len(round_history) > 5 and recent_win_rate(round_history) < 0.35:
+        # Sort by weighted confidence descending, pick second-best if available
+        if len(weighted) >= 2:
+            weighted.sort(key=lambda x: x[1], reverse=True)
+            return (weighted[1][0], weighted[1][2], weighted[1][1])
+        # Last resort: random
+        move = random.choice([ROCK, PAPER, SCISSORS])
+        return (move, "anti-exploit", 0.0)
+
+    if not weighted:
+        move = random.choice([ROCK, PAPER, SCISSORS])
+        return (move, "random", 0.0)
+
+    # Pick highest weighted confidence (lower threshold since weighting can reduce it)
+    best = max(weighted, key=lambda x: x[1])
+
+    if best[1] >= 0.3:
         return (best[0], best[2], best[1])
 
     # No strong signal — fall back to random
@@ -335,11 +357,24 @@ def choose_poker_action(
     """
     category = categorize_hand(hand_value)
 
-    # Calculate bluff probability based on opponent history
+    # Calculate bluff probability and bet sizing based on opponent profile
     bluff_chance = 0.15  # Default 15% bluff rate
-    if model is not None and model.get_total_games() >= 3:
-        # Against tight opponents (high fold rate), bluff more
-        # Against loose opponents (low fold rate), bluff less
+    bet_multiplier = 1.0  # Scales value bet sizes
+    if model is not None and hasattr(model, 'poker_stats') and model.poker_stats:
+        # Use detailed poker stats when available
+        ps = model.poker_stats
+        fold_rate = ps.get("fold_rate", 0.0)
+        aggression = ps.get("aggression", 0.0)
+        if fold_rate > 0.4:
+            bluff_chance = 0.35  # High fold rate — bluff aggressively
+        elif aggression > 0.3:
+            bluff_chance = 0.05  # Aggressive opponent — don't bluff, value bet bigger
+            bet_multiplier = 1.3
+        elif aggression < 0.1 and fold_rate < 0.2:
+            bluff_chance = 0.08  # Passive caller — small bets, low bluff
+            bet_multiplier = 0.7
+    elif model is not None and model.get_total_games() >= 3:
+        # Fall back to win_rate-based logic if no poker stats
         win_rate = model.get_win_rate()
         if win_rate < 0.4:
             bluff_chance = 0.25  # They're winning — try to bluff them
@@ -349,11 +384,11 @@ def choose_poker_action(
     # No active bet — decide whether to check or bet
     if current_bet == 0:
         if category == "premium":
-            # Value bet with strong hands
-            bet_size = int(wager * 0.5)  # Bet 50% of wager
+            # Value bet with strong hands (scaled by opponent profile)
+            bet_size = int(wager * 0.5 * bet_multiplier)
             return ("bet", bet_size, "value_bet", 0.85)
         elif category == "strong":
-            bet_size = int(wager * 0.3)  # Bet 30% of wager
+            bet_size = int(wager * 0.3 * bet_multiplier)
             return ("bet", bet_size, "value_bet", 0.7)
         elif category == "weak" and random.random() < bluff_chance:
             # Bluff with weak hands occasionally
@@ -419,8 +454,20 @@ def choose_auction_bid(
     # Base bid: 50-60% of wager (optimal for 2-player sealed bid)
     base_fraction = 0.55
 
-    # Adjust based on opponent history
-    if model is not None and model.get_total_games() >= 3:
+    # Adjust based on opponent history — prefer detailed auction stats
+    if model is not None and hasattr(model, 'auction_stats') and model.auction_stats:
+        avg_shade = model.auction_stats.get("avg_shade_pct", 55.0)
+        if avg_shade >= 70:
+            # Opponent bids high — bid slightly above their average to win
+            base_fraction = min(0.95, avg_shade / 100 + 0.03)
+        elif avg_shade <= 50:
+            # Opponent bids low — bid just above to win cheaply
+            base_fraction = avg_shade / 100 + 0.03
+        else:
+            # Mid range — bid 3% above their average
+            base_fraction = avg_shade / 100 + 0.03
+    elif model is not None and model.get_total_games() >= 3:
+        # Fall back to win_rate-based logic
         win_rate = model.get_win_rate()
         if win_rate < 0.4:
             # Losing to this opponent — bid higher to try to win
