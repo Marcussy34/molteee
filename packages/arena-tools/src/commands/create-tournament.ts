@@ -36,13 +36,18 @@ export async function createTournamentCommand(format: string, maxPlayers: string
         args: [formatCode, entryFeeWei, baseWagerWei, BigInt(players)],
     });
 
-    const { hash } = await sendTx({
+    const { hash, logs } = await sendTx({
         to: CONTRACTS.TournamentV2,
         data,
     });
 
+    // Parse tournament ID from TournamentCreated event (first indexed topic)
+    const createLog = logs.find((l: any) => l.address.toLowerCase() === CONTRACTS.TournamentV2.toLowerCase());
+    const tournamentId = createLog ? Number(BigInt(createLog.topics[1])) : undefined;
+
     ok({
         action: "create-tournament",
+        tournamentId,
         format,
         formatCode,
         maxPlayers: players,
