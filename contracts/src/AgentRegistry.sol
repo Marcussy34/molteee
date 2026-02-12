@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/IIdentityRegistry.sol";
 
 /// @title AgentRegistry — Agent registration, ELO tracking, and match history
 /// @notice Agents register here to be discoverable for challenges.
@@ -45,6 +46,12 @@ contract AgentRegistry is Ownable {
     /// @dev Contracts authorized to call updateELO / recordMatch
     mapping(address => bool) public authorizedContracts;
 
+    /// @dev ERC-8004 Identity Registry (address(0) = disabled)
+    IIdentityRegistry public identityRegistry;
+
+    /// @dev wallet => ERC-8004 agentId (centralized, replaces per-game mappings)
+    mapping(address => uint256) public agentIds;
+
     // ─── Events ──────────────────────────────────────────────────────────
 
     event AgentRegistered(address indexed agent, GameType[] gameTypes, uint256 minWager, uint256 maxWager);
@@ -52,6 +59,9 @@ contract AgentRegistry is Ownable {
     event ELOUpdated(address indexed agent, GameType gameType, uint256 newElo);
     event MatchRecorded(address indexed agent, address indexed opponent, GameType gameType, bool won, uint256 wager);
     event ContractAuthorized(address indexed contractAddr, bool authorized);
+    event AgentIdAssigned(address indexed agent, uint256 agentId);
+    event IdentityRegistrySet(address indexed identityRegistry);
+    event IdentityRegistrationFailed(address indexed agent, bytes reason);
 
     // ─── Modifiers ───────────────────────────────────────────────────────
 
@@ -94,6 +104,17 @@ contract AgentRegistry is Ownable {
         }
 
         agentList.push(msg.sender);
+
+        // Auto-register with ERC-8004 Identity Registry (non-blocking)
+        if (address(identityRegistry) != address(0)) {
+            try identityRegistry.registerAgent(msg.sender) returns (uint256 newAgentId) {
+                agentIds[msg.sender] = newAgentId;
+                emit AgentIdAssigned(msg.sender, newAgentId);
+            } catch (bytes memory reason) {
+                emit IdentityRegistrationFailed(msg.sender, reason);
+            }
+        }
+
         emit AgentRegistered(msg.sender, _gameTypes, _minWager, _maxWager);
     }
 
@@ -144,6 +165,18 @@ contract AgentRegistry is Ownable {
         return matchHistory[_agent].length;
     }
 
+    /// @notice Get the ERC-8004 agentId for a wallet (used by game contracts)
+    function getAgentId(address _agent) external view returns (uint256) {
+        return agentIds[_agent];
+    }
+
+    /// @notice Agent sets their own agentId (if they already have one from ERC-8004)
+    function setAgentId(uint256 _agentId) external {
+        require(agents[msg.sender].exists, "AgentRegistry: not registered");
+        agentIds[msg.sender] = _agentId;
+        emit AgentIdAssigned(msg.sender, _agentId);
+    }
+
     // ─── Authorized-Only Functions ───────────────────────────────────────
 
     /// @notice Update an agent's ELO. Only callable by authorized game contracts.
@@ -184,6 +217,18 @@ contract AgentRegistry is Ownable {
     function authorizeContract(address _contract, bool _authorized) external onlyOwner {
         authorizedContracts[_contract] = _authorized;
         emit ContractAuthorized(_contract, _authorized);
+    }
+
+    /// @notice Owner sets agentId for any agent (admin override)
+    function setAgentIdFor(address _agent, uint256 _agentId) external onlyOwner {
+        agentIds[_agent] = _agentId;
+        emit AgentIdAssigned(_agent, _agentId);
+    }
+
+    /// @notice Owner configures the ERC-8004 Identity Registry
+    function setIdentityRegistry(address _identityRegistry) external onlyOwner {
+        identityRegistry = IIdentityRegistry(_identityRegistry);
+        emit IdentityRegistrySet(_identityRegistry);
     }
 
     // ─── Internal ────────────────────────────────────────────────────────

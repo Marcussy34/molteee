@@ -3,6 +3,43 @@ pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
 import "../src/AgentRegistry.sol";
+import "../src/interfaces/IIdentityRegistry.sol";
+
+/// @dev Mock ERC-8004 Identity Registry that assigns sequential agent IDs
+contract MockIdentityRegistry is IIdentityRegistry {
+    uint256 public nextId = 1;
+    mapping(uint256 => address) public owners;
+    mapping(uint256 => address) public wallets;
+
+    function ownerOf(uint256 tokenId) external view override returns (address) {
+        return owners[tokenId];
+    }
+
+    function getAgentWallet(uint256 agentId) external view override returns (address) {
+        return wallets[agentId];
+    }
+
+    function registerAgent(address wallet) external override returns (uint256 agentId) {
+        agentId = nextId++;
+        owners[agentId] = wallet;
+        wallets[agentId] = wallet;
+    }
+}
+
+/// @dev Mock Identity Registry that always reverts (for failure testing)
+contract FailingIdentityRegistry is IIdentityRegistry {
+    function ownerOf(uint256) external pure override returns (address) {
+        revert("FailingIdentityRegistry: not supported");
+    }
+
+    function getAgentWallet(uint256) external pure override returns (address) {
+        revert("FailingIdentityRegistry: not supported");
+    }
+
+    function registerAgent(address) external pure override returns (uint256) {
+        revert("FailingIdentityRegistry: registration failed");
+    }
+}
 
 contract AgentRegistryTest is Test {
     AgentRegistry public registry;
@@ -213,5 +250,110 @@ contract AgentRegistryTest is Test {
         vm.prank(agent1);
         vm.expectRevert();
         registry.authorizeContract(gameContract, true);
+    }
+
+    // ─── ERC-8004 Identity Integration Tests ─────────────────────────────
+
+    function test_register_autoAssignsAgentId() public {
+        // Configure mock identity registry
+        MockIdentityRegistry mockIdentity = new MockIdentityRegistry();
+        registry.setIdentityRegistry(address(mockIdentity));
+
+        // Register agent — should auto-assign agentId
+        vm.prank(agent1);
+        registry.register(gameTypes, 0.001 ether, 1 ether);
+
+        // agentId should be 1 (first registration in mock)
+        assertEq(registry.agentIds(agent1), 1);
+        assertEq(registry.getAgentId(agent1), 1);
+    }
+
+    function test_register_identityRegistryFailure_doesNotRevert() public {
+        // Configure failing identity registry
+        FailingIdentityRegistry failingIdentity = new FailingIdentityRegistry();
+        registry.setIdentityRegistry(address(failingIdentity));
+
+        // Register agent — should succeed despite identity registry failure
+        vm.prank(agent1);
+        registry.register(gameTypes, 0.001 ether, 1 ether);
+
+        // Agent registered but no agentId assigned
+        AgentRegistry.AgentInfo memory info = registry.getAgent(agent1);
+        assertTrue(info.exists);
+        assertEq(registry.agentIds(agent1), 0);
+    }
+
+    function test_register_withoutIdentityRegistry_noAgentId() public {
+        // No identity registry configured (default address(0))
+        vm.prank(agent1);
+        registry.register(gameTypes, 0.001 ether, 1 ether);
+
+        // agentId should be 0 (not assigned)
+        assertEq(registry.agentIds(agent1), 0);
+    }
+
+    function test_getAgentId() public {
+        // Set agentId via owner admin function
+        registry.setAgentIdFor(agent1, 42);
+        assertEq(registry.getAgentId(agent1), 42);
+    }
+
+    function test_setAgentId_bySelf() public {
+        // Register agent first
+        vm.prank(agent1);
+        registry.register(gameTypes, 0.001 ether, 1 ether);
+
+        // Agent sets their own agentId
+        vm.prank(agent1);
+        registry.setAgentId(99);
+        assertEq(registry.agentIds(agent1), 99);
+    }
+
+    function test_setAgentId_revertNotRegistered() public {
+        // Try to set agentId without registering first
+        vm.prank(agent1);
+        vm.expectRevert("AgentRegistry: not registered");
+        registry.setAgentId(99);
+    }
+
+    function test_setAgentIdFor_byOwner() public {
+        // Owner sets agentId for any address (doesn't need to be registered)
+        registry.setAgentIdFor(agent1, 42);
+        assertEq(registry.agentIds(agent1), 42);
+    }
+
+    function test_setAgentIdFor_revertNotOwner() public {
+        vm.prank(agent1);
+        vm.expectRevert();
+        registry.setAgentIdFor(agent1, 42);
+    }
+
+    function test_setIdentityRegistry_onlyOwner() public {
+        MockIdentityRegistry mockIdentity = new MockIdentityRegistry();
+
+        // Owner can set
+        registry.setIdentityRegistry(address(mockIdentity));
+        assertEq(address(registry.identityRegistry()), address(mockIdentity));
+
+        // Non-owner cannot set
+        vm.prank(agent1);
+        vm.expectRevert();
+        registry.setIdentityRegistry(address(mockIdentity));
+    }
+
+    function test_register_multipleAgents_sequentialIds() public {
+        // Configure mock identity registry
+        MockIdentityRegistry mockIdentity = new MockIdentityRegistry();
+        registry.setIdentityRegistry(address(mockIdentity));
+
+        // Register two agents — should get sequential IDs
+        vm.prank(agent1);
+        registry.register(gameTypes, 0.001 ether, 1 ether);
+
+        vm.prank(agent2);
+        registry.register(gameTypes, 0.001 ether, 1 ether);
+
+        assertEq(registry.agentIds(agent1), 1);
+        assertEq(registry.agentIds(agent2), 2);
     }
 }
