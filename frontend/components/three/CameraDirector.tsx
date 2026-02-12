@@ -70,17 +70,20 @@ function getCameraTarget(
     }
 
     case "clash": {
-      // 180-degree bullet-time orbit around center
-      const angle = elapsed * Math.PI; // 0 → π (half circle)
-      const radius = 4;
+      // Gentle arc — subtle drift, no violent orbit
+      const baseAngle = 0.15; // start slightly off-center
+      const arc = elapsed * 0.35; // ~20° total sweep (was 180°)
+      const angle = baseAngle + arc;
+      const radius = 5.5; // further back for stability
+      const y = 1.8 - elapsed * 0.3; // slight drop for drama
       return {
         position: new THREE.Vector3(
-          Math.cos(angle) * radius,
-          1.5,
-          Math.sin(angle) * radius
+          Math.sin(angle) * radius,
+          y,
+          Math.cos(angle) * radius
         ),
         lookAt: new THREE.Vector3(0, FIGHTER_Y, 0),
-        fov: 55,
+        fov: 48,
       };
     }
 
@@ -142,25 +145,24 @@ export function CameraDirector({
       roundIndex
     );
 
-    // Smooth interpolation — damping factor for snappy but smooth motion
-    const dampFactor = battlePhase === "clash" ? 12 : 6; // faster during orbit
+    // Smooth interpolation — gentle damping for comfortable viewing
+    const dampFactor = battlePhase === "clash" ? 4 : 6;
     const t = 1 - Math.exp(-dampFactor * delta);
 
     currentPos.current.lerp(target.position, t);
     currentLookAt.current.lerp(target.lookAt, t);
     currentFov.current = THREE.MathUtils.lerp(currentFov.current, target.fov, t);
 
-    // Screen shake during clash
+    // Minimal screen shake during clash — just a subtle rumble
     if (battlePhase === "clash") {
-      const intensity = 0.08 * (1 - phaseElapsed); // decays over phase
+      const intensity = 0.015 * (1 - phaseElapsed); // very subtle, decays fast
       shakeOffset.current.set(
         (Math.random() - 0.5) * intensity,
-        (Math.random() - 0.5) * intensity * 0.5,
-        (Math.random() - 0.5) * intensity * 0.3
+        (Math.random() - 0.5) * intensity * 0.3,
+        0
       );
     } else {
-      // Decay shake quickly when leaving clash
-      shakeOffset.current.multiplyScalar(0.85);
+      shakeOffset.current.multiplyScalar(0.9);
     }
 
     // Apply to camera
