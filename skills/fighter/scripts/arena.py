@@ -965,47 +965,41 @@ def _wait_for_poker_game_or_create(match_id: int) -> int:
 
 def _play_poker_game(game_id: int, opponent_addr: str, wager_wei: int):
     """
-    Play a full poker game: commit hand → betting rounds → showdown.
-    Uses strategy engine for hand selection and betting decisions.
+    Play a full Budget Poker V2 game (3 rounds, 150-point hand budget).
+    Each round: commit hand → betting rounds → showdown. First to 2 wins.
+    Uses strategy engine for budget-aware hand selection and betting decisions.
     """
     my_addr = get_address()
 
     # Load opponent model for strategy decisions
     model = _model_store.get(opponent_addr) if opponent_addr else None
 
-    # Choose and save our hand value + salt at the start
-    hand_value = choose_hand_value()
-    salt = generate_salt()
-    hand_hash = make_poker_hand_hash(hand_value, salt)
-
-    print(f"  Hand value chosen: {hand_value}/100")
+    # Per-round hand values and salts — generated fresh each round
+    # Keys: round number → {hand_value, salt, hand_hash}
+    round_data = {}
+    last_committed_round = -1  # Track which round we last committed to
 
     while True:
         game = get_poker_game_state(game_id)
+        i_am_p1 = game["player1"].lower() == my_addr.lower()
 
         # Game is settled — show result and update model
         if game["settled"]:
             _print_poker_result(game, my_addr)
 
-            # Update opponent model (match result only — no round history
-            # for poker since hand values are not RPS moves and would corrupt
-            # the move_counts/transitions used by the RPS strategy engine)
+            # Update opponent model with match result
             if opponent_addr and model is not None:
-                i_am_p1 = game["player1"].lower() == my_addr.lower()
-                my_hand = game["p1HandValue"] if i_am_p1 else game["p2HandValue"]
-                opp_hand = game["p2HandValue"] if i_am_p1 else game["p1HandValue"]
-                won = my_hand > opp_hand
-                model.update([], won=won,
-                             my_score=1 if won else 0,
-                             opp_score=0 if won else 1)
+                my_score = game["p1Score"] if i_am_p1 else game["p2Score"]
+                opp_score = game["p2Score"] if i_am_p1 else game["p1Score"]
+                won = my_score > opp_score
+                model.update([], won=won, my_score=my_score, opp_score=opp_score)
 
-                # Profile poker opponent: capture hand, betting aggression, fold status
-                opp_extra = game.get("p2ExtraBets", 0) if i_am_p1 else game.get("p1ExtraBets", 0)
-                folded = game.get("p2Folded", False) if i_am_p1 else game.get("p1Folded", False)
+                # Profile poker opponent: capture betting aggression
+                opp_extra = game["p2ExtraBets"] if i_am_p1 else game["p1ExtraBets"]
                 em = get_escrow_match(game["escrowMatchId"])
                 model.update_poker_stats(
-                    opp_hand=opp_hand, opp_extra_bets=opp_extra,
-                    folded=folded, won=won, wager=em["wager"],
+                    opp_hand=0, opp_extra_bets=opp_extra,
+                    folded=False, won=won, wager=em["wager"],
                 )
 
                 _model_store.save(opponent_addr)
@@ -1013,10 +1007,9 @@ def _play_poker_game(game_id: int, opponent_addr: str, wager_wei: int):
 
             # Auto-post poker match result to social feeds
             try:
-                i_am_p1_pk = game["player1"].lower() == my_addr.lower()
-                my_h = game["p1HandValue"] if i_am_p1_pk else game["p2HandValue"]
-                opp_h = game["p2HandValue"] if i_am_p1_pk else game["p1HandValue"]
-                res = "WIN" if my_h > opp_h else ("LOSS" if opp_h > my_h else "DRAW")
+                my_s = game["p1Score"] if i_am_p1 else game["p2Score"]
+                opp_s = game["p2Score"] if i_am_p1 else game["p1Score"]
+                res = "WIN" if my_s > opp_s else ("LOSS" if opp_s > my_s else "DRAW")
                 _post_to_social("Poker", opponent_addr or "", res, wei_to_mon(wager_wei))
             except Exception:
                 pass  # Never let social errors break gameplay
@@ -1024,12 +1017,16 @@ def _play_poker_game(game_id: int, opponent_addr: str, wager_wei: int):
             return
 
         phase = game["phase"]
+        current_round = game["currentRound"]
+        total_rounds = game["totalRounds"]
+        my_budget = game["p1Budget"] if i_am_p1 else game["p2Budget"]
+        my_score = game["p1Score"] if i_am_p1 else game["p2Score"]
+        opp_score = game["p2Score"] if i_am_p1 else game["p1Score"]
         now = int(time.time())
         deadline = game["phaseDeadline"]
 
         # Check for timeout opportunity
         if now > deadline and phase != PokerPhase.COMPLETE:
-            i_am_p1 = game["player1"].lower() == my_addr.lower()
             if phase == PokerPhase.COMMIT:
                 my_committed = game["p1Committed"] if i_am_p1 else game["p2Committed"]
                 opp_committed = game["p2Committed"] if i_am_p1 else game["p1Committed"]
@@ -1038,7 +1035,6 @@ def _play_poker_game(game_id: int, opponent_addr: str, wager_wei: int):
                     claim_poker_timeout(game_id)
                     continue
             elif phase in (PokerPhase.BETTING_ROUND1, PokerPhase.BETTING_ROUND2):
-                # If it's opponent's turn and they timed out
                 if game["currentTurn"].lower() != my_addr.lower():
                     print("  Opponent timed out on betting — claiming...")
                     claim_poker_timeout(game_id)
@@ -1051,30 +1047,47 @@ def _play_poker_game(game_id: int, opponent_addr: str, wager_wei: int):
                     claim_poker_timeout(game_id)
                     continue
 
-        # ── Commit phase — submit our hand hash ──
+        # ── Commit phase — choose budget-aware hand value for this round ──
         if phase == PokerPhase.COMMIT:
-            i_am_p1 = game["player1"].lower() == my_addr.lower()
             my_committed = game["p1Committed"] if i_am_p1 else game["p2Committed"]
 
-            if not my_committed:
+            if not my_committed and current_round != last_committed_round:
+                # Generate fresh hand value + salt for this round
+                hand_value = choose_hand_value(
+                    budget=my_budget,
+                    current_round=current_round,
+                    total_rounds=total_rounds,
+                    my_score=my_score,
+                    opp_score=opp_score,
+                )
+                salt = generate_salt()
+                hand_hash = make_poker_hand_hash(hand_value, salt)
+                round_data[current_round] = {
+                    "hand_value": hand_value,
+                    "salt": salt,
+                    "hand_hash": hand_hash,
+                }
+                last_committed_round = current_round
+
+                print(f"  Round {current_round + 1}/{total_rounds} — Budget: {my_budget}, Score: {my_score}-{opp_score}")
                 print(f"  Committing hand (value={hand_value})...")
                 commit_poker_hand(game_id, hand_hash)
                 print(f"    Committed.")
 
         # ── Betting rounds — use poker strategy ──
         elif phase in (PokerPhase.BETTING_ROUND1, PokerPhase.BETTING_ROUND2):
-            # Only act if it's our turn
             if game["currentTurn"].lower() == my_addr.lower():
-                round_name = "Round 1" if phase == PokerPhase.BETTING_ROUND1 else "Round 2"
+                round_name = "Betting 1" if phase == PokerPhase.BETTING_ROUND1 else "Betting 2"
                 current_bet = game["currentBet"]
-                pot = game["pot"]
+                rd = round_data.get(current_round, {})
+                hand_value = rd.get("hand_value", 50)
 
                 # Use strategy engine to decide action
                 action, amount_wei, strategy_name, confidence = choose_poker_action(
                     hand_value=hand_value,
                     phase=("round1" if phase == PokerPhase.BETTING_ROUND1 else "round2"),
                     current_bet=current_bet,
-                    pot=pot,
+                    pot=0,  # V2 doesn't track aggregate pot — pass 0
                     wager=wager_wei,
                     opponent_addr=opponent_addr,
                     model=model,
@@ -1097,12 +1110,17 @@ def _play_poker_game(game_id: int, opponent_addr: str, wager_wei: int):
                 poker_take_action(game_id, action_int, send_value)
                 print(f"    Action submitted.")
 
-        # ── Showdown — reveal our hand ──
+        # ── Showdown — reveal our hand for this round ──
         elif phase == PokerPhase.SHOWDOWN:
-            i_am_p1 = game["player1"].lower() == my_addr.lower()
             my_revealed = game["p1Revealed"] if i_am_p1 else game["p2Revealed"]
 
             if not my_revealed:
+                rd = round_data.get(current_round, {})
+                hand_value = rd.get("hand_value")
+                salt = rd.get("salt")
+                if hand_value is None or salt is None:
+                    print(f"  ERROR: No saved hand data for round {current_round}. Cannot reveal.")
+                    return
                 print(f"  Revealing hand (value={hand_value})...")
                 reveal_poker_hand(game_id, hand_value, salt)
                 print(f"    Revealed.")
@@ -1112,22 +1130,23 @@ def _play_poker_game(game_id: int, opponent_addr: str, wager_wei: int):
 
 
 def _print_poker_result(game: dict, my_addr: str):
-    """Print the final poker game result using styled output."""
+    """Print the final Budget Poker V2 result using styled output."""
     i_am_p1 = game["player1"].lower() == my_addr.lower()
-    my_hand = game["p1HandValue"] if i_am_p1 else game["p2HandValue"]
-    opp_hand = game["p2HandValue"] if i_am_p1 else game["p1HandValue"]
-    pot = game["pot"]
+    my_score = game["p1Score"] if i_am_p1 else game["p2Score"]
+    opp_score = game["p2Score"] if i_am_p1 else game["p1Score"]
+    my_budget = game["p1Budget"] if i_am_p1 else game["p2Budget"]
+    opp_budget = game["p2Budget"] if i_am_p1 else game["p1Budget"]
 
-    if my_hand > opp_hand:
+    if my_score > opp_score:
         won = True
-    elif opp_hand > my_hand:
+    elif opp_score > my_score:
         won = False
     else:
         won = None
 
-    # Use hand values as scores for the summary banner
-    print_match_summary(won=won, my_score=my_hand, opp_score=opp_hand)
-    print(f"    Pot: {wei_to_mon(pot):.6f} MON")
+    # Use round scores for the summary banner
+    print_match_summary(won=won, my_score=my_score, opp_score=opp_score)
+    print(f"    Budgets remaining: me={my_budget}, opp={opp_budget}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
