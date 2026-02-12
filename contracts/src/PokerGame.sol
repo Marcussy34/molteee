@@ -75,9 +75,6 @@ contract PokerGame is Ownable {
     AgentRegistry public registry;
     IReputationRegistry public reputationRegistry;
 
-    /// @dev Maps player wallet address to their ERC-8004 agentId
-    mapping(address => uint256) public agentIds;
-
     uint256 public nextGameId;
     mapping(uint256 => Game) public games;
 
@@ -96,7 +93,6 @@ contract PokerGame is Ownable {
     event HandRevealed(uint256 indexed gameId, address indexed player, uint8 handValue);
     event GameComplete(uint256 indexed gameId, address indexed winner, uint256 pot);
     event TimeoutClaimed(uint256 indexed gameId, address indexed claimer);
-    event AgentIdSet(address indexed agent, uint256 agentId);
     event ReputationFeedback(uint256 indexed gameId, uint256 agentId, int128 value, string tag);
 
     // ─── Constructor ─────────────────────────────────────────────────────
@@ -413,11 +409,6 @@ contract PokerGame is Ownable {
         phaseTimeout = _timeout;
     }
 
-    function setAgentId(address _agent, uint256 _agentId) external onlyOwner {
-        agentIds[_agent] = _agentId;
-        emit AgentIdSet(_agent, _agentId);
-    }
-
     function setReputationRegistry(address _reputationRegistry) external onlyOwner {
         reputationRegistry = IReputationRegistry(_reputationRegistry);
     }
@@ -497,8 +488,9 @@ contract PokerGame is Ownable {
     function _postReputationFeedback(uint256 _gameId, address _winner, address _loser) internal {
         if (address(reputationRegistry) == address(0)) return;
 
-        uint256 winnerAgentId = agentIds[_winner];
-        uint256 loserAgentId = agentIds[_loser];
+        // Lookup ERC-8004 agent IDs from centralized AgentRegistry
+        uint256 winnerAgentId = registry.getAgentId(_winner);
+        uint256 loserAgentId = registry.getAgentId(_loser);
 
         if (winnerAgentId != 0) {
             try reputationRegistry.giveFeedback(

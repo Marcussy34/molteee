@@ -510,8 +510,8 @@ contract PokerGameTest is Test {
     // ─── Reputation Tests ────────────────────────────────────────────────
 
     function test_reputationFeedbackAfterPoker() public {
-        poker.setAgentId(player1, 100);
-        poker.setAgentId(player2, 200);
+        registry.setAgentIdFor(player1, 100);
+        registry.setAgentIdFor(player2, 200);
 
         uint256 gameId = _createGame(1 ether);
         _commitBothHands(gameId, 90, 10);

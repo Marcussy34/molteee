@@ -325,8 +325,8 @@ contract AuctionGameTest is Test {
     // ─── Reputation Tests ────────────────────────────────────────────────
 
     function test_reputationFeedbackAfterAuction() public {
-        auction.setAgentId(player1, 100);
-        auction.setAgentId(player2, 200);
+        registry.setAgentIdFor(player1, 100);
+        registry.setAgentIdFor(player2, 200);
 
         uint256 gameId = _createGame(1 ether);
         _commitBothBids(gameId, 0.8 ether, 0.3 ether);

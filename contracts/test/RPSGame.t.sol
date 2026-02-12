@@ -432,8 +432,8 @@ contract RPSGameTest is Test {
 
     function test_reputationFeedbackAfterMatch() public {
         // Set ERC-8004 agent IDs for both players
-        rps.setAgentId(player1, 100);
-        rps.setAgentId(player2, 200);
+        registry.setAgentIdFor(player1, 100);
+        registry.setAgentIdFor(player2, 200);
 
         uint256 gameId = _createGame(1 ether, 1);
         _playRound(gameId, RPSGame.Move.Rock, RPSGame.Move.Scissors);
@@ -459,8 +459,8 @@ contract RPSGameTest is Test {
 
     function test_reputationFeedbackNotCalledOnDraw() public {
         // Set ERC-8004 agent IDs
-        rps.setAgentId(player1, 100);
-        rps.setAgentId(player2, 200);
+        registry.setAgentIdFor(player1, 100);
+        registry.setAgentIdFor(player2, 200);
 
         uint256 gameId = _createGame(1 ether, 1);
         _playRound(gameId, RPSGame.Move.Rock, RPSGame.Move.Rock);
@@ -506,17 +506,6 @@ contract RPSGameTest is Test {
         // Game settles without reverting (reputation feedback silently skipped)
         RPSGame.Game memory g = rpsNoRep.getGame(gameId);
         assertTrue(g.settled);
-    }
-
-    function test_setAgentId() public {
-        rps.setAgentId(player1, 42);
-        assertEq(rps.agentIds(player1), 42);
-    }
-
-    function test_setAgentId_revertNonOwner() public {
-        vm.prank(player1);
-        vm.expectRevert();
-        rps.setAgentId(player1, 42);
     }
 
     // ─── All 9 Move Combinations ─────────────────────────────────────────
