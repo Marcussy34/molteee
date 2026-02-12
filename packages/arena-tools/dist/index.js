@@ -28,6 +28,8 @@ import { auctionRoundCommand } from "./commands/auction-round.js";
 import { listMarketsCommand, createMarketCommand, betCommand, resolveMarketCommand, redeemCommand, } from "./commands/market.js";
 import { joinTournamentCommand } from "./commands/join-tournament.js";
 import { createTournamentCommand } from "./commands/create-tournament.js";
+import { respondCommand } from "./commands/respond.js";
+import { playCommand } from "./commands/play.js";
 const program = new Command();
 program
     .name("arena-tools")
@@ -318,6 +320,27 @@ program
     .option("--base-wager <amount>", "Base wager in MON", "0.001")
     .action(wrapCommand(async (format, maxPlayers, opts) => {
     await createTournamentCommand(format, maxPlayers, opts);
+}));
+// ─── Autonomous Game Commands (full match automation) ───────────────────────
+program
+    .command("respond")
+    .description("Accept a match and play the entire game autonomously")
+    .argument("<match_id>", "Match ID to accept and play")
+    .option("--rounds <n>", "Number of rounds (RPS only, must be odd)", "3")
+    .option("--timeout <seconds>", "Max seconds to wait for opponent actions", "600")
+    .action(wrapCommand(async (matchId, opts) => {
+    await respondCommand(matchId, opts);
+}));
+program
+    .command("play")
+    .description("Challenge an opponent and play the entire game autonomously")
+    .argument("<opponent>", "Opponent address")
+    .argument("<wager>", "Wager amount in MON")
+    .argument("<game_type>", "Game type: rps, poker, or auction")
+    .option("--rounds <n>", "Number of rounds (RPS only, must be odd)", "3")
+    .option("--timeout <seconds>", "Max seconds to wait for opponent actions", "600")
+    .action(wrapCommand(async (opponent, wager, gameType, opts) => {
+    await playCommand(opponent, wager, gameType, opts);
 }));
 program.parse();
 //# sourceMappingURL=index.js.map

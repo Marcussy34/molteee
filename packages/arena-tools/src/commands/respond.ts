@@ -11,7 +11,7 @@ import { CONTRACTS, GAME_CONTRACTS } from "../config.js";
 import {
     escrowAbi,
     rpsGameAbi,
-    pokerGameAbi,
+    pokerGameV2Abi,
     auctionGameAbi,
 } from "../contracts.js";
 import { getPublicClient, getAddress } from "../client.js";
@@ -108,7 +108,7 @@ function gameTypeFromAddress(addr: string): string | null {
 }
 
 function gameContractAddr(gameType: string): `0x${string}` {
-    return ({ rps: CONTRACTS.RPSGame, poker: CONTRACTS.PokerGame, auction: CONTRACTS.AuctionGame } as Record<string, `0x${string}`>)[gameType];
+    return ({ rps: CONTRACTS.RPSGame, poker: CONTRACTS.PokerGameV2, auction: CONTRACTS.AuctionGame } as Record<string, `0x${string}`>)[gameType];
 }
 
 // ─── Main respond command ───────────────────────────────────────────────────
@@ -180,10 +180,18 @@ export async function respondCommand(matchId: string, opts: any) {
     }
 
     // ── Phase B: Find or create game ────────────────────────────────────────
+    // Challenger (player1) creates immediately to avoid race conditions.
+    // Responder (player2) waits for the game to appear, creates as fallback.
     const contractAddr = gameContractAddr(gameType);
     let gameId = await findGame(client, contractAddr, gameType, id);
 
-    if (gameId === null) {
+    if (gameId === null && isPlayer1) {
+        // Challenger creates the game immediately — no waiting
+        gameId = await createGame(client, gameType, id, rounds, contractAddr);
+        event({ event: "game_created", gameId: Number(gameId), gameType, rounds: gameType === "rps" ? rounds : 1 });
+    }
+    else if (gameId === null) {
+        // Responder waits for challenger to create the game
         event({ event: "waiting", message: "Waiting for opponent to create game..." });
         const waitEnd = Date.now() + GAME_CREATION_WAIT_MS;
         while (Date.now() < waitEnd && gameId === null) {
@@ -191,11 +199,14 @@ export async function respondCommand(matchId: string, opts: any) {
             await sleep(POLL_INTERVAL_MS);
             gameId = await findGame(client, contractAddr, gameType, id);
         }
-    }
-
-    if (gameId === null) {
-        gameId = await createGame(client, gameType, id, rounds, contractAddr);
-        event({ event: "game_created", gameId: Number(gameId), gameType, rounds: gameType === "rps" ? rounds : 1 });
+        if (gameId === null) {
+            // Fallback: create ourselves if challenger didn't
+            gameId = await createGame(client, gameType, id, rounds, contractAddr);
+            event({ event: "game_created", gameId: Number(gameId), gameType, rounds: gameType === "rps" ? rounds : 1 });
+        }
+        else {
+            event({ event: "game_found", gameId: Number(gameId), gameType });
+        }
     }
     else {
         event({ event: "game_found", gameId: Number(gameId), gameType });
@@ -327,48 +338,69 @@ async function rpsLoop(client: any, gameId: bigint, addr: `0x${string}`, isPlaye
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// POKER STATE MACHINE
+// POKER STATE MACHINE (V2 — Budget Poker: 3 rounds, 150-point hand budget)
+// Each iteration: read state → decide action → execute → sleep → repeat
+// Budget strategy: divide remaining budget by remaining rounds + random jitter
 // ═════════════════════════════════════════════════════════════════════════════
 async function pokerLoop(client: any, gameId: bigint, addr: `0x${string}`, isPlayer1: boolean, wagerWei: bigint, startTime: number, timeoutMs: number) {
     while (true) {
         checkTimeout(startTime, timeoutMs);
 
         const game = (await retry(
-            () => client.readContract({ address: addr, abi: pokerGameAbi, functionName: "getGame", args: [gameId] }),
+            () => client.readContract({ address: addr, abi: pokerGameV2Abi, functionName: "getGame", args: [gameId] }),
             "poker-getGame"
         )) as any;
 
         if (game.settled) {
-            event({ event: "game_settled", gameId: Number(gameId), gameType: "poker" });
+            event({
+                event: "game_settled", gameId: Number(gameId), gameType: "poker",
+                p1Score: Number(game.p1Score), p2Score: Number(game.p2Score),
+                p1Budget: Number(game.p1Budget), p2Budget: Number(game.p2Budget),
+            });
             return;
         }
 
         const phase = Number(game.phase);
+        const currentRound = Number(game.currentRound);
+        const totalRounds = Number(game.totalRounds);
+        const myBudget = isPlayer1 ? Number(game.p1Budget) : Number(game.p2Budget);
         const myCommitted = isPlayer1 ? game.p1Committed : game.p2Committed;
         const myRevealed = isPlayer1 ? game.p1Revealed : game.p2Revealed;
         const isMyTurn = game.currentTurn.toLowerCase() === getAddress().toLowerCase();
 
         if (phase === PHASE_COMMIT && !myCommitted) {
-            // ACTION: Commit a hand value
-            const handValue = Math.floor(Math.random() * 100) + 1;
+            // ACTION: Commit a budget-aware hand value
+            // Strategy: divide remaining budget by remaining rounds, add random jitter
+            const roundsLeft = totalRounds - currentRound;
+            const roundsAfter = roundsLeft - 1;
+            const avgPerRound = Math.floor(myBudget / roundsLeft);
+            // Max hand this round: budget - 1 per future round
+            const maxHand = Math.min(100, myBudget - roundsAfter);
+            // Min hand: always at least 1
+            const minHand = 1;
+            // Random jitter around average (+/- 20%)
+            const jitter = Math.floor(avgPerRound * 0.4 * (Math.random() - 0.5));
+            let handValue = Math.max(minHand, Math.min(maxHand, avgPerRound + jitter));
+
             const salt = generateSalt();
             const hash = commitHash(handValue, salt);
-            storeSalt(`poker-${gameId}`, { salt, handValue });
+            // Salt key includes round to support multi-round
+            storeSalt(`poker-${gameId}-r${currentRound}`, { salt, handValue });
             const { hash: txHash } = await retry(
                 () =>
                     sendTx({
                         to: addr,
-                        data: encodeFunctionData({ abi: pokerGameAbi, functionName: "commitHand", args: [gameId, hash] }),
+                        data: encodeFunctionData({ abi: pokerGameV2Abi, functionName: "commitHand", args: [gameId, hash] }),
                     }),
                 "poker-commit"
             );
-            event({ event: "committed", gameType: "poker", handValue, txHash });
+            event({ event: "committed", gameType: "poker", round: currentRound, handValue, budget: myBudget, maxHand, txHash });
         }
         else if (phase === PHASE_COMMIT) {
-            event({ event: "status", phase: "commit", message: "Waiting for opponent to commit hand..." });
+            event({ event: "status", phase: "commit", round: currentRound, message: "Waiting for opponent to commit hand..." });
         }
         else if ((phase === POKER_BETTING1 || phase === POKER_BETTING2) && isMyTurn) {
-            // ACTION: Take betting action — check or call
+            // ACTION: Take betting action — simple strategy: check or call
             const currentBet = BigInt(game.currentBet);
             const action = currentBet > 0n ? POKER_CALL : POKER_CHECK;
             const actionName = currentBet > 0n ? "call" : "check";
@@ -377,38 +409,38 @@ async function pokerLoop(client: any, gameId: bigint, addr: `0x${string}`, isPla
                 () =>
                     sendTx({
                         to: addr,
-                        data: encodeFunctionData({ abi: pokerGameAbi, functionName: "takeAction", args: [gameId, action] }),
+                        data: encodeFunctionData({ abi: pokerGameV2Abi, functionName: "takeAction", args: [gameId, action] }),
                         value,
                     }),
                 `poker-${actionName}`
             );
-            event({ event: "action", gameType: "poker", action: actionName, bettingRound: phase, txHash });
+            event({ event: "action", gameType: "poker", action: actionName, round: currentRound, bettingRound: phase, txHash });
         }
         else if (phase === POKER_BETTING1 || phase === POKER_BETTING2) {
-            event({ event: "status", phase: `betting${phase}`, message: "Waiting for opponent's turn..." });
+            event({ event: "status", phase: `betting${phase}`, round: currentRound, message: "Waiting for opponent's turn..." });
         }
         else if (phase === POKER_SHOWDOWN && !myRevealed) {
             // ACTION: Reveal hand
-            const stored = loadStoredSalt(`poker-${gameId}`);
+            const stored = loadStoredSalt(`poker-${gameId}-r${currentRound}`);
             if (!stored) {
-                fail("Lost salt for poker reveal. Game is unrecoverable.", "SALT_LOST");
+                fail(`Lost salt for poker round ${currentRound} reveal. Game is unrecoverable.`, "SALT_LOST");
                 return;
             }
             const { hash: txHash } = await retry(
                 () =>
                     sendTx({
                         to: addr,
-                        data: encodeFunctionData({ abi: pokerGameAbi, functionName: "revealHand", args: [gameId, stored.handValue, stored.salt] }),
+                        data: encodeFunctionData({ abi: pokerGameV2Abi, functionName: "revealHand", args: [gameId, stored.handValue, stored.salt] }),
                     }),
                 "poker-reveal"
             );
-            event({ event: "revealed", gameType: "poker", handValue: stored.handValue, txHash });
+            event({ event: "revealed", gameType: "poker", round: currentRound, handValue: stored.handValue, budgetAfter: myBudget - stored.handValue, txHash });
         }
         else if (phase === POKER_SHOWDOWN) {
-            event({ event: "status", phase: "showdown", message: "Waiting for opponent to reveal..." });
+            event({ event: "status", phase: "showdown", round: currentRound, message: "Waiting for opponent to reveal..." });
         }
         else {
-            event({ event: "status", phase, message: "Waiting for state change..." });
+            event({ event: "status", phase, round: currentRound, message: "Waiting for state change..." });
         }
 
         await sleep(POLL_INTERVAL_MS);
@@ -494,7 +526,7 @@ const nextGameIdAbi = [
 ] as const;
 
 async function findGame(client: any, contractAddr: `0x${string}`, gameType: string, matchId: bigint): Promise<bigint | null> {
-    const abi = gameType === "rps" ? rpsGameAbi : gameType === "poker" ? pokerGameAbi : auctionGameAbi;
+    const abi = gameType === "rps" ? rpsGameAbi : gameType === "poker" ? pokerGameV2Abi : auctionGameAbi;
     let nextId: bigint;
     try {
         nextId = (await retry(
@@ -535,7 +567,7 @@ async function createGame(client: any, gameType: string, matchId: bigint, rounds
         data = encodeFunctionData({ abi: rpsGameAbi, functionName: "createGame", args: [matchId, BigInt(rounds)] });
     }
     else if (gameType === "poker") {
-        data = encodeFunctionData({ abi: pokerGameAbi, functionName: "createGame", args: [matchId] });
+        data = encodeFunctionData({ abi: pokerGameV2Abi, functionName: "createGame", args: [matchId] });
     }
     else {
         data = encodeFunctionData({ abi: auctionGameAbi, functionName: "createGame", args: [matchId] });

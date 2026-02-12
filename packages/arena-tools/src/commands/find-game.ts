@@ -6,7 +6,7 @@ import { getPublicClient } from "../client.js";
 import {
     escrowAbi,
     rpsGameAbi,
-    pokerGameAbi,
+    pokerGameV2Abi,
     auctionGameAbi,
 } from "../contracts.js";
 import { ok, fail } from "../utils/output.js";
@@ -22,7 +22,7 @@ const CONTRACT_TO_TYPE: Record<string, string> = Object.fromEntries(
 // Map game type -> ABI
 const TYPE_TO_ABI: Record<string, any> = {
     rps: rpsGameAbi,
-    poker: pokerGameAbi,
+    poker: pokerGameV2Abi,
     auction: auctionGameAbi,
 };
 

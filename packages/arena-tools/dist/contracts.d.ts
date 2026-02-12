@@ -491,6 +491,204 @@ export declare const pokerGameAbi: readonly [{
         readonly type: "uint256";
     }];
 }];
+export declare const pokerGameV2Abi: readonly [{
+    readonly name: "createGame";
+    readonly type: "function";
+    readonly stateMutability: "nonpayable";
+    readonly inputs: readonly [{
+        readonly name: "_escrowMatchId";
+        readonly type: "uint256";
+    }];
+    readonly outputs: readonly [{
+        readonly name: "gameId";
+        readonly type: "uint256";
+    }];
+}, {
+    readonly name: "commitHand";
+    readonly type: "function";
+    readonly stateMutability: "nonpayable";
+    readonly inputs: readonly [{
+        readonly name: "_gameId";
+        readonly type: "uint256";
+    }, {
+        readonly name: "_hash";
+        readonly type: "bytes32";
+    }];
+    readonly outputs: readonly [];
+}, {
+    readonly name: "takeAction";
+    readonly type: "function";
+    readonly stateMutability: "payable";
+    readonly inputs: readonly [{
+        readonly name: "_gameId";
+        readonly type: "uint256";
+    }, {
+        readonly name: "_action";
+        readonly type: "uint8";
+    }];
+    readonly outputs: readonly [];
+}, {
+    readonly name: "revealHand";
+    readonly type: "function";
+    readonly stateMutability: "nonpayable";
+    readonly inputs: readonly [{
+        readonly name: "_gameId";
+        readonly type: "uint256";
+    }, {
+        readonly name: "_handValue";
+        readonly type: "uint8";
+    }, {
+        readonly name: "_salt";
+        readonly type: "bytes32";
+    }];
+    readonly outputs: readonly [];
+}, {
+    readonly name: "claimTimeout";
+    readonly type: "function";
+    readonly stateMutability: "nonpayable";
+    readonly inputs: readonly [{
+        readonly name: "_gameId";
+        readonly type: "uint256";
+    }];
+    readonly outputs: readonly [];
+}, {
+    readonly name: "getGame";
+    readonly type: "function";
+    readonly stateMutability: "view";
+    readonly inputs: readonly [{
+        readonly name: "_gameId";
+        readonly type: "uint256";
+    }];
+    readonly outputs: readonly [{
+        readonly name: "";
+        readonly type: "tuple";
+        readonly components: readonly [{
+            readonly name: "escrowMatchId";
+            readonly type: "uint256";
+        }, {
+            readonly name: "player1";
+            readonly type: "address";
+        }, {
+            readonly name: "player2";
+            readonly type: "address";
+        }, {
+            readonly name: "totalRounds";
+            readonly type: "uint256";
+        }, {
+            readonly name: "currentRound";
+            readonly type: "uint256";
+        }, {
+            readonly name: "p1Score";
+            readonly type: "uint256";
+        }, {
+            readonly name: "p2Score";
+            readonly type: "uint256";
+        }, {
+            readonly name: "startingBudget";
+            readonly type: "uint256";
+        }, {
+            readonly name: "p1Budget";
+            readonly type: "uint256";
+        }, {
+            readonly name: "p2Budget";
+            readonly type: "uint256";
+        }, {
+            readonly name: "p1ExtraBets";
+            readonly type: "uint256";
+        }, {
+            readonly name: "p2ExtraBets";
+            readonly type: "uint256";
+        }, {
+            readonly name: "phase";
+            readonly type: "uint8";
+        }, {
+            readonly name: "phaseDeadline";
+            readonly type: "uint256";
+        }, {
+            readonly name: "settled";
+            readonly type: "bool";
+        }, {
+            readonly name: "currentBet";
+            readonly type: "uint256";
+        }, {
+            readonly name: "currentTurn";
+            readonly type: "address";
+        }, {
+            readonly name: "p1Committed";
+            readonly type: "bool";
+        }, {
+            readonly name: "p2Committed";
+            readonly type: "bool";
+        }, {
+            readonly name: "p1Revealed";
+            readonly type: "bool";
+        }, {
+            readonly name: "p2Revealed";
+            readonly type: "bool";
+        }];
+    }];
+}, {
+    readonly name: "getRound";
+    readonly type: "function";
+    readonly stateMutability: "view";
+    readonly inputs: readonly [{
+        readonly name: "_gameId";
+        readonly type: "uint256";
+    }, {
+        readonly name: "_round";
+        readonly type: "uint256";
+    }];
+    readonly outputs: readonly [{
+        readonly name: "";
+        readonly type: "tuple";
+        readonly components: readonly [{
+            readonly name: "p1Commit";
+            readonly type: "bytes32";
+        }, {
+            readonly name: "p2Commit";
+            readonly type: "bytes32";
+        }, {
+            readonly name: "p1HandValue";
+            readonly type: "uint8";
+        }, {
+            readonly name: "p2HandValue";
+            readonly type: "uint8";
+        }, {
+            readonly name: "p1Committed";
+            readonly type: "bool";
+        }, {
+            readonly name: "p2Committed";
+            readonly type: "bool";
+        }, {
+            readonly name: "p1Revealed";
+            readonly type: "bool";
+        }, {
+            readonly name: "p2Revealed";
+            readonly type: "bool";
+        }, {
+            readonly name: "currentBet";
+            readonly type: "uint256";
+        }, {
+            readonly name: "lastBettor";
+            readonly type: "address";
+        }, {
+            readonly name: "betsThisRound";
+            readonly type: "uint8";
+        }, {
+            readonly name: "currentTurn";
+            readonly type: "address";
+        }];
+    }];
+}, {
+    readonly name: "nextGameId";
+    readonly type: "function";
+    readonly stateMutability: "view";
+    readonly inputs: readonly [];
+    readonly outputs: readonly [{
+        readonly name: "";
+        readonly type: "uint256";
+    }];
+}];
 export declare const auctionGameAbi: readonly [{
     readonly name: "createGame";
     readonly type: "function";

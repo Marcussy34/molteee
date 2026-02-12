@@ -3,7 +3,7 @@
 // This is a read-only command (no PRIVATE_KEY needed).
 import { CONTRACTS, GAME_CONTRACTS } from "../config.js";
 import { getPublicClient } from "../client.js";
-import { escrowAbi, rpsGameAbi, pokerGameAbi, auctionGameAbi, } from "../contracts.js";
+import { escrowAbi, rpsGameAbi, pokerGameV2Abi, auctionGameAbi, } from "../contracts.js";
 import { ok, fail } from "../utils/output.js";
 // Map contract address (lowercased) -> game type name
 const CONTRACT_TO_TYPE = Object.fromEntries(Object.entries(GAME_CONTRACTS).map(([name, addr]) => [
@@ -13,7 +13,7 @@ const CONTRACT_TO_TYPE = Object.fromEntries(Object.entries(GAME_CONTRACTS).map((
 // Map game type -> ABI
 const TYPE_TO_ABI = {
     rps: rpsGameAbi,
-    poker: pokerGameAbi,
+    poker: pokerGameV2Abi,
     auction: auctionGameAbi,
 };
 /**

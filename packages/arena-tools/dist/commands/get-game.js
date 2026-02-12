@@ -1,8 +1,8 @@
-// arena-tools get-game — get game state for RPS, Poker, or Auction
+// arena-tools get-game — get game state for RPS, Poker (Budget V2), or Auction
 import { formatEther } from "viem";
 import { getPublicClient } from "../client.js";
 import { CONTRACTS } from "../config.js";
-import { rpsGameAbi, pokerGameAbi, auctionGameAbi } from "../contracts.js";
+import { rpsGameAbi, pokerGameV2Abi, auctionGameAbi } from "../contracts.js";
 import { ok, fail } from "../utils/output.js";
 // RPS + Auction phases: Commit=0, Reveal=1, Complete=2
 const PHASE_NAMES = ["Commit", "Reveal", "Complete"];
@@ -38,32 +38,42 @@ export async function getGameCommand(gameType, gameId) {
     }
     else if (gt === "poker") {
         const game = (await client.readContract({
-            address: CONTRACTS.PokerGame,
-            abi: pokerGameAbi,
+            address: CONTRACTS.PokerGameV2,
+            abi: pokerGameV2Abi,
             functionName: "getGame",
             args: [id],
         }));
         ok({
             gameType: "poker",
+            version: "v2-budget",
             gameId: Number(id),
             matchId: Number(game.escrowMatchId),
             player1: game.player1,
             player2: game.player2,
-            pot: formatEther(game.pot),
+            // Round tracking
+            totalRounds: Number(game.totalRounds),
+            currentRound: Number(game.currentRound),
+            p1Score: Number(game.p1Score),
+            p2Score: Number(game.p2Score),
+            // Budget tracking
+            startingBudget: Number(game.startingBudget),
+            p1Budget: Number(game.p1Budget),
+            p2Budget: Number(game.p2Budget),
+            // Betting
             currentBet: formatEther(game.currentBet),
             currentTurn: game.currentTurn,
+            p1ExtraBets: formatEther(game.p1ExtraBets),
+            p2ExtraBets: formatEther(game.p2ExtraBets),
+            // Phase
             phase: POKER_PHASE_NAMES[game.phase] || `Unknown(${game.phase})`,
             phaseCode: Number(game.phase),
             phaseDeadline: Number(game.phaseDeadline),
             settled: game.settled,
-            p1HandValue: Number(game.p1HandValue),
-            p2HandValue: Number(game.p2HandValue),
+            // Current round commit/reveal status
             p1Committed: game.p1Committed,
             p2Committed: game.p2Committed,
             p1Revealed: game.p1Revealed,
             p2Revealed: game.p2Revealed,
-            p1ExtraBets: formatEther(game.p1ExtraBets),
-            p2ExtraBets: formatEther(game.p2ExtraBets),
         });
     }
     else if (gt === "auction") {

@@ -2,7 +2,7 @@
 import { encodeFunctionData, parseEther, getAddress as checksumAddress } from "viem";
 import { CONTRACTS, GAME_CONTRACTS, GAME_TYPES } from "../config.js";
 import { escrowAbi } from "../contracts.js";
-import { getPublicClient, getAddress } from "../client.js";
+import { getAddress } from "../client.js";
 import { sendTx } from "../utils/tx.js";
 import { ok, fail } from "../utils/output.js";
 export async function challengeCommand(opponent, wager, gameType) {
@@ -18,19 +18,21 @@ export async function challengeCommand(opponent, wager, gameType) {
         functionName: "createMatch",
         args: [checksumAddress(opponent), gameContract],
     });
-    const { hash } = await sendTx({
+    const { hash, logs } = await sendTx({
         to: CONTRACTS.Escrow,
         data,
         value: wagerWei,
     });
-    // Get the match ID from nextMatchId
-    const client = getPublicClient();
-    const nextId = (await client.readContract({
-        address: CONTRACTS.Escrow,
-        abi: escrowAbi,
-        functionName: "nextMatchId",
-    }));
-    const matchId = Number(nextId) - 1;
+    // Parse matchId from the MatchCreated event in tx logs (topics[1]).
+    // This is race-safe — reads directly from our own tx receipt, not from global state.
+    let matchId = -1;
+    for (const log of logs) {
+        if (log.address.toLowerCase() === CONTRACTS.Escrow.toLowerCase() && log.topics.length > 1) {
+            // First indexed param in MatchCreated event is the matchId
+            matchId = Number(BigInt(log.topics[1]));
+            break;
+        }
+    }
     ok({
         action: "challenge",
         matchId,

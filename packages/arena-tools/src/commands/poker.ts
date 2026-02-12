@@ -1,11 +1,11 @@
-// arena-tools poker-* — step-by-step Poker game commands
-// poker-create: Create a new Poker game
-// poker-commit: Commit a hand value (1-100)
+// arena-tools poker-* — step-by-step Budget Poker game commands (V2)
+// poker-create: Create a new Budget Poker game (3 rounds, 150-point budget)
+// poker-commit: Commit a hand value (1-100, constrained by budget)
 // poker-action: Take a betting action (check, bet, raise, call, fold)
-// poker-reveal: Reveal the committed hand
+// poker-reveal: Reveal the committed hand (budget deducted on reveal)
 import { encodeFunctionData, parseEther, formatEther } from "viem";
 import { CONTRACTS } from "../config.js";
-import { pokerGameAbi } from "../contracts.js";
+import { pokerGameV2Abi } from "../contracts.js";
 import { getAddress, getPublicClient } from "../client.js";
 import { sendTx } from "../utils/tx.js";
 import { generateSalt, saveSalt, loadSalt, deleteSalt, commitHash } from "../utils/commit-reveal.js";
@@ -23,20 +23,20 @@ const ACTION_MAP: Record<string, number> = {
 /** Create a new Poker game for a match */
 export async function pokerCreateCommand(matchId: string) {
     const data = encodeFunctionData({
-        abi: pokerGameAbi,
+        abi: pokerGameV2Abi,
         functionName: "createGame",
         args: [BigInt(matchId)],
     });
 
     const { hash, logs } = await sendTx({
-        to: CONTRACTS.PokerGame,
+        to: CONTRACTS.PokerGameV2,
         data,
     });
 
     // Parse the game ID from the GameCreated event in tx logs
     let gameId = -1;
     for (const log of logs) {
-        if (log.address.toLowerCase() === CONTRACTS.PokerGame.toLowerCase() && log.topics.length > 1) {
+        if (log.address.toLowerCase() === CONTRACTS.PokerGameV2.toLowerCase() && log.topics.length > 1) {
             gameId = Number(BigInt(log.topics[1]));
             break;
         }
@@ -65,13 +65,13 @@ export async function pokerCommitCommand(gameId: string, handValue: string) {
     saveSalt(`poker-${gameId}-${myAddress}`, salt, handValue, "poker");
 
     const data = encodeFunctionData({
-        abi: pokerGameAbi,
+        abi: pokerGameV2Abi,
         functionName: "commitHand",
         args: [BigInt(gameId), hash],
     });
 
     const { hash: txHash } = await sendTx({
-        to: CONTRACTS.PokerGame,
+        to: CONTRACTS.PokerGameV2,
         data,
     });
 
@@ -93,7 +93,7 @@ export async function pokerActionCommand(gameId: string, action: string, amount?
     }
 
     const data = encodeFunctionData({
-        abi: pokerGameAbi,
+        abi: pokerGameV2Abi,
         functionName: "takeAction",
         args: [BigInt(gameId), actionNum],
     });
@@ -106,8 +106,8 @@ export async function pokerActionCommand(gameId: string, action: string, amount?
         // Read currentBet from contract so the user doesn't need to pass it
         const client = getPublicClient();
         const game = (await client.readContract({
-            address: CONTRACTS.PokerGame,
-            abi: pokerGameAbi,
+            address: CONTRACTS.PokerGameV2,
+            abi: pokerGameV2Abi,
             functionName: "getGame",
             args: [BigInt(gameId)],
         })) as any;
@@ -115,7 +115,7 @@ export async function pokerActionCommand(gameId: string, action: string, amount?
     }
 
     const { hash: txHash } = await sendTx({
-        to: CONTRACTS.PokerGame,
+        to: CONTRACTS.PokerGameV2,
         data,
         value,
     });
@@ -140,13 +140,13 @@ export async function pokerRevealCommand(gameId: string) {
 
     const handValue = parseInt(saved.value);
     const data = encodeFunctionData({
-        abi: pokerGameAbi,
+        abi: pokerGameV2Abi,
         functionName: "revealHand",
         args: [BigInt(gameId), handValue, saved.salt],
     });
 
     const { hash: txHash } = await sendTx({
-        to: CONTRACTS.PokerGame,
+        to: CONTRACTS.PokerGameV2,
         data,
     });
 

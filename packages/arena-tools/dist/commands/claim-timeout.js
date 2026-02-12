@@ -1,7 +1,7 @@
 // arena-tools claim-timeout — claim a timeout win for any game type
 import { encodeFunctionData } from "viem";
 import { CONTRACTS, GAME_TYPES } from "../config.js";
-import { rpsGameAbi, pokerGameAbi, auctionGameAbi } from "../contracts.js";
+import { rpsGameAbi, pokerGameV2Abi, auctionGameAbi } from "../contracts.js";
 import { sendTx } from "../utils/tx.js";
 import { ok, fail } from "../utils/output.js";
 export async function claimTimeoutCommand(gameType, gameId) {
@@ -11,7 +11,7 @@ export async function claimTimeoutCommand(gameType, gameId) {
     }
     const contractMap = {
         rps: { address: CONTRACTS.RPSGame, abi: rpsGameAbi },
-        poker: { address: CONTRACTS.PokerGame, abi: pokerGameAbi },
+        poker: { address: CONTRACTS.PokerGameV2, abi: pokerGameV2Abi },
         auction: { address: CONTRACTS.AuctionGame, abi: auctionGameAbi },
     };
     const { address, abi } = contractMap[gt];

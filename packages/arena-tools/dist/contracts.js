@@ -319,6 +319,121 @@ export const pokerGameAbi = [
     // nextGameId — used by the respond command to discover game IDs efficiently
     { name: "nextGameId", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
 ];
+// ─── PokerGameV2 ABI (Budget Poker — multi-round with hand budget) ───────────
+export const pokerGameV2Abi = [
+    {
+        name: "createGame",
+        type: "function",
+        stateMutability: "nonpayable",
+        inputs: [{ name: "_escrowMatchId", type: "uint256" }],
+        outputs: [{ name: "gameId", type: "uint256" }],
+    },
+    {
+        name: "commitHand",
+        type: "function",
+        stateMutability: "nonpayable",
+        inputs: [
+            { name: "_gameId", type: "uint256" },
+            { name: "_hash", type: "bytes32" },
+        ],
+        outputs: [],
+    },
+    {
+        name: "takeAction",
+        type: "function",
+        stateMutability: "payable",
+        inputs: [
+            { name: "_gameId", type: "uint256" },
+            { name: "_action", type: "uint8" },
+        ],
+        outputs: [],
+    },
+    {
+        name: "revealHand",
+        type: "function",
+        stateMutability: "nonpayable",
+        inputs: [
+            { name: "_gameId", type: "uint256" },
+            { name: "_handValue", type: "uint8" },
+            { name: "_salt", type: "bytes32" },
+        ],
+        outputs: [],
+    },
+    {
+        name: "claimTimeout",
+        type: "function",
+        stateMutability: "nonpayable",
+        inputs: [{ name: "_gameId", type: "uint256" }],
+        outputs: [],
+    },
+    {
+        name: "getGame",
+        type: "function",
+        stateMutability: "view",
+        inputs: [{ name: "_gameId", type: "uint256" }],
+        outputs: [
+            {
+                name: "",
+                type: "tuple",
+                components: [
+                    { name: "escrowMatchId", type: "uint256" },
+                    { name: "player1", type: "address" },
+                    { name: "player2", type: "address" },
+                    { name: "totalRounds", type: "uint256" },
+                    { name: "currentRound", type: "uint256" },
+                    { name: "p1Score", type: "uint256" },
+                    { name: "p2Score", type: "uint256" },
+                    { name: "startingBudget", type: "uint256" },
+                    { name: "p1Budget", type: "uint256" },
+                    { name: "p2Budget", type: "uint256" },
+                    { name: "p1ExtraBets", type: "uint256" },
+                    { name: "p2ExtraBets", type: "uint256" },
+                    { name: "phase", type: "uint8" },
+                    { name: "phaseDeadline", type: "uint256" },
+                    { name: "settled", type: "bool" },
+                    // Current round convenience fields
+                    { name: "currentBet", type: "uint256" },
+                    { name: "currentTurn", type: "address" },
+                    { name: "p1Committed", type: "bool" },
+                    { name: "p2Committed", type: "bool" },
+                    { name: "p1Revealed", type: "bool" },
+                    { name: "p2Revealed", type: "bool" },
+                ],
+            },
+        ],
+    },
+    {
+        name: "getRound",
+        type: "function",
+        stateMutability: "view",
+        inputs: [
+            { name: "_gameId", type: "uint256" },
+            { name: "_round", type: "uint256" },
+        ],
+        outputs: [
+            {
+                name: "",
+                type: "tuple",
+                components: [
+                    { name: "p1Commit", type: "bytes32" },
+                    { name: "p2Commit", type: "bytes32" },
+                    { name: "p1HandValue", type: "uint8" },
+                    { name: "p2HandValue", type: "uint8" },
+                    { name: "p1Committed", type: "bool" },
+                    { name: "p2Committed", type: "bool" },
+                    { name: "p1Revealed", type: "bool" },
+                    { name: "p2Revealed", type: "bool" },
+                    { name: "currentBet", type: "uint256" },
+                    { name: "lastBettor", type: "address" },
+                    { name: "betsThisRound", type: "uint8" },
+                    { name: "currentTurn", type: "address" },
+                ],
+            },
+        ],
+    },
+    // nextGameId — used by the respond command to discover game IDs
+    { name: "nextGameId", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
+];
 // ─── AuctionGame ABI ─────────────────────────────────────────────────────────
 export const auctionGameAbi = [
     {
