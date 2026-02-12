@@ -303,9 +303,11 @@ Three independent analytical modules produce predictions, weighted by confidence
 
 Budget Poker strategy operates at two levels:
 
-**Hand value selection** (commit phase):
-- Budget-aware allocation: divides remaining budget by remaining rounds, with ±20% jitter
-- Ensures enough budget reserved for future rounds (min 1 per remaining round)
+**Hand value selection** (`strategy.py:310`, commit phase):
+- Budget-aware allocation: divides remaining budget across remaining rounds as baseline
+- **Score-based aggression:** If behind, spend ~30% more per round to catch up. If ahead, spend ~30% less to conserve.
+- Contract constraint enforced: `hand_value ≤ budget - rounds_remaining_after`
+- ±20% jitter to prevent predictability
 
 **Betting decisions** (`strategy.py:332`) — adapts to opponent profile:
 - **Premium hands (81-100):** Value bet 50% of wager, always raise when facing a bet
