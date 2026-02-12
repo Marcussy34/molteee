@@ -14,4 +14,9 @@ interface IIdentityRegistry {
     /// @param agentId The agent's token ID
     /// @return The wallet address associated with this agent
     function getAgentWallet(uint256 agentId) external view returns (address);
+
+    /// @notice Register an agent and mint an identity token
+    /// @param wallet The agent's wallet address
+    /// @return agentId The newly assigned agent ID (token ID)
+    function registerAgent(address wallet) external returns (uint256 agentId);
 }
