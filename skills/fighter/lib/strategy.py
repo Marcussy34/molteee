@@ -307,14 +307,59 @@ HAND_STRONG = 80     # Hands 61-80: strong
                      # Hands 81-100: premium
 
 
-def choose_hand_value() -> int:
+def choose_hand_value(
+    budget: int = 150,
+    current_round: int = 0,
+    total_rounds: int = 3,
+    my_score: int = 0,
+    opp_score: int = 0,
+) -> int:
     """
-    Choose a hand value (1-100) to commit.
-    Strategy: always pick a random value — it's committed privately.
-    The value itself doesn't matter strategically since both players
-    commit independently. We pick uniformly at random.
+    Choose a hand value (1-100) for Budget Poker V2.
+
+    Budget constraint: hand_value ≤ budget - (rounds_remaining_after_this - 1 per future round).
+    The contract enforces this on reveal: _handValue <= myBudget - roundsAfter.
+
+    Strategy:
+    - Divide remaining budget across remaining rounds as baseline.
+    - If behind on score, commit higher to try to win (aggressive).
+    - If ahead, commit conservatively to save budget for later rounds.
+    - Add ±20% jitter to prevent predictability.
     """
-    return random.randint(1, 100)
+    rounds_left = total_rounds - current_round
+    rounds_after = rounds_left - 1
+
+    # Max hand we can commit (contract enforces: hand ≤ budget - roundsAfter)
+    max_hand = min(100, budget - rounds_after)
+    # Must commit at least 1
+    min_hand = 1
+
+    if max_hand < min_hand:
+        return min_hand  # Budget exhausted — commit minimum
+
+    # Baseline: divide budget evenly across remaining rounds
+    avg_per_round = budget // rounds_left
+
+    # Score-based aggression: behind → spend more, ahead → spend less
+    score_diff = my_score - opp_score
+    if score_diff < 0:
+        # Behind — be aggressive, spend ~30% more than average
+        target = int(avg_per_round * 1.3)
+    elif score_diff > 0:
+        # Ahead — be conservative, spend ~30% less than average
+        target = int(avg_per_round * 0.7)
+    else:
+        # Even — play balanced
+        target = avg_per_round
+
+    # Add ±20% jitter to prevent predictability
+    jitter = int(target * 0.4 * (random.random() - 0.5))
+    hand_value = target + jitter
+
+    # Clamp to valid range
+    hand_value = max(min_hand, min(max_hand, hand_value))
+
+    return hand_value
 
 
 def categorize_hand(hand_value: int) -> str:
