@@ -1,6 +1,7 @@
 /** Generate a cryptographically secure 32-byte salt */
 export declare function generateSalt(): `0x${string}`;
-/** Save a salt for later reveal */
+/** Save a salt for later reveal.
+ *  Uses per-key files to avoid race conditions when multiple agents share the same machine. */
 export declare function saveSalt(key: string, salt: string, value: string, gameType: string): void;
 /** Load a saved salt and remove it from storage */
 export declare function loadSalt(key: string): {
