@@ -43,7 +43,7 @@ export function ClashResolver({
 }
 
 /* ═══════════════════════════════════════════════════
-   ROCK WINS: Scissor blades shatter into crimson shards with gravity
+   ROCK WINS: Crimson shards explode with gravity + ember sparks
    ═══════════════════════════════════════════════════ */
 const SHARD_COUNT = 20;
 
@@ -65,18 +65,16 @@ function ShatterEffect({ phaseElapsed }: { phaseElapsed: number }) {
 
   useFrame(() => {
     if (!meshRef.current) return;
-    const t = phaseElapsed; // 0..1 over round_result duration (1.3s)
-    const seconds = t * 1.3; // approximate real seconds
+    const t = phaseElapsed;
+    const seconds = t * 1.3;
 
     for (let i = 0; i < SHARD_COUNT; i++) {
       const d = shardData[i];
-      // Physics: position with gravity
       dummy.position.set(
         d.vx * seconds,
-        d.vy * seconds - 4.9 * seconds * seconds, // gravity
+        d.vy * seconds - 4.9 * seconds * seconds,
         d.vz * seconds,
       );
-      // Tumble spin
       dummy.rotation.set(d.rx * seconds, d.ry * seconds, d.rz * seconds);
       dummy.scale.setScalar(d.scale);
       dummy.updateMatrix();
@@ -84,7 +82,6 @@ function ShatterEffect({ phaseElapsed }: { phaseElapsed: number }) {
     }
     meshRef.current.instanceMatrix.needsUpdate = true;
 
-    // Fade out
     const mat = meshRef.current.material as THREE.MeshStandardMaterial;
     mat.opacity = Math.max(0, 1 - t * 1.2);
   });
@@ -92,16 +89,17 @@ function ShatterEffect({ phaseElapsed }: { phaseElapsed: number }) {
   return (
     <>
       <instancedMesh ref={meshRef} args={[undefined, undefined, SHARD_COUNT]}>
-        <boxGeometry args={[1, 0.3, 0.1]} />
+        <icosahedronGeometry args={[0.5, 0]} />
         <meshStandardMaterial
           color="#FF3131"
           emissive="#FF3131"
           emissiveIntensity={0.5}
           transparent
           opacity={1}
+          roughness={0.4}
+          metalness={0.2}
         />
       </instancedMesh>
-      {/* Ember particles at center */}
       <EmberBurst color="#FF9500" count={12} phaseElapsed={phaseElapsed} />
     </>
   );
@@ -118,10 +116,9 @@ function SliceEffect({ phaseElapsed }: { phaseElapsed: number }) {
     const t = phaseElapsed;
     const seconds = t * 1.3;
 
-    // Halves tumble away in opposite directions
     if (leftRef.current) {
       leftRef.current.position.set(-seconds * 2.5, seconds * 0.5 - 2 * seconds * seconds, 0);
-      leftRef.current.rotation.set(0, 0, -seconds * 4); // angular momentum
+      leftRef.current.rotation.set(0, 0, -seconds * 4);
     }
     if (rightRef.current) {
       rightRef.current.position.set(seconds * 2.5, seconds * 0.5 - 2 * seconds * seconds, 0);
@@ -133,7 +130,6 @@ function SliceEffect({ phaseElapsed }: { phaseElapsed: number }) {
 
   return (
     <>
-      {/* Left half */}
       <group ref={leftRef}>
         <mesh>
           <planeGeometry args={[0.3, 0.2]} />
@@ -148,8 +144,18 @@ function SliceEffect({ phaseElapsed }: { phaseElapsed: number }) {
             roughness={0.1}
           />
         </mesh>
+        {/* Soft glow halo */}
+        <mesh>
+          <sphereGeometry args={[0.15, 16, 16]} />
+          <meshBasicMaterial
+            color="#00F0FF"
+            transparent
+            opacity={shieldOpacity * 0.3}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
       </group>
-      {/* Right half */}
       <group ref={rightRef}>
         <mesh>
           <planeGeometry args={[0.3, 0.2]} />
@@ -164,15 +170,24 @@ function SliceEffect({ phaseElapsed }: { phaseElapsed: number }) {
             roughness={0.1}
           />
         </mesh>
+        <mesh>
+          <sphereGeometry args={[0.15, 16, 16]} />
+          <meshBasicMaterial
+            color="#00F0FF"
+            transparent
+            opacity={shieldOpacity * 0.3}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
       </group>
-      {/* Slash sparks at center */}
       <SlashSparks phaseElapsed={phaseElapsed} />
     </>
   );
 }
 
 /* ═══════════════════════════════════════════════════
-   PAPER WINS: Rock sealed and sinks downward
+   PAPER WINS: Rock sealed and sinks downward (solid, not wireframe)
    ═══════════════════════════════════════════════════ */
 function WrapEffect({ phaseElapsed }: { phaseElapsed: number }) {
   const groupRef = useRef<THREE.Group>(null!);
@@ -182,10 +197,8 @@ function WrapEffect({ phaseElapsed }: { phaseElapsed: number }) {
     if (!groupRef.current) return;
     const t = phaseElapsed;
 
-    // Converge: shields spin faster as they close in
     groupRef.current.rotation.y = state.clock.elapsedTime * (3 + t * 10);
 
-    // Rock sinks and dims
     if (rockRef.current) {
       rockRef.current.position.y = -t * 1.5;
       const scl = Math.max(0.01, 1 - t * 0.8);
@@ -200,16 +213,17 @@ function WrapEffect({ phaseElapsed }: { phaseElapsed: number }) {
 
   return (
     <group ref={groupRef}>
-      {/* Rock being sealed */}
+      {/* Rock being sealed — solid with magma glow */}
       <mesh ref={rockRef}>
-        <icosahedronGeometry args={[0.2, 1]} />
+        <icosahedronGeometry args={[0.2, 2]} />
         <meshStandardMaterial
           color="#2A1A0A"
           emissive="#FF9500"
           emissiveIntensity={0.6}
           transparent
           opacity={1}
-          wireframe
+          roughness={0.7}
+          metalness={0.3}
         />
       </mesh>
 
@@ -218,23 +232,35 @@ function WrapEffect({ phaseElapsed }: { phaseElapsed: number }) {
         const angle = (i / 3) * Math.PI * 2;
         const r = 0.5 * wrapScale;
         return (
-          <mesh
-            key={i}
-            position={[Math.cos(angle) * r, 0, Math.sin(angle) * r]}
-            rotation={[0, angle, 0]}
-          >
-            <planeGeometry args={[0.3, 0.18]} />
-            <meshStandardMaterial
-              color="#00F0FF"
-              emissive="#00F0FF"
-              emissiveIntensity={0.7 + phaseElapsed * 0.5}
-              transparent
-              opacity={Math.min(1, 0.6 + phaseElapsed)}
-              side={THREE.DoubleSide}
-              metalness={0.2}
-            roughness={0.1}
-            />
-          </mesh>
+          <group key={i}>
+            <mesh
+              position={[Math.cos(angle) * r, 0, Math.sin(angle) * r]}
+              rotation={[0, angle, 0]}
+            >
+              <planeGeometry args={[0.3, 0.18]} />
+              <meshStandardMaterial
+                color="#00F0FF"
+                emissive="#00F0FF"
+                emissiveIntensity={0.7 + phaseElapsed * 0.5}
+                transparent
+                opacity={Math.min(1, 0.6 + phaseElapsed)}
+                side={THREE.DoubleSide}
+                metalness={0.2}
+                roughness={0.1}
+              />
+            </mesh>
+            {/* Shield glow trail */}
+            <mesh position={[Math.cos(angle) * r, 0, Math.sin(angle) * r]}>
+              <sphereGeometry args={[0.1, 12, 12]} />
+              <meshBasicMaterial
+                color="#00F0FF"
+                transparent
+                opacity={Math.min(0.4, phaseElapsed * 0.6)}
+                blending={THREE.AdditiveBlending}
+                depthWrite={false}
+              />
+            </mesh>
+          </group>
         );
       })}
     </group>
@@ -283,9 +309,8 @@ function RepelEffect({ phaseElapsed }: { phaseElapsed: number }) {
 
   return (
     <>
-      {/* Spark starburst */}
       <instancedMesh ref={meshRef} args={[undefined, undefined, SPARK_COUNT]}>
-        <sphereGeometry args={[1, 6, 6]} />
+        <sphereGeometry args={[1, 16, 16]} />
         <meshBasicMaterial
           color="#FFFFFF"
           transparent
@@ -294,13 +319,24 @@ function RepelEffect({ phaseElapsed }: { phaseElapsed: number }) {
           depthWrite={false}
         />
       </instancedMesh>
-      {/* Central flash */}
+      {/* Soft central flash glow */}
       <mesh scale={[1 - phaseElapsed * 0.8, 1 - phaseElapsed * 0.8, 1 - phaseElapsed * 0.8]}>
-        <sphereGeometry args={[0.3, 12, 12]} />
+        <sphereGeometry args={[0.3, 24, 24]} />
         <meshBasicMaterial
           color="#FFFFFF"
           transparent
           opacity={Math.max(0, 0.8 - phaseElapsed * 2)}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Secondary warm glow */}
+      <mesh scale={[0.6 + phaseElapsed * 1.5, 0.6 + phaseElapsed * 1.5, 0.6 + phaseElapsed * 1.5]}>
+        <sphereGeometry args={[0.5, 20, 20]} />
+        <meshBasicMaterial
+          color="#FFD0A0"
+          transparent
+          opacity={Math.max(0, 0.3 - phaseElapsed * 0.5)}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
@@ -350,7 +386,7 @@ function EmberBurst({
 
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
-      <sphereGeometry args={[1, 4, 4]} />
+      <sphereGeometry args={[1, 12, 12]} />
       <meshBasicMaterial
         color={color}
         transparent
@@ -394,7 +430,7 @@ function SlashSparks({ phaseElapsed }: { phaseElapsed: number }) {
 
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, SPARK]}>
-      <sphereGeometry args={[1, 4, 4]} />
+      <sphereGeometry args={[1, 12, 12]} />
       <meshBasicMaterial
         color="#FF3131"
         transparent
