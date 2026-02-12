@@ -41,6 +41,17 @@ export const CONTRACTS = {
     TournamentV2: "0xECcbb759CD3642333D8E8D91350a40D8E02aBe65",
     PredictionMarket: "0xf38C7642a6B21220404c886928DcD6783C33c2b1",
 };
+// ─── Derive wallet address from private key (for read commands) ─────────────
+import { privateKeyToAccount } from "viem/accounts";
+export function getAddressFromKey() {
+    const key = process.env.PRIVATE_KEY ||
+        process.env.DEPLOYER_PRIVATE_KEY ||
+        process.env.WALLET_PRIVATE_KEY;
+    if (!key)
+        return null;
+    const prefixed = key.startsWith("0x") ? key : `0x${key}`;
+    return privateKeyToAccount(prefixed).address;
+}
 // ─── Game type enum (matches Solidity) ──────────────────────────────────────
 export const GAME_TYPES = { rps: 0, poker: 1, auction: 2 };
 // ─── Game contract mapping ──────────────────────────────────────────────────

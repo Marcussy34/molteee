@@ -2,7 +2,8 @@
 // @molteee/arena-tools — CLI for the Molteee Gaming Arena on Monad testnet.
 // All commands output JSON to stdout. Exit code 0 = success, 1 = error.
 import { Command } from "commander";
-import { wrapCommand } from "./utils/output.js";
+import { wrapCommand, fail } from "./utils/output.js";
+import { getAddressFromKey } from "./config.js";
 
 // ─── Read commands ──────────────────────────────────────────────────────────
 import { statusCommand } from "./commands/status.js";
@@ -64,9 +65,11 @@ program
 program
     .command("status")
     .description("Get wallet balance, registration status, and ELO ratings")
-    .requiredOption("--address <address>", "Wallet address to check")
+    .option("--address <address>", "Wallet address to check")
     .action(wrapCommand(async (opts: any) => {
-        await statusCommand(opts.address);
+        const addr = opts.address || getAddressFromKey();
+        if (!addr) { fail("Provide --address or set PRIVATE_KEY", "NO_ADDRESS"); return; }
+        await statusCommand(addr);
     }));
 
 program
@@ -80,9 +83,11 @@ program
 program
     .command("history")
     .description("Get match history for an address")
-    .requiredOption("--address <address>", "Wallet address")
+    .option("--address <address>", "Wallet address")
     .action(wrapCommand(async (opts: any) => {
-        await historyCommand(opts.address);
+        const addr = opts.address || getAddressFromKey();
+        if (!addr) { fail("Provide --address or set PRIVATE_KEY", "NO_ADDRESS"); return; }
+        await historyCommand(addr);
     }));
 
 program
@@ -113,9 +118,11 @@ program
 program
     .command("pending")
     .description("List pending challenges (incoming matches not yet accepted)")
-    .requiredOption("--address <address>", "Wallet address to check")
+    .option("--address <address>", "Wallet address to check")
     .action(wrapCommand(async (opts: any) => {
-        await pendingCommand(opts.address);
+        const addr = opts.address || getAddressFromKey();
+        if (!addr) { fail("Provide --address or set PRIVATE_KEY", "NO_ADDRESS"); return; }
+        await pendingCommand(addr);
     }));
 
 program

@@ -49,6 +49,19 @@ export const CONTRACTS: Record<string, `0x${string}`> = {
     PredictionMarket: "0xf38C7642a6B21220404c886928DcD6783C33c2b1",
 };
 
+// ─── Derive wallet address from private key (for read commands) ─────────────
+import { privateKeyToAccount } from "viem/accounts";
+
+export function getAddressFromKey(): `0x${string}` | null {
+    const key =
+        process.env.PRIVATE_KEY ||
+        process.env.DEPLOYER_PRIVATE_KEY ||
+        process.env.WALLET_PRIVATE_KEY;
+    if (!key) return null;
+    const prefixed = key.startsWith("0x") ? key : `0x${key}`;
+    return privateKeyToAccount(prefixed as `0x${string}`).address;
+}
+
 // ─── Game type enum (matches Solidity) ──────────────────────────────────────
 export const GAME_TYPES: Record<string, number> = { rps: 0, poker: 1, auction: 2 };
 
