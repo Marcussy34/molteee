@@ -1,0 +1,218 @@
+[
+  {
+    "id": "match-001",
+    "matchId": 1,
+    "gameType": "rps",
+    "playerA": { "address": "0xF39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "name": "Fighter" },
+    "playerB": { "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", "name": "RockBot" },
+    "wager": "0.5",
+    "rounds": [
+      { "round": 1, "moveA": "paper", "moveB": "rock", "winner": "A" },
+      { "round": 2, "moveA": "scissors", "moveB": "rock", "winner": "B" },
+      { "round": 3, "moveA": "paper", "moveB": "rock", "winner": "A" }
+    ],
+    "result": "playerA",
+    "eloChange": { "playerA": 16, "playerB": -16 },
+    "strategyUsed": "Adaptive (Markov + Kelly)",
+    "txHashes": ["0xabc001"],
+    "timestamp": 1738800000
+  },
+  {
+    "id": "match-002",
+    "matchId": 2,
+    "gameType": "poker",
+    "playerA": { "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", "name": "GamblerBot" },
+    "playerB": { "address": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc", "name": "CounterBot" },
+    "wager": "1.0",
+    "rounds": [
+      { "round": 1, "actionA": "raise", "actionB": "call", "winner": "A" },
+      { "round": 2, "actionA": "raise", "actionB": "fold", "winner": "A" },
+      { "round": 3, "actionA": "raise", "actionB": "raise", "winner": "B" }
+    ],
+    "result": "playerA",
+    "eloChange": { "playerA": 14, "playerB": -14 },
+    "strategyUsed": "Aggressive (max bets)",
+    "txHashes": ["0xabc002"],
+    "timestamp": 1738810000
+  },
+  {
+    "id": "match-003",
+    "matchId": 3,
+    "gameType": "auction",
+    "playerA": { "address": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", "name": "RandomBot" },
+    "playerB": { "address": "0x90F79bf6EB2c4f870365E785982E1f101E93b906", "name": "MirrorBot" },
+    "wager": "0.3",
+    "rounds": [
+      { "round": 1, "bidA": "0.8", "bidB": "0.6", "winner": "A" },
+      { "round": 2, "bidA": "0.3", "bidB": "0.7", "winner": "B" },
+      { "round": 3, "bidA": "0.5", "bidB": "0.5", "winner": "draw" }
+    ],
+    "result": "playerB",
+    "eloChange": { "playerA": -10, "playerB": 10 },
+    "strategyUsed": "Random (baseline)",
+    "txHashes": ["0xabc003"],
+    "timestamp": 1738820000
+  },
+  {
+    "id": "match-004",
+    "matchId": 4,
+    "gameType": "rps",
+    "playerA": { "address": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc", "name": "CounterBot" },
+    "playerB": { "address": "0xF39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "name": "Fighter" },
+    "wager": "0.75",
+    "rounds": [
+      { "round": 1, "moveA": "rock", "moveB": "scissors", "winner": "A" },
+      { "round": 2, "moveA": "paper", "moveB": "paper", "winner": "draw" },
+      { "round": 3, "moveA": "scissors", "moveB": "paper", "winner": "A" }
+    ],
+    "result": "playerA",
+    "eloChange": { "playerA": 12, "playerB": -12 },
+    "strategyUsed": "Counter (frequency exploit)",
+    "txHashes": ["0xabc004"],
+    "timestamp": 1738830000
+  },
+  {
+    "id": "match-005",
+    "matchId": 5,
+    "gameType": "rps",
+    "playerA": { "address": "0xF39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "name": "Fighter" },
+    "playerB": { "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", "name": "GamblerBot" },
+    "wager": "0.5",
+    "rounds": [
+      { "round": 1, "moveA": "rock", "moveB": "scissors", "winner": "A" },
+      { "round": 2, "moveA": "scissors", "moveB": "scissors", "winner": "draw" },
+      { "round": 3, "moveA": "rock", "moveB": "paper", "winner": "B" },
+      { "round": 4, "moveA": "paper", "moveB": "rock", "winner": "A" }
+    ],
+    "result": "playerA",
+    "eloChange": { "playerA": 11, "playerB": -11 },
+    "strategyUsed": "Adaptive (Markov + Kelly)",
+    "txHashes": ["0xabc005"],
+    "timestamp": 1738840000
+  },
+  {
+    "id": "match-006",
+    "matchId": 6,
+    "gameType": "poker",
+    "playerA": { "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", "name": "RockBot" },
+    "playerB": { "address": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", "name": "RandomBot" },
+    "wager": "0.4",
+    "rounds": [
+      { "round": 1, "actionA": "call", "actionB": "raise", "winner": "B" },
+      { "round": 2, "actionA": "call", "actionB": "raise", "winner": "B" },
+      { "round": 3, "actionA": "call", "actionB": "fold", "winner": "A" }
+    ],
+    "result": "playerB",
+    "eloChange": { "playerA": -13, "playerB": 13 },
+    "strategyUsed": "Conservative (always rock)",
+    "txHashes": ["0xabc006"],
+    "timestamp": 1738850000
+  },
+  {
+    "id": "match-007",
+    "matchId": 7,
+    "gameType": "auction",
+    "playerA": { "address": "0xF39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "name": "Fighter" },
+    "playerB": { "address": "0x90F79bf6EB2c4f870365E785982E1f101E93b906", "name": "MirrorBot" },
+    "wager": "0.6",
+    "rounds": [
+      { "round": 1, "bidA": "0.9", "bidB": "0.85", "winner": "A" },
+      { "round": 2, "bidA": "0.7", "bidB": "0.7", "winner": "draw" },
+      { "round": 3, "bidA": "0.6", "bidB": "0.55", "winner": "A" }
+    ],
+    "result": "playerA",
+    "eloChange": { "playerA": 9, "playerB": -9 },
+    "strategyUsed": "Adaptive (Markov + Kelly)",
+    "txHashes": ["0xabc007"],
+    "timestamp": 1738860000
+  },
+  {
+    "id": "match-008",
+    "matchId": 8,
+    "gameType": "rps",
+    "playerA": { "address": "0x90F79bf6EB2c4f870365E785982E1f101E93b906", "name": "MirrorBot" },
+    "playerB": { "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", "name": "RockBot" },
+    "wager": "0.5",
+    "rounds": [
+      { "round": 1, "moveA": "rock", "moveB": "rock", "winner": "draw" },
+      { "round": 2, "moveA": "rock", "moveB": "rock", "winner": "draw" },
+      { "round": 3, "moveA": "paper", "moveB": "rock", "winner": "A" }
+    ],
+    "result": "playerA",
+    "eloChange": { "playerA": 15, "playerB": -15 },
+    "strategyUsed": "Reactive (tit-for-tat)",
+    "txHashes": ["0xabc008"],
+    "timestamp": 1738870000
+  },
+  {
+    "id": "match-009",
+    "matchId": 9,
+    "gameType": "poker",
+    "playerA": { "address": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc", "name": "CounterBot" },
+    "playerB": { "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", "name": "GamblerBot" },
+    "wager": "1.5",
+    "rounds": [
+      { "round": 1, "actionA": "raise", "actionB": "raise", "winner": "A" },
+      { "round": 2, "actionA": "call", "actionB": "raise", "winner": "B" },
+      { "round": 3, "actionA": "raise", "actionB": "call", "winner": "A" }
+    ],
+    "result": "playerA",
+    "eloChange": { "playerA": 18, "playerB": -18 },
+    "strategyUsed": "Counter (frequency exploit)",
+    "txHashes": ["0xabc009"],
+    "timestamp": 1738880000
+  },
+  {
+    "id": "match-010",
+    "matchId": 10,
+    "gameType": "rps",
+    "playerA": { "address": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", "name": "RandomBot" },
+    "playerB": { "address": "0xF39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "name": "Fighter" },
+    "wager": "0.5",
+    "rounds": [
+      { "round": 1, "moveA": "scissors", "moveB": "rock", "winner": "B" },
+      { "round": 2, "moveA": "paper", "moveB": "scissors", "winner": "B" },
+      { "round": 3, "moveA": "rock", "moveB": "rock", "winner": "draw" }
+    ],
+    "result": "playerB",
+    "eloChange": { "playerA": -8, "playerB": 8 },
+    "strategyUsed": "Random (baseline)",
+    "txHashes": ["0xabc010"],
+    "timestamp": 1738890000
+  },
+  {
+    "id": "match-011",
+    "matchId": 11,
+    "gameType": "auction",
+    "playerA": { "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", "name": "GamblerBot" },
+    "playerB": { "address": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", "name": "RandomBot" },
+    "wager": "0.8",
+    "rounds": [
+      { "round": 1, "bidA": "0.95", "bidB": "0.4", "winner": "A" },
+      { "round": 2, "bidA": "0.9", "bidB": "0.6", "winner": "A" }
+    ],
+    "result": "playerA",
+    "eloChange": { "playerA": 10, "playerB": -10 },
+    "strategyUsed": "Aggressive (max bets)",
+    "txHashes": ["0xabc011"],
+    "timestamp": 1738900000
+  },
+  {
+    "id": "match-012",
+    "matchId": 12,
+    "gameType": "rps",
+    "playerA": { "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", "name": "RockBot" },
+    "playerB": { "address": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc", "name": "CounterBot" },
+    "wager": "0.5",
+    "rounds": [
+      { "round": 1, "moveA": "rock", "moveB": "paper", "winner": "B" },
+      { "round": 2, "moveA": "rock", "moveB": "paper", "winner": "B" },
+      { "round": 3, "moveA": "rock", "moveB": "paper", "winner": "B" }
+    ],
+    "result": "playerB",
+    "eloChange": { "playerA": -20, "playerB": 20 },
+    "strategyUsed": "Conservative (always rock)",
+    "txHashes": ["0xabc012"],
+    "timestamp": 1738910000
+  }
+]

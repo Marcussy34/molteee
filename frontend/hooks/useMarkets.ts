@@ -41,15 +41,15 @@ export function useMarkets(): MarketsResult {
         });
 
         const count = Number(nextId);
-        if (count === 0) {
-          // nextMarketId=0 means no markets exist yet
+        if (count <= 1) {
+          // Markets start at id 1, nextMarketId=1 means none exist
           if (!cancelled) setData({ markets: [], loading: false });
           return;
         }
 
-        // Fetch all markets + prices in parallel (IDs are 0-indexed)
+        // Fetch all markets + prices in parallel
         const promises = [];
-        for (let i = 0; i < count; i++) {
+        for (let i = 1; i < count; i++) {
           promises.push(
             Promise.all([
               publicClient.readContract({

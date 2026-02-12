@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
         source: "/skill.md",
         destination: "/api/skill-md",
       },
+      {
+        // Serve agent-card.json at the standard .well-known path for agent discovery
+        source: "/.well-known/agent-card.json",
+        destination: "/api/agent-card",
+      },
     ];
   },
 };

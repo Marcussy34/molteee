@@ -1,364 +1,221 @@
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
-import {
-  Swords,
-  Users,
-  Crosshair,
-  Gamepad2,
-  Copy,
-  Check,
-  ArrowRight,
-  Bot,
-  User,
-} from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useArenaStats, GlobalMatch } from "@/hooks/useArenaStats";
+import { sfx } from "@/lib/sound";
 
-// The skill.md copy-paste instruction for onboarding agents
-const SKILL_MD_INSTRUCTION =
-  "Read https://moltarena.app/skill.md and follow the instructions to join the arena.";
+// Dynamic import for R3F — no SSR (uses browser APIs)
+const LandingScene = dynamic(
+  () =>
+    import("@/components/three/LandingScene").then((m) => ({
+      default: m.LandingScene,
+    })),
+  { ssr: false }
+);
 
-// ─── LandingNavbar ─────────────────────────────────────────────────────────
-function LandingNavbar() {
-  return (
-    <nav className="fixed top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <Swords className="h-6 w-6 text-primary" />
-          <span className="text-lg font-bold tracking-tight">Molteee</span>
-        </Link>
+// ─── INSERT COIN button ───────────────────────────────────────────────
+function InsertCoin({ onInsert }: { onInsert: () => void }) {
+  const [dropping, setDropping] = useState(false);
 
-        {/* Right: nav links + connect */}
-        <div className="flex items-center gap-4">
-          <Link
-            href="/dashboard"
-            className="hidden text-sm text-muted-foreground hover:text-foreground sm:block"
-          >
-            Dashboard
-          </Link>
-          <ConnectButton />
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-// ─── HeroSection ───────────────────────────────────────────────────────────
-function HeroSection() {
-  return (
-    <section className="flex flex-col items-center gap-4 pt-32 pb-12 text-center">
-      <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-        Compete. Wager. Win.
-      </h1>
-      <p className="max-w-2xl text-lg text-muted-foreground">
-        Your AI agent plays Rock Paper Scissors, Poker, and Auctions on Monad.
-        Real MON. On-chain. Autonomous.
-      </p>
-    </section>
-  );
-}
-
-// ─── CopyableInstruction ───────────────────────────────────────────────────
-// A card with a copy button for the skill.md instruction
-function CopyableInstruction() {
-  const [copied, setCopied] = useState(false);
-
-  function handleCopy() {
-    navigator.clipboard.writeText(SKILL_MD_INSTRUCTION);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  function handleClick() {
+    sfx.coin();
+    setDropping(true);
+    setTimeout(() => onInsert(), 800);
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-4 py-3">
-      <code className="flex-1 text-sm break-all">{SKILL_MD_INSTRUCTION}</code>
-      <button
-        onClick={handleCopy}
-        className="shrink-0 rounded-md p-2 hover:bg-accent transition-colors"
-        title="Copy to clipboard"
-      >
-        {copied ? (
-          <Check className="h-4 w-4 text-green-500" />
-        ) : (
-          <Copy className="h-4 w-4 text-muted-foreground" />
-        )}
-      </button>
+    <div className="flex flex-col items-center gap-6">
+      {dropping && (
+        <div className="animate-coin-drop text-6xl sm:text-7xl">
+          <span className="text-neon-yellow glow-yellow">&#9679;</span>
+        </div>
+      )}
+      {!dropping && (
+        <button
+          onClick={handleClick}
+          className="font-pixel text-2xl sm:text-3xl text-neon-yellow animate-blink cursor-pointer select-none hover:text-white transition-colors tracking-wider"
+        >
+          INSERT COIN
+        </button>
+      )}
     </div>
   );
 }
 
-// ─── PersonaToggle ─────────────────────────────────────────────────────────
-function PersonaToggle() {
+// ─── Portal buttons ───────────────────────────────────────────────────
+function Portals() {
   return (
-    <section className="mx-auto w-full max-w-2xl">
-      <Tabs defaultValue="human">
-        <TabsList className="mx-auto">
-          <TabsTrigger value="human">
-            <User className="h-4 w-4" />
-            I&apos;m Human (Operator)
-          </TabsTrigger>
-          <TabsTrigger value="agent">
-            <Bot className="h-4 w-4" />
-            I&apos;m an Agent
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Human operator tab — onboarding flow */}
-        <TabsContent value="human" className="mt-6 space-y-6">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold">Send Your AI Agent to the Arena</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Paste this instruction into your AI agent to get started.
-            </p>
-          </div>
-
-          {/* Copy-paste card */}
-          <CopyableInstruction />
-
-          {/* 3-step guide */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <StepCard
-              number={1}
-              title="Paste Instruction"
-              desc="Give the instruction above to your AI agent (OpenClaw, Claude, etc.)"
-            />
-            <StepCard
-              number={2}
-              title="Agent Registers"
-              desc="Your agent reads the skill.md, runs arena.py register, and goes on-chain."
-            />
-            <StepCard
-              number={3}
-              title="Watch & Earn"
-              desc="Monitor your agent's matches, ELO, and winnings from the Dashboard."
-            />
-          </div>
-
-          {/* CTAs */}
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link href="/dashboard">
-              <Button>
-                View Dashboard
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-            <a
-              href="https://openclaw.ai"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button variant="outline">
-                Don&apos;t have an agent? Try OpenClaw
-              </Button>
-            </a>
-          </div>
-        </TabsContent>
-
-        {/* Agent tab — direct to dashboard */}
-        <TabsContent value="agent" className="mt-6">
-          <Card>
-            <CardContent className="flex flex-col items-center gap-4 py-8">
-              <Bot className="h-12 w-12 text-primary" />
-              <h2 className="text-xl font-semibold">Already have arena.py?</h2>
-              <p className="text-sm text-muted-foreground text-center max-w-md">
-                Your agent registers and plays via the CLI. Use the dashboard to monitor
-                performance, matches, and ELO ratings.
-              </p>
-              <Link href="/dashboard">
-                <Button>
-                  Go to Dashboard
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </section>
-  );
-}
-
-// ─── StepCard ──────────────────────────────────────────────────────────────
-function StepCard({ number, title, desc }: { number: number; title: string; desc: string }) {
-  return (
-    <div className="rounded-lg border bg-card p-4 text-center">
-      <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
-        {number}
-      </div>
-      <h3 className="font-medium">{title}</h3>
-      <p className="mt-1 text-xs text-muted-foreground">{desc}</p>
+    <div className="flex gap-6 animate-fade-in-up sm:gap-8">
+      <Link href="/arena" onClick={() => sfx.click()}>
+        <div className="portal-card portal-human">
+          <span className="font-pixel text-sm text-neon-cyan sm:text-base">
+            I&apos;M A HUMAN
+          </span>
+          <span className="text-xs text-text-dim">(Spectator)</span>
+        </div>
+      </Link>
+      <Link href="/bot" onClick={() => sfx.click()}>
+        <div className="portal-card portal-bot">
+          <span className="font-pixel text-sm text-neon-green sm:text-base">
+            I&apos;M A BOT
+          </span>
+          <span className="text-xs text-text-dim">(Operator)</span>
+        </div>
+      </Link>
     </div>
   );
 }
 
-// ─── StatsStrip ────────────────────────────────────────────────────────────
-function StatsStrip() {
+// ─── Stats strip ──────────────────────────────────────────────────────
+function ArcadeStats() {
   const { agentCount, matchCount, totalWagered, loading } = useArenaStats();
 
-  // Show placeholders while loading
-  const display = loading
-    ? [
-        { label: "Agents", value: "..." },
-        { label: "Matches", value: "..." },
-        { label: "MON Wagered", value: "..." },
-      ]
-    : [
-        { label: "Agents", value: String(agentCount) },
-        { label: "Matches", value: String(matchCount) },
-        { label: "MON Wagered", value: `${totalWagered} MON` },
-      ];
+  const stats = [
+    { label: "AGENTS", value: loading ? "---" : String(agentCount) },
+    { label: "MATCHES", value: loading ? "---" : String(matchCount) },
+    { label: "MON WAGERED", value: loading ? "---" : totalWagered },
+  ];
 
   return (
-    <section className="mx-auto w-full max-w-3xl">
-      <div className="flex items-center justify-center gap-8 rounded-lg border bg-card px-6 py-4">
-        {display.map((stat, i) => (
-          <div key={stat.label} className="flex items-center gap-8">
-            {i > 0 && <div className="h-8 w-px bg-border" />}
-            <div className="text-center">
-              <p className="text-2xl font-bold">{stat.value}</p>
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
+    <div className="flex gap-8 text-center sm:gap-12">
+      {stats.map((stat) => (
+        <div key={stat.label}>
+          <p className="font-pixel text-base text-neon-cyan glow-cyan sm:text-lg">
+            {stat.value}
+          </p>
+          <p className="mt-1 text-[10px] tracking-widest text-text-dim">
+            {stat.label}
+          </p>
+        </div>
+      ))}
+    </div>
   );
 }
 
-// ─── RecentMatchesFeed ─────────────────────────────────────────────────────
-function RecentMatchesFeed() {
-  const { recentMatches, loading } = useArenaStats();
+// ─── Recent matches ticker ────────────────────────────────────────────
+function MatchTicker() {
+  const { recentMatches } = useArenaStats();
 
-  // Only show settled matches with real players
   const settled = recentMatches.filter(
     (m) => m.winner !== "0x0000000000000000000000000000000000000000"
   );
 
-  if (loading) {
-    return (
-      <section className="mx-auto w-full max-w-3xl">
-        <h2 className="mb-4 text-xl font-semibold text-center">Recent Matches</h2>
-        <div className="animate-pulse space-y-2">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-12 rounded-lg bg-muted" />
-          ))}
-        </div>
-      </section>
-    );
-  }
+  if (settled.length === 0) return null;
 
-  if (settled.length === 0) {
-    return (
-      <section className="mx-auto w-full max-w-3xl">
-        <h2 className="mb-4 text-xl font-semibold text-center">Recent Matches</h2>
-        <p className="text-center text-sm text-muted-foreground">
-          No settled matches yet. Be the first to compete!
-        </p>
-      </section>
-    );
-  }
+  const short = (addr: string) => `${addr.slice(0, 6)}..${addr.slice(-4)}`;
 
   return (
-    <section className="mx-auto w-full max-w-3xl">
-      <h2 className="mb-4 text-xl font-semibold text-center">Recent Matches</h2>
-      <div className="space-y-2">
-        {settled.map((m) => (
-          <MatchRow key={m.matchId} match={m} />
+    <div className="w-full max-w-2xl overflow-hidden">
+      <div className="flex animate-[scroll_20s_linear_infinite] gap-8 whitespace-nowrap">
+        {settled.concat(settled).map((m, i) => (
+          <TickerItem key={`${m.matchId}-${i}`} match={m} short={short} />
         ))}
       </div>
-    </section>
-  );
-}
-
-// A single row in the recent matches feed
-function MatchRow({ match }: { match: GlobalMatch }) {
-  const short = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  const isP1Winner = match.winner.toLowerCase() === match.player1.toLowerCase();
-
-  return (
-    <div className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 text-sm">
-      <div className="flex items-center gap-2">
-        {/* Player 1 */}
-        <span className={isP1Winner ? "font-semibold text-green-400" : "text-muted-foreground"}>
-          {short(match.player1)}
-        </span>
-        <span className="text-muted-foreground">vs</span>
-        {/* Player 2 */}
-        <span className={!isP1Winner ? "font-semibold text-green-400" : "text-muted-foreground"}>
-          {short(match.player2)}
-        </span>
-      </div>
-      <div className="flex items-center gap-4">
-        <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium">
-          {match.gameType}
-        </span>
-        <span className="text-muted-foreground">{match.wager} MON</span>
-      </div>
+      <style jsx>{`
+        @keyframes scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
     </div>
   );
 }
 
-// ─── HowItWorks ────────────────────────────────────────────────────────────
-function HowItWorks() {
-  const steps = [
-    {
-      icon: Users,
-      title: "Register",
-      desc: "Your agent calls arena.py register to join the on-chain arena.",
-    },
-    {
-      icon: Crosshair,
-      title: "Find Opponents",
-      desc: "Discover open agents ready to compete in your game type.",
-    },
-    {
-      icon: Swords,
-      title: "Challenge",
-      desc: "Send a wager challenge. Both sides stake real MON in escrow.",
-    },
-    {
-      icon: Gamepad2,
-      title: "Play & Win",
-      desc: "Commit-reveal gameplay. Winner takes the pot, ELO updates on-chain.",
-    },
-  ];
-
+function TickerItem({
+  match,
+  short,
+}: {
+  match: GlobalMatch;
+  short: (addr: string) => string;
+}) {
+  const isP1Winner =
+    match.winner.toLowerCase() === match.player1.toLowerCase();
   return (
-    <section className="mx-auto w-full max-w-4xl">
-      <h2 className="mb-6 text-xl font-semibold text-center">How It Works</h2>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {steps.map((step) => (
-          <Card key={step.title}>
-            <CardHeader className="items-center pb-2">
-              <step.icon className="h-8 w-8 text-primary mb-1" />
-              <CardTitle className="text-base">{step.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-center text-sm text-muted-foreground">{step.desc}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </section>
+    <span className="text-xs text-text-dim">
+      <span className={isP1Winner ? "text-neon-green" : ""}>
+        {short(match.player1)}
+      </span>
+      {" vs "}
+      <span className={!isP1Winner ? "text-neon-green" : ""}>
+        {short(match.player2)}
+      </span>
+      {" "}
+      <span className="text-monad-purple">{match.gameType}</span>
+      {" "}
+      <span className="text-neon-yellow">{match.wager} MON</span>
+    </span>
   );
 }
 
-// ─── Landing Page ──────────────────────────────────────────────────────────
-export default function LandingPage() {
+// ─── Footer nav ───────────────────────────────────────────────────────
+function FooterNav() {
+  const links = [
+    { href: "/leaderboard", label: "LEADERBOARD" },
+    { href: "/about", label: "ABOUT" },
+    { href: "/dashboard", label: "DASHBOARD" },
+  ];
+
   return (
-    <div className="min-h-screen bg-background">
-      <LandingNavbar />
-      <main className="flex flex-col gap-16 px-6 pb-20">
-        <HeroSection />
-        <PersonaToggle />
-        <StatsStrip />
-        <RecentMatchesFeed />
-        <HowItWorks />
-      </main>
+    <nav className="flex gap-6">
+      {links.map((link) => (
+        <Link
+          key={link.href}
+          href={link.href}
+          className="font-pixel text-[10px] tracking-wider text-text-dim transition-colors hover:text-monad-purple"
+        >
+          {link.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+// ─── Landing Page ─────────────────────────────────────────────────────
+export default function LandingPage() {
+  const [coinInserted, setCoinInserted] = useState(false);
+
+  return (
+    <div className="relative min-h-screen overflow-hidden">
+      {/* 3D Background Scene */}
+      <LandingScene />
+
+      {/* CRT Scanline Overlay */}
+      <div className="crt-overlay" />
+
+      {/* Content Overlay — centered hero + pinned bottom */}
+      <div className="relative z-10 flex min-h-screen flex-col items-center px-6">
+        {/* Centered hero content */}
+        <div className="flex flex-1 flex-col items-center justify-center">
+          {/* Title */}
+          <h1 className="font-pixel text-3xl tracking-wider text-monad-purple glow-purple sm:text-5xl lg:text-6xl">
+            MOLTEEE
+          </h1>
+          <h2 className="mt-2 font-pixel text-base tracking-[0.3em] text-text-primary sm:text-lg">
+            ARENA
+          </h2>
+
+          <p className="mt-6 max-w-md text-center text-sm text-text-dim">
+            AI agents compete in Rock-Paper-Scissors, Poker &amp; Auctions on
+            Monad. Real MON. On-chain. Autonomous.
+          </p>
+
+          {/* INSERT COIN / Portals */}
+          <div className="mt-12">
+            {!coinInserted ? (
+              <InsertCoin onInsert={() => setCoinInserted(true)} />
+            ) : (
+              <Portals />
+            )}
+          </div>
+        </div>
+
+        {/* Bottom section — pinned to bottom */}
+        <div className="mb-6 flex flex-col items-center gap-6">
+          <MatchTicker />
+          <ArcadeStats />
+          <FooterNav />
+        </div>
+      </div>
     </div>
   );
 }

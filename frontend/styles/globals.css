@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -136,4 +137,90 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ─── Arcade theme ─────────────────────────────────────────────────────── */
+
+@theme inline {
+  --color-monad-dark: #08061A;
+  --color-monad-deeper: #0d0a24;
+  --color-monad-purple: #836EF9;
+  --color-monad-violet: #6C4ED9;
+  --color-neon-cyan: #00F0FF;
+  --color-neon-green: #39FF14;
+  --color-neon-red: #FF3131;
+  --color-neon-yellow: #FFD700;
+  --color-text-primary: #E0DCF8;
+  --color-text-dim: #6B6494;
+  --font-pixel: "Press Start 2P", monospace;
+}
+
+/* CRT scanline overlay */
+.crt-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.06) 0px,
+    rgba(0, 0, 0, 0.06) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* Glow effects */
+.glow-purple { text-shadow: 0 0 8px #836EF9, 0 0 20px #836EF966; }
+.glow-cyan { text-shadow: 0 0 8px #00F0FF, 0 0 20px #00F0FF66; }
+.glow-green { text-shadow: 0 0 8px #39FF14, 0 0 20px #39FF1466; }
+.glow-red { text-shadow: 0 0 8px #FF3131, 0 0 20px #FF313166; }
+.glow-yellow { text-shadow: 0 0 8px #FFD700, 0 0 20px #FFD70066; }
+
+/* Blink animations */
+.animate-blink { animation: blink 1s step-end infinite; }
+.animate-blink-soft { animation: blink-soft 2s ease-in-out infinite; }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@keyframes blink-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Coin drop animation */
+.animate-coin-drop { animation: coin-drop 0.6s ease-in forwards; }
+@keyframes coin-drop {
+  0% { transform: translateY(-40px); opacity: 0; }
+  60% { transform: translateY(0); opacity: 1; }
+  80% { transform: translateY(-8px); }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Fade in up */
+.animate-fade-in-up { animation: fade-in-up 0.5s ease-out; }
+@keyframes fade-in-up {
+  0% { transform: translateY(16px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Portal cards */
+.portal-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1.5rem 2rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(131, 110, 249, 0.3);
+  background: rgba(13, 10, 36, 0.8);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.portal-card:hover {
+  border-color: rgba(131, 110, 249, 0.6);
+  background: rgba(131, 110, 249, 0.1);
+  transform: translateY(-2px);
 }

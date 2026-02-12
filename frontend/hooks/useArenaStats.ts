@@ -88,13 +88,13 @@ async function fetchArenaStats(): Promise<ArenaStats> {
   ]);
   const agentCount = uniqueAgents.size;
 
-  // Match IDs are 0-indexed: nextMatchId = total number of matches
-  const matchCount = Number(nextMatchId);
+  const totalMatches = Number(nextMatchId) - 1; // IDs start at 1
+  const matchCount = Math.max(0, totalMatches);
 
   // Step 2: Fetch recent matches (last 10) — sequentially to respect rate limits
   const recentIds = Array.from(
     { length: Math.min(10, matchCount) },
-    (_, i) => matchCount - 1 - i // most recent first, 0-indexed
+    (_, i) => matchCount - i // most recent first
   );
 
   const recentMatches: GlobalMatch[] = [];
