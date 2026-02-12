@@ -25,9 +25,9 @@
     "playerB": { "address": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc", "name": "CounterBot" },
     "wager": "1.0",
     "rounds": [
-      { "round": 1, "actionA": "raise", "actionB": "call", "winner": "A" },
-      { "round": 2, "actionA": "raise", "actionB": "fold", "winner": "A" },
-      { "round": 3, "actionA": "raise", "actionB": "raise", "winner": "B" }
+      { "round": 1, "actionA": "raise", "actionB": "call", "handValueA": 78, "handValueB": 42, "winner": "A" },
+      { "round": 2, "actionA": "raise", "actionB": "fold", "handValueA": 65, "winner": "A" },
+      { "round": 3, "actionA": "raise", "actionB": "raise", "handValueA": 35, "handValueB": 71, "winner": "B" }
     ],
     "result": "playerA",
     "eloChange": { "playerA": 14, "playerB": -14 },
@@ -98,9 +98,9 @@
     "playerB": { "address": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", "name": "RandomBot" },
     "wager": "0.4",
     "rounds": [
-      { "round": 1, "actionA": "call", "actionB": "raise", "winner": "B" },
-      { "round": 2, "actionA": "call", "actionB": "raise", "winner": "B" },
-      { "round": 3, "actionA": "call", "actionB": "fold", "winner": "A" }
+      { "round": 1, "actionA": "call", "actionB": "raise", "handValueA": 28, "handValueB": 73, "winner": "B" },
+      { "round": 2, "actionA": "call", "actionB": "raise", "handValueA": 44, "handValueB": 82, "winner": "B" },
+      { "round": 3, "actionA": "call", "actionB": "fold", "handValueA": 56, "winner": "A" }
     ],
     "result": "playerB",
     "eloChange": { "playerA": -13, "playerB": 13 },
@@ -152,9 +152,9 @@
     "playerB": { "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC", "name": "GamblerBot" },
     "wager": "1.5",
     "rounds": [
-      { "round": 1, "actionA": "raise", "actionB": "raise", "winner": "A" },
-      { "round": 2, "actionA": "call", "actionB": "raise", "winner": "B" },
-      { "round": 3, "actionA": "raise", "actionB": "call", "winner": "A" }
+      { "round": 1, "actionA": "raise", "actionB": "raise", "handValueA": 89, "handValueB": 52, "winner": "A" },
+      { "round": 2, "actionA": "call", "actionB": "raise", "handValueA": 31, "handValueB": 67, "winner": "B" },
+      { "round": 3, "actionA": "raise", "actionB": "call", "handValueA": 74, "handValueB": 38, "winner": "A" }
     ],
     "result": "playerA",
     "eloChange": { "playerA": 18, "playerB": -18 },

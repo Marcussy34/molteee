@@ -15,7 +15,7 @@ import { SoundToggle } from "@/components/ui/SoundToggle";
 const hasWalletConnect = !!process.env.NEXT_PUBLIC_WALLETCONNECT_ID;
 
 function MaybeRainbowKit({ children }: { children: React.ReactNode }) {
-  if (!hasWalletConnect) return <>{children}</>;
+  // Always render RainbowKitProvider — hooks require the context even without WalletConnect
   return (
     <RainbowKitProvider theme={darkTheme()}>{children}</RainbowKitProvider>
   );
@@ -25,7 +25,7 @@ export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
 
   // Arcade pages render full-screen without the dashboard sidebar
-  const arcadePages = ["/", "/arena", "/leaderboard", "/matches", "/bot", "/about"];
+  const arcadePages = ["/", "/arena", "/poker", "/auction", "/leaderboard", "/matches", "/bot", "/about"];
   const isArcade =
     arcadePages.includes(router.pathname) ||
     router.pathname.startsWith("/agents/") ||

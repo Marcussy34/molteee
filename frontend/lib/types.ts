@@ -19,6 +19,8 @@ export interface MatchRound {
   actionB?: string;
   bidA?: string;
   bidB?: string;
+  handValueA?: number;
+  handValueB?: number;
   winner: "A" | "B" | "draw";
 }
 

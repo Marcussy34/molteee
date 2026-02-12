@@ -224,3 +224,93 @@ body {
   background: rgba(131, 110, 249, 0.1);
   transform: translateY(-2px);
 }
+
+/* ─── Poker & Auction animations ──────────────────────────────────────── */
+
+/* Card flip container */
+.card-flip-container {
+  perspective: 1000px;
+}
+.card-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s ease-in-out;
+  transform-style: preserve-3d;
+}
+.card-flip-inner.flipped {
+  transform: rotateY(180deg);
+}
+.card-flip-front,
+.card-flip-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+.card-flip-front {
+  transform: rotateY(180deg);
+}
+
+/* Card slide from left */
+.animate-card-slide-left {
+  animation: card-slide-left 0.8s ease-out forwards;
+}
+@keyframes card-slide-left {
+  0% { transform: translateX(-120px) rotate(-8deg); opacity: 0; }
+  60% { transform: translateX(8px) rotate(1deg); opacity: 1; }
+  100% { transform: translateX(0) rotate(0deg); opacity: 1; }
+}
+
+/* Card slide from right */
+.animate-card-slide-right {
+  animation: card-slide-right 0.8s ease-out forwards;
+}
+@keyframes card-slide-right {
+  0% { transform: translateX(120px) rotate(8deg); opacity: 0; }
+  60% { transform: translateX(-8px) rotate(-1deg); opacity: 1; }
+  100% { transform: translateX(0) rotate(0deg); opacity: 1; }
+}
+
+/* Winner pulse glow */
+.animate-winner-pulse {
+  animation: winner-pulse 1.2s ease-in-out infinite;
+}
+@keyframes winner-pulse {
+  0%, 100% { box-shadow: 0 0 8px #39FF14, 0 0 16px #39FF1466; }
+  50% { box-shadow: 0 0 16px #39FF14, 0 0 32px #39FF1488; }
+}
+
+/* Countdown pop-in */
+.animate-countdown-pop {
+  animation: countdown-pop 0.7s ease-out;
+}
+@keyframes countdown-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  60% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1.0); opacity: 1; }
+}
+
+/* Sealed envelope glow */
+.animate-seal-glow {
+  animation: seal-glow 2s ease-in-out infinite;
+}
+@keyframes seal-glow {
+  0%, 100% { box-shadow: 0 0 8px #836EF9, 0 0 16px #836EF944; }
+  50% { box-shadow: 0 0 16px #836EF9, 0 0 32px #836EF988; }
+}
+
+/* Chip slide to center */
+.animate-chip-to-center-left {
+  animation: chip-to-center-left 1s ease-in-out forwards;
+}
+@keyframes chip-to-center-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(60px); opacity: 0.3; }
+}
+.animate-chip-to-center-right {
+  animation: chip-to-center-right 1s ease-in-out forwards;
+}
+@keyframes chip-to-center-right {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-60px); opacity: 0.3; }
+}
