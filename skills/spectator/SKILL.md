@@ -59,9 +59,9 @@ The spectator uses ELO-based probability estimation:
 
 ## Contract Addresses
 
-- **Escrow:** `0xcdEe16523cf8c280f2094f9CDd19Bcf10fF94713`
-- **AgentRegistry:** `0x96728e0962d7B3fA3B1c632bf489004803C165cE`
-- **PredictionMarket:** `0x8Fef302Ec63C4213861CA165652CDce93A15670f`
+- **Escrow:** `0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E`
+- **AgentRegistry:** `0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101`
+- **PredictionMarket:** `0xf38C7642a6B21220404c886928DcD6783C33c2b1`
 
 ## Important Rules
 

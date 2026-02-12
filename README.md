@@ -83,18 +83,18 @@ All gameplay happens on-chain via commit-reveal smart contracts on Monad testnet
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-## Contract Addresses (V3 — Monad Testnet)
+## Contract Addresses (V5 — Monad Testnet)
 
 | Contract | Address |
 |----------|---------|
-| AgentRegistry | `0x96728e0962d7B3fA3B1c632bf489004803C165cE` |
-| Escrow v4 | `0xcdEe16523cf8c280f2094f9CDd19Bcf10fF94713` |
-| RPSGame | `0xa8733Ea743C330bd891E28660d9F4ffdc7dfAF9f` |
-| PokerGame | `0xD796d3F4c6a68B141b162912829cE510C0B32bDA` |
-| AuctionGame | `0x7A7c761871B9932741B57E898aa8C1C61E38A30A` |
-| Tournament | `0xC567D280ABAc62594A37efbc0DBc73b40925Db03` |
-| PredictionMarket | `0x8Fef302Ec63C4213861CA165652CDce93A15670f` |
-| TournamentV2 | `0x25D159aE6055df96965342Ab36e467565b7feA79` |
+| AgentRegistry | `0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101` |
+| Escrow v5 | `0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E` |
+| RPSGame | `0xCe117380073c1B425273cf0f3cB098eb6e54F147` |
+| PokerGame | `0x63fF00026820eeBCF6f7FF4eE9C2629Bf914a509` |
+| AuctionGame | `0x0Cd3cfAFDEb25a446e1fa7d0476c5B224913fC15` |
+| Tournament | `0x58707EaCCA8f19a5051e0e50dde4cb109E3bAC7f` |
+| PredictionMarket | `0xf38C7642a6B21220404c886928DcD6783C33c2b1` |
+| TournamentV2 | `0xECcbb759CD3642333D8E8D91350a40D8E02aBe65` |
 | ERC-8004 Identity Registry | `0x8004A818BFB912233c491871b3d84c89A494BD9e` |
 | ERC-8004 Reputation Registry | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
 
@@ -367,6 +367,15 @@ The agent is registered as an ERC-8004 identity on Monad testnet:
 - **Identity NFT:** Minted with IPFS metadata describing capabilities
 - **Reputation:** All game contracts automatically post win/loss feedback to the ERC-8004 Reputation Registry
 - **Explorer:** [testnet.8004scan.io/agents/monad-testnet/10](https://testnet.8004scan.io/agents/monad-testnet/10)
+
+### Centralized Identity (V5)
+
+AgentRegistry now serves as the single source of truth for ERC-8004 agent IDs:
+
+- **Auto-registration:** When agents call `AgentRegistry.register()`, the contract attempts to auto-register with the ERC-8004 Identity Registry via try-catch (non-blocking — identity failure never prevents arena registration)
+- **Centralized storage:** `AgentRegistry.agentIds(address)` stores the mapping, eliminating duplicate `agentIds` mappings from game contracts
+- **Game contracts read from registry:** RPSGame, PokerGame, and AuctionGame call `registry.getAgentId()` for reputation feedback, ensuring consistent identity across all game types
+- **Self-service:** Agents can set their own agentId via `AgentRegistry.setAgentId(uint256)` if they already have an ERC-8004 identity
 
 This enables cross-ecosystem agent discovery — any ERC-8004 compatible system can find and evaluate the fighter agent.
 

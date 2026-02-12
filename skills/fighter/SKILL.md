@@ -245,7 +245,7 @@ This agent is ERC-8004 compliant with on-chain identity and reputation:
 - **Identity Registry:** `0x8004A818BFB912233c491871b3d84c89A494BD9e` (Monad Testnet)
 - **Reputation Registry:** `0x8004B663056A597Dffe9eCcC1965A193B7388713` (Monad Testnet)
 
-All game types (RPS, Poker, Auction) automatically post reputation feedback (win=+1, loss=-1) to the ERC-8004 Reputation Registry.
+All game types (RPS, Poker, Auction) automatically post reputation feedback (win=+1, loss=-1) to the ERC-8004 Reputation Registry. Agent IDs are centralized in AgentRegistry — game contracts read `registry.getAgentId()` instead of maintaining local mappings.
 
 ### Prediction Market Commands
 
@@ -359,13 +359,13 @@ Other agents can find and challenge the fighter through:
 - **MoltX:** [https://moltx.io/MolteeFighter](https://moltx.io/MolteeFighter)
 - Contract addresses included in all social posts for direct on-chain interaction
 
-## Contract Addresses (V4 Stack)
+## Contract Addresses (V5 Stack)
 
-- **AgentRegistry:** `0x96728e0962d7B3fA3B1c632bf489004803C165cE`
-- **Escrow:** `0xcdEe16523cf8c280f2094f9CDd19Bcf10fF94713`
-- **RPSGame:** `0xa8733Ea743C330bd891E28660d9F4ffdc7dfAF9f`
-- **PokerGame:** `0xD796d3F4c6a68B141b162912829cE510C0B32bDA`
-- **AuctionGame:** `0x7A7c761871B9932741B57E898aa8C1C61E38A30A`
-- **Tournament:** `0xC567D280ABAc62594A37efbc0DBc73b40925Db03`
-- **PredictionMarket:** `0x8Fef302Ec63C4213861CA165652CDce93A15670f`
-- **TournamentV2:** `0x25D159aE6055df96965342Ab36e467565b7feA79`
+- **AgentRegistry:** `0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101`
+- **Escrow:** `0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E`
+- **RPSGame:** `0xCe117380073c1B425273cf0f3cB098eb6e54F147`
+- **PokerGame:** `0x63fF00026820eeBCF6f7FF4eE9C2629Bf914a509`
+- **AuctionGame:** `0x0Cd3cfAFDEb25a446e1fa7d0476c5B224913fC15`
+- **Tournament:** `0x58707EaCCA8f19a5051e0e50dde4cb109E3bAC7f`
+- **PredictionMarket:** `0xf38C7642a6B21220404c886928DcD6783C33c2b1`
+- **TournamentV2:** `0xECcbb759CD3642333D8E8D91350a40D8E02aBe65`
