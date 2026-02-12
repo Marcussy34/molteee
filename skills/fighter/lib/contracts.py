@@ -150,7 +150,7 @@ def load_abis():
     AGENT_REGISTRY_ABI = _load_abi("AgentRegistry")
     ESCROW_ABI = _load_abi("Escrow")
     RPS_GAME_ABI = _load_abi("RPSGame")
-    POKER_GAME_ABI = _load_abi("PokerGame")
+    POKER_GAME_ABI = _load_abi("PokerGameV2")
     AUCTION_GAME_ABI = _load_abi("AuctionGame")
     TOURNAMENT_ABI = _load_abi("Tournament")
     PREDICTION_MARKET_ABI = _load_abi("PredictionMarket")
@@ -601,31 +601,36 @@ def reveal_poker_hand(game_id: int, hand_value: int, salt: bytes):
 
 def get_poker_game_state(game_id: int) -> dict:
     """
-    Get poker game state. Returns dict with keys:
-    escrowMatchId, player1, player2, pot, currentBet, currentTurn,
-    phase, phaseDeadline, settled, p1HandValue, p2HandValue,
-    p1Committed, p2Committed, p1Revealed, p2Revealed, p1ExtraBets, p2ExtraBets
+    Get PokerGameV2 (Budget Poker) state. Returns dict with keys matching
+    the GameView struct: escrowMatchId, player1, player2, totalRounds,
+    currentRound, p1Score, p2Score, startingBudget, p1Budget, p2Budget,
+    p1ExtraBets, p2ExtraBets, phase, phaseDeadline, settled,
+    currentBet, currentTurn, p1Committed, p2Committed, p1Revealed, p2Revealed
     """
     result = get_poker_game().functions.getGame(game_id).call()
-    # GameView struct fields in order
+    # PokerGameV2 GameView struct — 21 fields in order
     return {
         "escrowMatchId": result[0],
         "player1": result[1],
         "player2": result[2],
-        "pot": result[3],
-        "currentBet": result[4],
-        "currentTurn": result[5],
-        "phase": int(result[6]),
-        "phaseDeadline": result[7],
-        "settled": result[8],
-        "p1HandValue": result[9],
-        "p2HandValue": result[10],
-        "p1Committed": result[11],
-        "p2Committed": result[12],
-        "p1Revealed": result[13],
-        "p2Revealed": result[14],
-        "p1ExtraBets": result[15],
-        "p2ExtraBets": result[16],
+        "totalRounds": result[3],
+        "currentRound": result[4],
+        "p1Score": result[5],
+        "p2Score": result[6],
+        "startingBudget": result[7],
+        "p1Budget": result[8],
+        "p2Budget": result[9],
+        "p1ExtraBets": result[10],
+        "p2ExtraBets": result[11],
+        "phase": int(result[12]),
+        "phaseDeadline": result[13],
+        "settled": result[14],
+        "currentBet": result[15],
+        "currentTurn": result[16],
+        "p1Committed": result[17],
+        "p2Committed": result[18],
+        "p1Revealed": result[19],
+        "p2Revealed": result[20],
     }
 
 def get_next_poker_game_id() -> int:
