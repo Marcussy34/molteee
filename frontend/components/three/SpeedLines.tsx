@@ -17,18 +17,17 @@ export function SpeedLines({
   origin,
   phaseElapsed,
   color = "#836EF9",
-  count = 40,
+  count = 28,
 }: SpeedLinesProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null!);
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
-  // Pre-compute random angles and lengths for each line
   const lineData = useMemo(() => {
     return Array.from({ length: count }, () => ({
       angle: Math.random() * Math.PI * 2,
-      length: 0.8 + Math.random() * 1.5,
+      length: 0.6 + Math.random() * 1.2,
       radius: 1.5 + Math.random() * 3,
-      speed: 0.5 + Math.random() * 1.5,
+      speed: 0.3 + Math.random() * 1.2,
       yOffset: (Math.random() - 0.5) * 2,
     }));
   }, [count]);
@@ -36,7 +35,8 @@ export function SpeedLines({
   useFrame(() => {
     if (!meshRef.current) return;
 
-    const opacity = Math.max(0, 1 - phaseElapsed * 1.3);
+    // Softer fade — starts at 0.6 opacity, fades gently
+    const opacity = Math.max(0, 0.6 - phaseElapsed * 0.85);
 
     for (let i = 0; i < count; i++) {
       const d = lineData[i];
@@ -51,9 +51,9 @@ export function SpeedLines({
       // Point away from origin
       dummy.rotation.set(0, d.angle + Math.PI / 2, 0);
 
-      // Stretch as they fly outward
-      const stretch = d.length * (0.5 + phaseElapsed * 1.5);
-      dummy.scale.set(stretch, 0.02, 0.02);
+      // Softer stretch — thicker cross section for less wireframe look
+      const stretch = d.length * (0.4 + phaseElapsed * 1.0);
+      dummy.scale.set(stretch, 0.05, 0.05);
 
       dummy.updateMatrix();
       meshRef.current.setMatrixAt(i, dummy.matrix);
@@ -61,7 +61,6 @@ export function SpeedLines({
 
     meshRef.current.instanceMatrix.needsUpdate = true;
 
-    // Update material opacity
     const mat = meshRef.current.material as THREE.MeshBasicMaterial;
     mat.opacity = opacity;
   });
@@ -72,7 +71,7 @@ export function SpeedLines({
       <meshBasicMaterial
         color={color}
         transparent
-        opacity={1}
+        opacity={0.6}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
       />

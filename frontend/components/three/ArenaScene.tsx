@@ -152,7 +152,7 @@ export function ArenaScene({ battleState }: ArenaSceneProps) {
         roundIndex={battleState.roundIndex}
       />
 
-      <CRTEffect intensity={phase === "clash" ? 2.0 : phase === "victory" ? 1.3 : 1.0} />
+      <CRTEffect intensity={phase === "clash" ? 1.3 : phase === "victory" ? 1.2 : 1.0} />
     </Canvas>
   );
 }
