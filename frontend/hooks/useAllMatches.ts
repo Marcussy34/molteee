@@ -5,23 +5,32 @@
  * this hook fetches every match ever created for the Match History page.
  *
  * Includes on-chain proof data:
+ * - txHash: MatchCreated transaction hash (found via timestamp-based block estimation)
  * - player1Elo / player2Elo: Current ELO from AgentRegistry
  *
  * Caching strategy:
  * 1. On mount, load cached data from localStorage → render instantly
  * 2. Fetch current nextMatchId from Escrow
  * 3. Only fetch NEW matches (above cached nextMatchId) + re-check non-settled ones
- * 4. Settled matches with winners are cached permanently (never re-fetched)
- * 5. ELO fetched once per component mount
+ * 4. Settled matches with winners + txHash are cached permanently
+ * 5. ELO + tx hashes fetched once per component mount
  * 6. Poll every 30s for new matches only
  *
  * IMPORTANT: Fetch is split into sequential phases to avoid viem's 10s default
- * timeout killing requests queued behind the rate limiter. Phase 1 fetches all
- * getMatch data, Phase 2 fetches winners, Phase 3 fetches ELO.
+ * timeout killing requests queued behind the rate limiter.
+ *
+ * TX hash strategy:
+ * Alchemy free tier limits getLogs to 10 blocks — useless for scanning.
+ * Instead, we use the Monad public RPC (100-block limit) with a targeted approach:
+ * 1. Get latest block (number + timestamp) as a reference point
+ * 2. For each match, estimate the block from its createdAt timestamp
+ * 3. Scan a 100-block window around that estimate for the MatchCreated event
+ * 4. Cache found tx hashes permanently in localStorage
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { publicClient, ADDRESSES } from "@/lib/contracts";
+import { createPublicClient, http } from "viem";
+import { publicClient, ADDRESSES, monadTestnet } from "@/lib/contracts";
 import { escrowAbi } from "@/lib/abi/Escrow";
 import { agentRegistryAbi } from "@/lib/abi/AgentRegistry";
 import type { OnChainMatch } from "./useActiveMatches";
@@ -30,15 +39,41 @@ import { parseStatus, detectGameType } from "./useActiveMatches";
 // ─── Extended match type with proof data ────────────────────────────────────
 
 export interface MatchWithProof extends OnChainMatch {
+  txHash?: string;      // MatchCreated transaction hash — links to block explorer
   player1Elo?: number;  // Current ELO rating for player 1 (per game type)
   player2Elo?: number;  // Current ELO rating for player 2 (per game type)
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = "all-matches-v3"; // bumped to invalidate stale DRAW cache
+const STORAGE_KEY = "all-matches-v4"; // bumped — invalidates stale DRAW cache + adds txHash
 const POLL_MS = 30_000;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+// Monad testnet block time: ~0.4s per block = 2.5 blocks/second
+const BLOCKS_PER_SECOND = 2.5;
+
+// Separate viem client for the Monad public RPC (supports 100-block getLogs ranges).
+// The main publicClient uses Alchemy (10-block getLogs limit on free tier).
+// This client is NOT rate-limited by the global Alchemy rate limiter since it's
+// a different endpoint. We process calls sequentially with small delays instead.
+const logsClient = createPublicClient({
+  chain: monadTestnet,
+  transport: http("https://testnet-rpc.monad.xyz", { retryCount: 1 }),
+});
+
+// MatchCreated event definition for getLogs
+const MATCH_CREATED_EVENT = {
+  type: "event" as const,
+  name: "MatchCreated" as const,
+  inputs: [
+    { name: "matchId", type: "uint256" as const, indexed: true },
+    { name: "player1", type: "address" as const, indexed: true },
+    { name: "player2", type: "address" as const, indexed: true },
+    { name: "wager", type: "uint256" as const, indexed: false },
+    { name: "gameContract", type: "address" as const, indexed: false },
+  ],
+} as const;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -52,8 +87,26 @@ function gameTypeToUint8(gt: string): number {
   }
 }
 
+/** Estimate the block number for a given unix timestamp using a reference block */
+function estimateBlock(
+  targetTimestamp: number,
+  refBlockNumber: bigint,
+  refBlockTimestamp: number
+): bigint {
+  const secondsDiff = refBlockTimestamp - targetTimestamp;
+  const blocksDiff = Math.floor(secondsDiff * BLOCKS_PER_SECOND);
+  const estimated = refBlockNumber - BigInt(blocksDiff);
+  return estimated > BigInt(0) ? estimated : BigInt(0);
+}
+
+/** Small async delay to avoid hammering RPCs */
+function delay(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 // ─── localStorage serialization ─────────────────────────────────────────────
 // bigint can't be JSON.stringified, so we convert wager to a string.
+// txHash (string) and ELO (number) serialize fine as-is.
 
 interface SerializedMatch extends Omit<MatchWithProof, "wager"> {
   wager: string;
@@ -112,8 +165,8 @@ export function useAllMatches(): AllMatchesResult {
   const cacheMapRef = useRef<Map<number, MatchWithProof>>(new Map());
   const cachedNextMatchIdRef = useRef(0);
 
-  // Track whether ELO has been fetched this mount
-  const hasFetchedEloRef = useRef(false);
+  // Track whether proof data has been fetched this mount
+  const hasFetchedProofRef = useRef(false);
 
   // ─── Hydrate from localStorage on mount (client-only, avoids SSR mismatch) ──
   useEffect(() => {
@@ -149,7 +202,7 @@ export function useAllMatches(): AllMatchesResult {
     const toFetch = Array.from(pairs).filter((k) => !eloMapRef.current.has(k));
     if (toFetch.length === 0) return;
 
-    // Fetch ELO for each unique player-gameType pair in parallel
+    // Fetch ELO in parallel (separate batch — within timeout window)
     const promises = toFetch.map(async (key) => {
       const dashIdx = key.lastIndexOf("-");
       const addr = key.slice(0, dashIdx);
@@ -170,6 +223,65 @@ export function useAllMatches(): AllMatchesResult {
     await Promise.all(promises);
   }, []);
 
+  // ─── Fetch tx hashes using timestamp-based block estimation ───────────────
+  const fetchTxHashes = useCallback(async (matchList: MatchWithProof[]) => {
+    // Only look up matches that are missing tx hashes
+    const missing = matchList.filter((m) => !m.txHash && m.createdAt > 0);
+    if (missing.length === 0) return;
+
+    try {
+      // Get latest block as a reference point for timestamp → block estimation
+      const latestBlock = await logsClient.getBlock({ blockTag: "latest" });
+      const refBlockNumber = latestBlock.number;
+      const refBlockTimestamp = Number(latestBlock.timestamp);
+
+      // Process each match SEQUENTIALLY with a small delay to be nice to the public RPC.
+      // Uses two-step refinement: raw estimate → fetch actual timestamp → refine → scan.
+      // Raw extrapolation from the latest block drifts by 1000+ blocks over long distances,
+      // but after refinement the error is typically <10 blocks — well within the ±50 window.
+      for (const match of missing) {
+        try {
+          // Step 1: Raw estimate from latest block (can be 1000+ blocks off)
+          const rawEstimate = estimateBlock(match.createdAt, refBlockNumber, refBlockTimestamp);
+
+          // Step 2: Get actual timestamp at the estimated block to measure the error
+          const estBlockData = await logsClient.getBlock({ blockNumber: rawEstimate });
+          const actualTs = Number(estBlockData.timestamp);
+
+          // Step 3: Refine using the actual timestamp (residual is typically <10 blocks)
+          const residualSeconds = match.createdAt - actualTs;
+          const refinedBlock = rawEstimate + BigInt(Math.round(residualSeconds * BLOCKS_PER_SECOND));
+
+          // Step 4: Scan 100-block window around the refined estimate
+          const fromBlock = refinedBlock - BigInt(49);
+          const toBlock = refinedBlock + BigInt(49);
+
+          const logs = await logsClient.getLogs({
+            address: ADDRESSES.escrow,
+            event: MATCH_CREATED_EVENT,
+            fromBlock: fromBlock > BigInt(0) ? fromBlock : BigInt(0),
+            toBlock,
+          });
+
+          // Find the log matching our specific matchId
+          for (const log of logs) {
+            if (log.args.matchId !== undefined && Number(log.args.matchId) === match.matchId) {
+              match.txHash = log.transactionHash;
+              break;
+            }
+          }
+        } catch {
+          // getLogs or getBlock failed for this match — skip, we'll try again next visit
+        }
+
+        // Small delay between calls to avoid hammering the public RPC
+        await delay(150);
+      }
+    } catch (err) {
+      console.warn("[useAllMatches] tx hash fetch failed:", err);
+    }
+  }, []);
+
   // ─── Enrich matches with ELO data ────────────────────────────────────────
   const enrichWithElo = useCallback((matchList: MatchWithProof[]) => {
     for (const m of matchList) {
@@ -184,11 +296,6 @@ export function useAllMatches(): AllMatchesResult {
   }, []);
 
   // ─── Main fetch function ────────────────────────────────────────────────────
-  // Split into sequential phases to avoid viem timeout killing queued requests.
-  // The rate limiter serializes ALL RPC calls at 200ms intervals. With 35 matches
-  // in one Promise.all, the last call starts at 35×200ms = 7s. If winners calls
-  // are in the same batch, they start at 55×200ms = 11s, exceeding viem's 10s
-  // default timeout → silent abort. Fix: run getMatch and winners as separate batches.
   const fetchMatches = useCallback(async () => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
@@ -213,9 +320,7 @@ export function useAllMatches(): AllMatchesResult {
       const cache = cacheMapRef.current;
       const prevNextMatchId = cachedNextMatchIdRef.current;
 
-      // Determine which match IDs need fetching:
-      // 1. New matches since last fetch (prevNextMatchId .. nextMatchId-1)
-      // 2. Non-settled cached matches (may have changed status)
+      // Determine which match IDs need fetching
       const idsToFetch = new Set<number>();
 
       for (let id = prevNextMatchId; id < nextMatchId; id++) {
@@ -229,7 +334,6 @@ export function useAllMatches(): AllMatchesResult {
       }
 
       // ── Phase 1: Fetch match data (getMatch only) ──────────────────────────
-      // Each call gets its own timeout window, keeps batch within 10s limit
       const matchResults = await Promise.all(
         Array.from(idsToFetch).map(async (id) => {
           try {
@@ -265,8 +369,6 @@ export function useAllMatches(): AllMatchesResult {
       }
 
       // ── Phase 2: Fetch winners for settled matches (separate batch) ────────
-      // Runs AFTER Phase 1 completes so these calls don't queue behind 35 getMatch calls.
-      // With ~20 settled matches, the last call starts at 20×200ms = 4s — well within timeout.
       const settledWithoutWinner = Array.from(cache.values()).filter(
         (m) => m.status === "settled" && !m.winner
       );
@@ -288,7 +390,6 @@ export function useAllMatches(): AllMatchesResult {
           })
         );
 
-        // Apply winners to cached matches
         for (const { matchId, winner } of winnerResults) {
           const m = cache.get(matchId);
           if (m && winner && winner !== ZERO_ADDRESS) {
@@ -297,14 +398,20 @@ export function useAllMatches(): AllMatchesResult {
         }
       }
 
-      // Update the high-water mark
       cachedNextMatchIdRef.current = nextMatchId;
 
       // ── Phase 3: Fetch ELO ratings (once per mount) ────────────────────────
-      if (!hasFetchedEloRef.current) {
-        hasFetchedEloRef.current = true;
+      if (!hasFetchedProofRef.current) {
         const allMatchList = Array.from(cache.values());
         await fetchEloRatings(allMatchList);
+      }
+
+      // ── Phase 4: Fetch tx hashes (once per mount) ──────────────────────────
+      // Uses Monad public RPC with timestamp-based block estimation
+      if (!hasFetchedProofRef.current) {
+        hasFetchedProofRef.current = true;
+        const allMatchList = Array.from(cache.values());
+        await fetchTxHashes(allMatchList);
       }
 
       // Enrich all matches with ELO data
@@ -322,7 +429,7 @@ export function useAllMatches(): AllMatchesResult {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [fetchEloRatings, enrichWithElo]);
+  }, [fetchEloRatings, fetchTxHashes, enrichWithElo]);
 
   // ─── Polling setup ──────────────────────────────────────────────────────────
   useEffect(() => {
