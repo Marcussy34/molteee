@@ -25,6 +25,11 @@ const RESULT_FILTERS = [
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
+// Escrow ACCEPT_TIMEOUT is 1 hour — pending matches older than this are expired.
+// Active matches with stalled games are considered expired after 2 hours.
+const PENDING_TIMEOUT_S = 3600;      // 1 hour (matches Escrow.ACCEPT_TIMEOUT)
+const ACTIVE_TIMEOUT_S  = 7200;      // 2 hours (generous for game phase deadlines)
+
 // Block explorer base URL for all on-chain proof links
 const EXPLORER = monadTestnet.blockExplorers.default.url;
 
@@ -108,43 +113,41 @@ export default function MatchesPage() {
         </div>
 
         {/* On-chain verification banner with contract links */}
-        <div className="mb-4 rounded border border-monad-purple/20 bg-monad-deeper/50 px-4 py-2.5">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="font-pixel text-[8px] text-text-dim">
-              VERIFIED ON-CHAIN — MONAD TESTNET
+        <div className="mb-4 rounded border border-monad-purple/20 bg-monad-deeper/50 px-4 py-3">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="font-pixel text-[9px] text-monad-purple">
+              VERIFIED ON-CHAIN
+            </span>
+            <span className="font-pixel text-[7px] text-text-dim">
+              — MONAD TESTNET
             </span>
           </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            <span
-              onClick={() => window.open(`${EXPLORER}/address/${ADDRESSES.escrow}`, "_blank")}
-              className="font-pixel text-[7px] text-monad-purple/60 hover:text-monad-purple cursor-pointer transition-colors"
-            >
-              Escrow: {shortAddr(ADDRESSES.escrow)} ↗
-            </span>
-            <span
-              onClick={() => window.open(`${EXPLORER}/address/${ADDRESSES.rpsGame}`, "_blank")}
-              className="font-pixel text-[7px] text-monad-purple/60 hover:text-monad-purple cursor-pointer transition-colors"
-            >
-              RPSGame: {shortAddr(ADDRESSES.rpsGame)} ↗
-            </span>
-            <span
-              onClick={() => window.open(`${EXPLORER}/address/${ADDRESSES.pokerGame}`, "_blank")}
-              className="font-pixel text-[7px] text-monad-purple/60 hover:text-monad-purple cursor-pointer transition-colors"
-            >
-              PokerGame: {shortAddr(ADDRESSES.pokerGame)} ↗
-            </span>
-            <span
-              onClick={() => window.open(`${EXPLORER}/address/${ADDRESSES.auctionGame}`, "_blank")}
-              className="font-pixel text-[7px] text-monad-purple/60 hover:text-monad-purple cursor-pointer transition-colors"
-            >
-              AuctionGame: {shortAddr(ADDRESSES.auctionGame)} ↗
-            </span>
-            <span
-              onClick={() => window.open(`${EXPLORER}/address/${ADDRESSES.agentRegistry}`, "_blank")}
-              className="font-pixel text-[7px] text-monad-purple/60 hover:text-monad-purple cursor-pointer transition-colors"
-            >
-              AgentRegistry: {shortAddr(ADDRESSES.agentRegistry)} ↗
-            </span>
+
+          {/* Contract grid — 2 columns on mobile, 3 on desktop */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {[
+              { label: "Escrow", addr: ADDRESSES.escrow },
+              { label: "RPSGame", addr: ADDRESSES.rpsGame },
+              { label: "PokerGame", addr: ADDRESSES.pokerGame },
+              { label: "AuctionGame", addr: ADDRESSES.auctionGame },
+              { label: "AgentRegistry", addr: ADDRESSES.agentRegistry },
+            ].map((c) => (
+              <span
+                key={c.label}
+                onClick={() => window.open(`${EXPLORER}/address/${c.addr}`, "_blank")}
+                className="flex items-center gap-1.5 rounded border border-monad-purple/10 bg-monad-dark/50 px-2.5 py-1.5 cursor-pointer hover:border-monad-purple/30 hover:bg-monad-purple/5 transition-all group"
+              >
+                <span className="font-pixel text-[8px] text-text-dim group-hover:text-text-primary transition-colors">
+                  {c.label}
+                </span>
+                <span className="font-mono text-[9px] text-monad-purple/50 group-hover:text-monad-purple transition-colors truncate">
+                  {shortAddr(c.addr)}
+                </span>
+                <span className="text-[8px] text-monad-purple/30 group-hover:text-monad-purple transition-colors ml-auto">
+                  ↗
+                </span>
+              </span>
+            ))}
           </div>
         </div>
 
@@ -220,8 +223,17 @@ export default function MatchesPage() {
               const isP2Win = result === "p2";
               const isDraw = result === "draw";
 
-              // Status badge for non-settled matches
+              // Detect expired matches — on-chain status is still pending/active
+              // but the timeout has long passed so they're effectively dead
+              const now = Math.floor(Date.now() / 1000);
+              const age = now - m.createdAt;
+              const isExpired =
+                (m.status === "pending" && age > PENDING_TIMEOUT_S) ||
+                (m.status === "active" && age > ACTIVE_TIMEOUT_S);
+
+              // Status badge
               const statusLabel =
+                isExpired ? "EXPIRED" :
                 m.status === "pending" ? "PENDING" :
                 m.status === "active" ? "ACTIVE" :
                 m.status === "cancelled" ? "CANCELLED" :
@@ -230,6 +242,7 @@ export default function MatchesPage() {
                 isP2Win ? "P2 WIN" : "-";
 
               const statusColor =
+                isExpired ? "text-text-dim" :
                 m.status === "pending" ? "text-neon-yellow" :
                 m.status === "active" ? "text-monad-purple" :
                 m.status === "cancelled" ? "text-text-dim" :
