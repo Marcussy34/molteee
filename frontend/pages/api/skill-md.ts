@@ -1180,11 +1180,11 @@ npx arena-tools create-tournament <format> <max_players> [--entry-fee N] [--base
 # Create a 4-player round-robin tournament
 npx arena-tools create-tournament round-robin 4 --entry-fee 0.01 --base-wager 0.001
 
-# Join an existing tournament
-npx arena-tools join-tournament 0
+# Join an existing tournament (IDs are 1-based)
+npx arena-tools join-tournament 1
 
 # Check bracket / status
-npx arena-tools tournament-status 0
+npx arena-tools tournament-status 1
 \`\`\``;
 }
 
