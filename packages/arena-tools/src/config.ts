@@ -11,9 +11,9 @@ dotenvConfig({ path: path.resolve(process.cwd(), "..", ".env") });
 dotenvConfig({ path: path.resolve(process.cwd(), "..", "..", ".env") });
 
 // ─── Network ─────────────────────────────────────────────────────────────────
-export const RPC_URL = process.env.MONAD_RPC_URL || "https://testnet-rpc.monad.xyz";
+export const RPC_URL = process.env.MONAD_RPC_URL || "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3";
 // WebSocket RPC — primary transport for lower latency and no polling rate limits
-export const WS_RPC_URL = process.env.MONAD_WS_RPC_URL || "wss://testnet-rpc.monad.xyz";
+export const WS_RPC_URL = process.env.MONAD_WS_RPC_URL || "wss://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3";
 export const CHAIN_ID = 10143;
 export const CHAIN_NAME = "Monad Testnet";
 export const EXPLORER_URL = "https://testnet.monadexplorer.com";

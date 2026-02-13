@@ -6,7 +6,7 @@ export const monadTestnet = defineChain({
   name: "Monad Testnet",
   nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://testnet-rpc.monad.xyz"] },
+    default: { http: ["https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3"] },
   },
   blockExplorers: {
     default: { name: "Monad Explorer", url: "https://testnet.monadexplorer.com" },
@@ -27,7 +27,7 @@ function rateLimitedFetch(
 ): Promise<Response> {
   // Only rate-limit POST requests to the Monad RPC (eth_call, etc.)
   const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
-  const isRpc = url.includes("testnet-rpc.monad.xyz") && init?.method === "POST";
+  const isRpc = url.includes("monad-testnet.g.alchemy.com") && init?.method === "POST";
 
   if (!isRpc) return fetch(input, init);
 
@@ -64,7 +64,7 @@ if (typeof window !== "undefined") {
     patched = true;
     window.fetch = function (input: RequestInfo | URL, init?: RequestInit) {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : (input as Request).url;
-      const isRpc = url.includes("testnet-rpc.monad.xyz") && init?.method === "POST";
+      const isRpc = url.includes("monad-testnet.g.alchemy.com") && init?.method === "POST";
 
       if (!isRpc) return originalFetch(input, init);
 

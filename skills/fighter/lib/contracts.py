@@ -42,7 +42,7 @@ ERC8004_REPUTATION_REGISTRY = "0x8004B663056A597Dffe9eCcC1965A193B7388713"
 
 # ─── Monad Testnet Config ────────────────────────────────────────────────────
 
-MONAD_RPC_URL = os.getenv("MONAD_RPC_URL", "https://testnet-rpc.monad.xyz")
+MONAD_RPC_URL = os.getenv("MONAD_RPC_URL", "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3")
 MONAD_CHAIN_ID = 10143
 
 # ─── Game Constants ──────────────────────────────────────────────────────────

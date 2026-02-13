@@ -20,7 +20,7 @@ dotenv.config();
 // Monad Testnet configuration
 const CHAIN_CONFIG = {
   chainId: 10143,
-  rpcUrl: process.env.RPC_URL || "https://testnet-rpc.monad.xyz",
+  rpcUrl: process.env.RPC_URL || "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3",
   identityRegistry: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
   reputationRegistry: "0x8004B663056A597Dffe9eCcC1965A193B7388713",
 };

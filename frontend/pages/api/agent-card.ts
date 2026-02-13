@@ -91,7 +91,7 @@ const agentCard = {
   network: {
     name: "Monad Testnet",
     chainId: 10143,
-    rpc: "https://testnet-rpc.monad.xyz",
+    rpc: "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3",
     explorer: "https://testnet.monadexplorer.com",
     currency: "MON",
   },

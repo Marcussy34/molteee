@@ -34,7 +34,7 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-MONAD_RPC_URL = os.getenv("MONAD_RPC_URL", "https://testnet-rpc.monad.xyz")
+MONAD_RPC_URL = os.getenv("MONAD_RPC_URL", "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3")
 CHAIN_ID = 10143
 
 # Contract addresses
