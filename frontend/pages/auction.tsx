@@ -46,7 +46,7 @@ export default function AuctionPage() {
   }));
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-monad-dark pt-10">
+    <div className="flex h-screen flex-col overflow-hidden bg-monad-dark pt-14">
       <div className="crt-overlay" />
 
       <ScoreTicker items={tickerItems} />

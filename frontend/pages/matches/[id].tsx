@@ -57,7 +57,7 @@ export default function MatchDetailPage() {
 
       <div className="relative z-10 mx-auto max-w-3xl px-6 pt-16 pb-12">
         <Link href="/arena" className="font-pixel text-xs text-text-dim hover:text-monad-purple transition-colors">
-          &larr; ARENA
+          &larr; RPS
         </Link>
 
         {/* Match header */}

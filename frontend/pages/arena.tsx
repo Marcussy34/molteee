@@ -48,7 +48,7 @@ export default function ArenaPage() {
   }));
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-monad-dark">
+    <div className="flex h-screen flex-col overflow-hidden bg-monad-dark pt-14">
       {/* CRT Overlay */}
       <div className="crt-overlay" />
 

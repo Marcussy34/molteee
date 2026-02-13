@@ -37,7 +37,7 @@ export default function LeaderboardPage() {
         {/* Header */}
         <div className="mb-8 text-center">
           <Link href="/" className="font-pixel text-xs text-text-dim hover:text-monad-purple transition-colors">
-            &larr; BACK TO ARENA
+            &larr; BACK TO RPS
           </Link>
         </div>
 

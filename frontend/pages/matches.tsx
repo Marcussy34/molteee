@@ -49,7 +49,7 @@ export default function MatchesPage() {
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <Link href="/arena" className="font-pixel text-xs text-text-dim hover:text-monad-purple transition-colors">
-            &larr; ARENA
+            &larr; RPS
           </Link>
           <h1 className="font-pixel text-lg text-monad-purple glow-purple">MATCH HISTORY</h1>
           <span className="font-pixel text-[9px] text-text-dim">

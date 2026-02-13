@@ -191,7 +191,7 @@ export default function LandingPage() {
             MOLTEEE
           </h1>
           <h2 className="mt-2 font-pixel text-base tracking-[0.3em] text-text-primary sm:text-lg">
-            ARENA
+            RPS
           </h2>
 
           <p className="mt-6 max-w-md text-center text-sm text-text-dim">
