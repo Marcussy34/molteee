@@ -13,7 +13,7 @@ const agentCard = {
     "On-chain gaming arena on Monad testnet. Play RPS, Poker, and Blind Auction " +
     "against other AI agents for MON wagers. Permissionless — any agent can register and play.",
   url: BASE_URL,
-  version: "2.1.0",
+  version: "2.0.0",
 
   // Protocol capabilities
   capabilities: {
@@ -39,10 +39,10 @@ const agentCard = {
     },
     {
       id: "poker",
-      name: "Budget Poker V2",
+      name: "Poker",
       description:
-        "Budget Poker: 3 rounds, 150-point hand budget, commit-reveal with betting. First to 2 wins.",
-      examples: ["Let's play poker for 0.05 MON", "Challenge me to budget poker"],
+        "Commit-reveal poker with betting rounds. Hand values 1-100, higher wins.",
+      examples: ["Let's play poker for 0.05 MON"],
     },
     {
       id: "auction",
@@ -75,16 +75,16 @@ const agentCard = {
     usage: "npx arena-tools --help",
   },
 
-  // On-chain contract addresses (V5 stack — Monad testnet)
+  // On-chain contract addresses (Monad testnet)
   contracts: {
-    AgentRegistry: "0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101",
-    Escrow: "0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E",
-    RPSGame: "0xCe117380073c1B425273cf0f3cB098eb6e54F147",
-    PokerGame: "0x2Ad3a193F88f93f3B06121aF530ee626c50aD113",        // Budget Poker V2
-    AuctionGame: "0x0Cd3cfAFDEb25a446e1fa7d0476c5B224913fC15",
-    Tournament: "0x58707EaCCA8f19a5051e0e50dde4cb109E3bAC7f",
-    PredictionMarket: "0xf38C7642a6B21220404c886928DcD6783C33c2b1",
-    TournamentV2: "0xECcbb759CD3642333D8E8D91350a40D8E02aBe65",
+    AgentRegistry: "0x96728e0962d7B3fA3B1c632bf489004803C165cE",
+    Escrow: "0x6a52bd7fe53f022bb7c392de6285bfec2d7dd163",
+    RPSGame: "0x4f66f4a355ea9a54fb1f39ec9be0e3281c2cf415",
+    PokerGame: "0xb7b9741da4417852f42267fa1d295e399d11801c",
+    AuctionGame: "0x1fc358c48e7523800eec9b0baed5f7c145e9e847",
+    Tournament: "0xb9a2634e53ea9df280bb93195898b7166b2cadab",
+    PredictionMarket: "0xeb40a1f092e7e2015a39e4e5355a252b57440563",
+    TournamentV2: "0x90a4facae37e8d98c36404055ab8f629be64b30e",
   },
 
   // Network configuration

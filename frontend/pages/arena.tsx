@@ -1,72 +1,18 @@
 import dynamic from "next/dynamic";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { StatPanel } from "@/components/ui/StatPanel";
 import { ScoreTicker } from "@/components/ui/ScoreTicker";
 import { MatchFeed } from "@/components/ui/MatchFeed";
 import { RetroSparkline } from "@/components/ui/RetroChart";
-import { sfx } from "@/lib/sound";
+import { useBattleDirector } from "@/hooks/useBattleDirector";
+import { MoveRevealPopup } from "@/components/ui/MoveRevealPopup";
 import type { Match, Agent } from "@/lib/types";
 
 const ArenaScene = dynamic(
   () => import("@/components/three/ArenaScene").then((m) => ({ default: m.ArenaScene })),
   { ssr: false }
 );
-
-// Simulate cycling through matches for the demo
-function useMatchSimulation(matches: Match[]) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [roundIndex, setRoundIndex] = useState(0);
-  const [isActive, setIsActive] = useState(false);
-  const prevRoundRef = useRef(-1);
-
-  // Play SFX when rounds change
-  useEffect(() => {
-    if (isActive && roundIndex !== prevRoundRef.current) {
-      sfx.roundStart();
-      prevRoundRef.current = roundIndex;
-    }
-  }, [roundIndex, isActive]);
-
-  useEffect(() => {
-    if (matches.length === 0) return;
-
-    const match = matches[currentIndex % matches.length];
-
-    // Start the match after a delay
-    const startTimer = setTimeout(() => setIsActive(true), 2000);
-
-    // Cycle through rounds
-    const roundTimer = setInterval(() => {
-      setRoundIndex((prev) => {
-        if (prev >= (match.rounds?.length || 1) - 1) {
-          // Match complete — play win/lose SFX
-          sfx.win();
-          setTimeout(() => {
-            setIsActive(false);
-            setRoundIndex(0);
-            prevRoundRef.current = -1;
-            setTimeout(() => {
-              setCurrentIndex((i) => (i + 1) % matches.length);
-            }, 3000);
-          }, 2000);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, 3000);
-
-    return () => {
-      clearTimeout(startTimer);
-      clearInterval(roundTimer);
-    };
-  }, [currentIndex, matches]);
-
-  const match = matches[currentIndex % matches.length] || null;
-  const currentRound = match?.rounds?.[roundIndex];
-
-  return { match, currentRound, isActive, roundIndex };
-}
 
 export default function ArenaPage() {
   const [matches, setMatches] = useState<Match[]>([]);
@@ -87,7 +33,10 @@ export default function ArenaPage() {
       });
   }, []);
 
-  const { match, currentRound, isActive, roundIndex } = useMatchSimulation(matches);
+  const battleState = useBattleDirector(matches);
+  const { match, roundIndex, phase, phaseElapsed, moveA, moveB, roundWinner, matchWinner } = battleState;
+
+  const isActive = phase !== "idle" && phase !== "reset" && phase !== "entrance_a" && phase !== "entrance_b";
 
   const playerAAgent = match ? agents[match.playerA.address] : null;
   const playerBAgent = match ? agents[match.playerB.address] : null;
@@ -97,10 +46,6 @@ export default function ArenaPage() {
     text: `${m.playerA.name} vs ${m.playerB.name} — ${m.gameType.toUpperCase()} — ${m.result === "playerA" ? m.playerA.name : m.playerB.name} WINS — ${m.wager} MON`,
     type: "info" as const,
   }));
-
-  const moveA = currentRound?.moveA || currentRound?.actionA || currentRound?.bidA;
-  const moveB = currentRound?.moveB || currentRound?.actionB || currentRound?.bidB;
-  const roundWinner = currentRound?.winner === "A" ? "A" : currentRound?.winner === "B" ? "B" : null;
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-monad-dark">
@@ -156,25 +101,55 @@ export default function ArenaPage() {
 
         {/* Center: 3D Arena */}
         <div className="relative flex-1">
-          <ArenaScene
-            playerA={match?.playerA.address}
-            playerB={match?.playerB.address}
-            isActive={isActive}
-            moveA={moveA}
-            moveB={moveB}
-            winner={roundWinner}
-          />
+          <ArenaScene battleState={battleState} />
 
-          {/* Round result overlay */}
-          {isActive && currentRound && (
+          {/* Phase overlay */}
+          {phase === "round_result" && roundWinner && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded border border-monad-purple/30 bg-monad-deeper/80 px-6 py-2 backdrop-blur-sm">
-              {currentRound.winner === "draw" ? (
+              {roundWinner === "draw" ? (
                 <span className="font-pixel text-sm text-neon-yellow">DRAW</span>
               ) : (
-                <span className={`font-pixel text-sm ${currentRound.winner === "A" ? "text-neon-green" : "text-neon-red"}`}>
-                  {currentRound.winner === "A" ? match?.playerA.name : match?.playerB.name} WINS ROUND
+                <span className={`font-pixel text-sm ${roundWinner === "A" ? "text-neon-green" : "text-neon-red"}`}>
+                  {roundWinner === "A" ? match?.playerA.name : match?.playerB.name} WINS ROUND
                 </span>
               )}
+            </div>
+          )}
+          {phase === "clash" && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+              <span className="font-pixel text-2xl text-neon-yellow animate-blink" style={{ textShadow: "0 0 20px #FFD700" }}>
+                CLASH!
+              </span>
+            </div>
+          )}
+          {phase === "clash" && moveA && (
+            <MoveRevealPopup move={moveA} side="left" visible={phaseElapsed < 0.6} phaseElapsed={phaseElapsed} />
+          )}
+          {phase === "clash" && moveB && (
+            <MoveRevealPopup move={moveB} side="right" visible={phaseElapsed < 0.6} phaseElapsed={phaseElapsed} />
+          )}
+          {phase === "victory" && match && (
+            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+              <span className="font-pixel text-3xl text-neon-green block" style={{ textShadow: "0 0 30px #39FF14" }}>
+                {matchWinner === "A" ? match.playerA.name : match.playerB.name}
+              </span>
+              <span className="font-pixel text-lg text-neon-yellow mt-2 block">
+                WINS!
+              </span>
+            </div>
+          )}
+          {(phase === "entrance_a" || phase === "entrance_b") && match && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+              <span className="font-pixel text-lg text-monad-purple animate-blink" style={{ textShadow: "0 0 15px #836EF9" }}>
+                {phase === "entrance_a" ? match.playerA.name : match.playerB.name}
+              </span>
+            </div>
+          )}
+          {phase === "standoff" && match && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+              <span className="font-pixel text-4xl text-neon-red animate-blink" style={{ textShadow: "0 0 25px #FF3131" }}>
+                VS
+              </span>
             </div>
           )}
         </div>

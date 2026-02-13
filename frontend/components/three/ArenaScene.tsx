@@ -1,97 +1,17 @@
-import { useRef, useMemo } from "react";
+import { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { GridFloor } from "./GridFloor";
 import { Particles } from "./Particles";
 import { CRTEffect } from "./CRTEffect";
-
-function addressToColor(address: string): string {
-  const hex = (address || "0x000000").replace("0x", "").slice(0, 6);
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  const max = Math.max(r, g, b, 1);
-  return `rgb(${Math.floor((r / max) * 255)}, ${Math.floor((g / max) * 255)}, ${Math.floor((b / max) * 255)})`;
-}
-
-interface FighterProps {
-  address?: string;
-  side: "left" | "right";
-  isActive: boolean;
-  currentMove?: string;
-  isWinner?: boolean;
-}
-
-function Fighter({ address, side, isActive, currentMove, isWinner }: FighterProps) {
-  const groupRef = useRef<THREE.Group>(null!);
-  const leftArmRef = useRef<THREE.Mesh>(null!);
-  const rightArmRef = useRef<THREE.Mesh>(null!);
-
-  const color = useMemo(() => addressToColor(address || "0x000000"), [address]);
-  const xPos = side === "left" ? -2.5 : 2.5;
-  const facing = side === "left" ? 0 : Math.PI;
-
-  useFrame((state) => {
-    if (!groupRef.current) return;
-
-    // Idle bounce
-    groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 2) * 0.05;
-
-    // Attack animation when move is active
-    if (isActive && currentMove) {
-      const punch = Math.sin(state.clock.elapsedTime * 8) * 0.6;
-      if (rightArmRef.current) rightArmRef.current.rotation.x = punch;
-    } else {
-      if (rightArmRef.current) {
-        rightArmRef.current.rotation.x *= 0.9;
-      }
-    }
-
-    // Celebrate on win
-    if (isWinner) {
-      if (leftArmRef.current) leftArmRef.current.rotation.z = -Math.PI * 0.6;
-      if (rightArmRef.current) rightArmRef.current.rotation.z = Math.PI * 0.6;
-    } else {
-      if (leftArmRef.current) leftArmRef.current.rotation.z = 0;
-      if (rightArmRef.current) rightArmRef.current.rotation.z = 0;
-    }
-  });
-
-  return (
-    <group ref={groupRef} position={[xPos, 0, 0]} rotation={[0, facing, 0]}>
-      {/* Body */}
-      <mesh position={[0, 0.7, 0]}>
-        <boxGeometry args={[0.7, 0.9, 0.45]} />
-        <meshStandardMaterial color={color} wireframe emissive={color} emissiveIntensity={0.3} />
-      </mesh>
-      {/* Head */}
-      <mesh position={[0, 1.35, 0]}>
-        <boxGeometry args={[0.45, 0.45, 0.45]} />
-        <meshStandardMaterial color={color} wireframe emissive={color} emissiveIntensity={0.3} />
-      </mesh>
-      {/* Left arm */}
-      <mesh ref={leftArmRef} position={[-0.55, 0.7, 0]}>
-        <boxGeometry args={[0.18, 0.65, 0.18]} />
-        <meshStandardMaterial color={color} wireframe emissive={color} emissiveIntensity={0.2} />
-      </mesh>
-      {/* Right arm */}
-      <mesh ref={rightArmRef} position={[0.55, 0.7, 0]}>
-        <boxGeometry args={[0.18, 0.65, 0.18]} />
-        <meshStandardMaterial color={color} wireframe emissive={color} emissiveIntensity={0.2} />
-      </mesh>
-      {/* Left leg */}
-      <mesh position={[-0.18, 0, 0]}>
-        <boxGeometry args={[0.22, 0.55, 0.22]} />
-        <meshStandardMaterial color={color} wireframe emissive={color} emissiveIntensity={0.15} />
-      </mesh>
-      {/* Right leg */}
-      <mesh position={[0.18, 0, 0]}>
-        <boxGeometry args={[0.22, 0.55, 0.22]} />
-        <meshStandardMaterial color={color} wireframe emissive={color} emissiveIntensity={0.15} />
-      </mesh>
-    </group>
-  );
-}
+import { CameraDirector } from "./CameraDirector";
+import { SpeedLines } from "./SpeedLines";
+import { ImpactFlash } from "./ImpactFlash";
+import { EnergyBeam } from "./EnergyBeam";
+import { MechFighter } from "./MechFighter";
+import { MoveWeapon } from "./MoveWeapon";
+import { ClashResolver } from "./ClashResolver";
+import type { BattleState } from "@/hooks/useBattleDirector";
 
 /** Pulsing ring on the arena floor */
 function ArenaRing() {
@@ -111,16 +31,27 @@ function ArenaRing() {
   );
 }
 
-interface ArenaSceneProps {
-  playerA?: string;
-  playerB?: string;
-  isActive: boolean;
-  moveA?: string;
-  moveB?: string;
-  winner?: "A" | "B" | null;
+/** Resolve winning move for impact flash color */
+function getWinnerMove(
+  moveA?: string,
+  moveB?: string,
+  roundWinner?: "A" | "B" | "draw" | null,
+): string | undefined {
+  if (!roundWinner || roundWinner === "draw") return undefined;
+  return roundWinner === "A" ? moveA : moveB;
 }
 
-export function ArenaScene({ playerA, playerB, isActive, moveA, moveB, winner }: ArenaSceneProps) {
+interface ArenaSceneProps {
+  battleState: BattleState;
+}
+
+export function ArenaScene({ battleState }: ArenaSceneProps) {
+  const { phase, phaseElapsed, match, matchWinner, roundWinner, moveA, moveB } = battleState;
+
+  const showWeapons =
+    phase === "thinking" || phase === "clash" || phase === "round_result";
+  const winnerMove = getWinnerMove(moveA, moveB, roundWinner);
+
   return (
     <Canvas
       camera={{ position: [0, 4, 8], fov: 50 }}
@@ -136,25 +67,92 @@ export function ArenaScene({ playerA, playerB, isActive, moveA, moveB, winner }:
       <pointLight position={[5, 4, -3]} intensity={0.5} color="#6C4ED9" distance={20} />
 
       <GridFloor />
-      <Particles count={150} />
+      <Particles count={150} battlePhase={phase} />
       <ArenaRing />
 
-      <Fighter
-        address={playerA}
+      {/* ═══ HIGH-FIDELITY HERO MODELS ═══ */}
+      <MechFighter
+        address={match?.playerA.address}
         side="left"
-        isActive={isActive}
+        battlePhase={phase}
+        phaseElapsed={phaseElapsed}
         currentMove={moveA}
-        isWinner={winner === "A"}
+        isRoundWinner={roundWinner === "A"}
+        isMatchWinner={matchWinner === "A"}
       />
-      <Fighter
-        address={playerB}
+      <MechFighter
+        address={match?.playerB.address}
         side="right"
-        isActive={isActive}
+        battlePhase={phase}
+        phaseElapsed={phaseElapsed}
         currentMove={moveB}
-        isWinner={winner === "B"}
+        isRoundWinner={roundWinner === "B"}
+        isMatchWinner={matchWinner === "B"}
       />
 
-      <CRTEffect />
+      {/* ═══ FINAL SMASH MANIFESTATIONS ═══ */}
+      {showWeapons && moveA && (
+        <MoveWeapon
+          move={moveA}
+          side="left"
+          battlePhase={phase}
+          phaseElapsed={phaseElapsed}
+          isWinner={roundWinner === "A"}
+        />
+      )}
+      {showWeapons && moveB && (
+        <MoveWeapon
+          move={moveB}
+          side="right"
+          battlePhase={phase}
+          phaseElapsed={phaseElapsed}
+          isWinner={roundWinner === "B"}
+        />
+      )}
+
+      {/* ═══ CINEMATIC CLASH RESOLUTION ═══ */}
+      {phase === "round_result" && (
+        <ClashResolver
+          moveA={moveA}
+          moveB={moveB}
+          roundWinner={roundWinner}
+          phaseElapsed={phaseElapsed}
+        />
+      )}
+
+      {/* VFX: Speed lines during entrances */}
+      {phase === "entrance_a" && (
+        <SpeedLines origin={[-2.5, 0, 0]} phaseElapsed={phaseElapsed} color="#00F0FF" />
+      )}
+      {phase === "entrance_b" && (
+        <SpeedLines origin={[2.5, 0, 0]} phaseElapsed={phaseElapsed} color="#FF3131" />
+      )}
+
+      {/* VFX: Move-colored impact flash + center speed lines during clash */}
+      {phase === "clash" && (
+        <>
+          <ImpactFlash phaseElapsed={phaseElapsed} winnerMove={winnerMove} />
+          <SpeedLines origin={[0, 0.8, 0]} phaseElapsed={phaseElapsed} color="#FFD700" count={50} />
+        </>
+      )}
+
+      {/* VFX: Energy beam on winner during victory */}
+      {phase === "victory" && matchWinner && (
+        <EnergyBeam
+          side={matchWinner === "A" ? "left" : "right"}
+          phaseElapsed={phaseElapsed}
+        />
+      )}
+
+      <CameraDirector
+        battlePhase={phase}
+        phaseElapsed={phaseElapsed}
+        roundWinner={battleState.roundWinner}
+        matchWinner={matchWinner}
+        roundIndex={battleState.roundIndex}
+      />
+
+      <CRTEffect intensity={phase === "clash" ? 1.3 : phase === "victory" ? 1.2 : 1.0} />
     </Canvas>
   );
 }
