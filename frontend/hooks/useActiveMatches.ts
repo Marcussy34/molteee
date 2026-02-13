@@ -250,13 +250,29 @@ export function useActiveMatches(filter: GameFilter = "all") {
   const [liveMatches, setLiveMatches] = useState<OnChainMatch[]>(cachedLive);
   const [pendingChallenges, setPendingChallenges] = useState<OnChainMatch[]>(cachedPending);
   const [recentSettled, setRecentSettled] = useState<OnChainMatch[]>(cachedSettled);
-  // If we have localStorage data, skip the loading spinner — show stale data immediately
-  const [loading, setLoading] = useState(!hasStoredData);
+  const [loading, setLoading] = useState(true);
   const fetchingRef = useRef(false);
   const livenessRef = useRef(false);
 
   // All discovered matches (before liveness split) — shared between tiers
   const allMatchesRef = useRef<OnChainMatch[]>([]);
+
+  // ─── Hydrate from localStorage on mount (client-only, avoids SSR mismatch) ──
+  useEffect(() => {
+    if (hydratedFromStorage) return;
+    hydratedFromStorage = true;
+
+    const stored = loadFromStorage();
+    if (stored && (stored.live.length + stored.pending.length + stored.settled.length) > 0) {
+      cachedLive = stored.live;
+      cachedPending = stored.pending;
+      cachedSettled = stored.settled;
+      setLiveMatches(stored.live);
+      setPendingChallenges(stored.pending);
+      setRecentSettled(stored.settled);
+      setLoading(false);
+    }
+  }, []);
 
   // ─── Tier 1: Escrow scan (every 15s) ─────────────────────────────────────
   // Discovers new/changed matches from the Escrow contract
