@@ -41,7 +41,7 @@ export default function ArenaPage() {
   };
 
   // ─── Match discovery from Escrow contract ─────────────────────────────────
-  const { liveMatches, recentSettled, loading } = useActiveMatches(filter);
+  const { liveMatches, pendingChallenges, recentSettled, loading } = useActiveMatches(filter);
 
   // ─── Selected match ───────────────────────────────────────────────────────
   const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
@@ -69,10 +69,11 @@ export default function ArenaPage() {
     if (selectedMatchId === null) return null;
     return (
       liveMatches.find((m) => m.matchId === selectedMatchId) ||
+      pendingChallenges.find((m) => m.matchId === selectedMatchId) ||
       recentSettled.find((m) => m.matchId === selectedMatchId) ||
       null
     );
-  }, [selectedMatchId, liveMatches, recentSettled]);
+  }, [selectedMatchId, liveMatches, pendingChallenges, recentSettled]);
 
   // ─── Live game state for selected match ───────────────────────────────────
   const { state: gameState, loading: gameLoading } = useLiveGameState(
@@ -123,7 +124,8 @@ export default function ArenaPage() {
   }, [liveMatches, recentSettled]);
 
   // ─── Derived state ────────────────────────────────────────────────────────
-  const isLive = selectedMatch?.status === "active" || selectedMatch?.status === "pending";
+  // Only truly live if game is actively in progress on-chain
+  const isLive = selectedMatch?.isPlaying === true;
   const p1Name = selectedMatch ? getAgentName(selectedMatch.player1) : "";
   const p2Name = selectedMatch ? getAgentName(selectedMatch.player2) : "";
   const hasGame = gameState !== null;  // game state loaded from chain
@@ -319,6 +321,7 @@ export default function ArenaPage() {
           <div className="relative z-10 flex-1 min-h-0">
             <LiveMatchList
               liveMatches={liveMatches}
+              pendingChallenges={pendingChallenges}
               recentSettled={recentSettled}
               loading={loading}
               filter={filter}
@@ -335,6 +338,7 @@ export default function ArenaPage() {
         <div className="relative z-20 shrink-0 border-t border-monad-purple/20 bg-monad-deeper/80 max-h-48 overflow-y-auto">
           <LiveMatchList
             liveMatches={liveMatches}
+            pendingChallenges={pendingChallenges}
             recentSettled={recentSettled}
             loading={loading}
             filter={filter}

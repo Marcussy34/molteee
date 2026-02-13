@@ -12,6 +12,7 @@ const TABS: { value: GameFilter; label: string }[] = [
 
 interface LiveMatchListProps {
   liveMatches: OnChainMatch[];
+  pendingChallenges: OnChainMatch[];
   recentSettled: OnChainMatch[];
   loading: boolean;
   filter: GameFilter;
@@ -22,6 +23,7 @@ interface LiveMatchListProps {
 
 export function LiveMatchList({
   liveMatches,
+  pendingChallenges,
   recentSettled,
   loading,
   filter,
@@ -77,10 +79,31 @@ export function LiveMatchList({
         )}
 
         {/* Empty live state */}
-        {liveMatches.length === 0 && !loading && (
+        {liveMatches.length === 0 && pendingChallenges.length === 0 && !loading && (
           <div className="flex flex-col items-center justify-center py-8">
             <span className="font-pixel text-[10px] text-text-dim">NO LIVE MATCHES</span>
             <span className="font-pixel text-[7px] text-text-dim mt-1">WAITING FOR ACTION...</span>
+          </div>
+        )}
+
+        {/* Pending challenges — accepted but no game yet, or awaiting acceptance */}
+        {pendingChallenges.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 px-1 mb-1.5">
+              <span className="font-pixel text-[7px] text-neon-yellow">●</span>
+              <span className="font-pixel text-[8px] text-text-dim">PENDING CHALLENGES</span>
+              <span className="font-pixel text-[7px] text-text-dim">({pendingChallenges.length})</span>
+            </div>
+            <div className="space-y-1">
+              {pendingChallenges.map((m) => (
+                <LiveMatchCard
+                  key={m.matchId}
+                  match={m}
+                  isSelected={selectedMatchId === m.matchId}
+                  onClick={() => onSelectMatch(m.matchId)}
+                />
+              ))}
+            </div>
           </div>
         )}
 

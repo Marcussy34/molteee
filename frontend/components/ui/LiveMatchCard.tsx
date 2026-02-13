@@ -19,7 +19,9 @@ interface LiveMatchCardProps {
 }
 
 export function LiveMatchCard({ match, isSelected, onClick }: LiveMatchCardProps) {
-  const isLive = match.status === "active" || match.status === "pending";
+  // Only truly live if game is actively in progress on-chain
+  const isLive = match.isPlaying === true;
+  const isPending = match.status === "pending";
   const badge = GAME_BADGE[match.gameType] || GAME_BADGE.unknown;
   const wagerStr = formatEther(match.wager);
   const p1Name = getAgentName(match.player1);
@@ -53,8 +55,20 @@ export function LiveMatchCard({ match, isSelected, onClick }: LiveMatchCardProps
         </div>
         <div className="flex items-center gap-2">
           {isLive && (
-            <span className="font-pixel text-[7px] text-neon-green animate-pulse">
-              LIVE
+            <>
+              <span className="font-pixel text-[7px] text-neon-green animate-pulse">
+                LIVE
+              </span>
+              {match.gamePhase && (
+                <span className="font-pixel text-[6px] text-monad-purple">
+                  {match.gamePhase}
+                </span>
+              )}
+            </>
+          )}
+          {isPending && (
+            <span className="font-pixel text-[7px] text-neon-yellow animate-pulse">
+              PENDING
             </span>
           )}
           <span className="font-pixel text-[8px] text-neon-yellow">{wagerStr} MON</span>
