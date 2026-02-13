@@ -1,5 +1,6 @@
 export declare const RPC_URL: string;
 export declare const WS_RPC_URL: string;
+export declare const FALLBACK_RPC_URL: string;
 export declare const CHAIN_ID = 10143;
 export declare const CHAIN_NAME = "Monad Testnet";
 export declare const EXPLORER_URL = "https://testnet.monadexplorer.com";

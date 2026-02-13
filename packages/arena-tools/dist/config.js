@@ -9,9 +9,12 @@ dotenvConfig({ path: path.resolve(process.cwd(), ".env.local") });
 dotenvConfig({ path: path.resolve(process.cwd(), "..", ".env") });
 dotenvConfig({ path: path.resolve(process.cwd(), "..", "..", ".env") });
 // ─── Network ─────────────────────────────────────────────────────────────────
+// Primary RPC (Alchemy) — higher reliability, but rate-limited on free tier
 export const RPC_URL = process.env.MONAD_RPC_URL || "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3";
 // WebSocket RPC — primary transport for lower latency and no polling rate limits
 export const WS_RPC_URL = process.env.MONAD_WS_RPC_URL || "wss://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3";
+// Fallback RPC (Monad public) — separate rate limit pool, used when Alchemy 429s
+export const FALLBACK_RPC_URL = process.env.MONAD_FALLBACK_RPC_URL || "https://testnet-rpc.monad.xyz";
 export const CHAIN_ID = 10143;
 export const CHAIN_NAME = "Monad Testnet";
 export const EXPLORER_URL = "https://testnet.monadexplorer.com";
