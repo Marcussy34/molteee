@@ -40,9 +40,23 @@ export async function findGameCommand(matchId) {
     }
     const contractAddr = GAME_CONTRACTS[gameType];
     const abi = TYPE_TO_ABI[gameType];
-    // 3. Scan forward from game ID 0 — check each game for matching matchId.
-    //    Stop when we hit a revert (no more games exist).
-    for (let i = 0; i < 10000; i++) {
+    // 3. Get total game count, then scan BACKWARDS from latest.
+    //    New matches create games with the highest IDs, so scanning backwards
+    //    finds the target in 1-2 RPC calls instead of N (where N = total games).
+    let nextId;
+    try {
+        const raw = await client.readContract({
+            address: contractAddr,
+            abi,
+            functionName: "nextGameId",
+        });
+        nextId = Number(raw);
+    }
+    catch {
+        fail("Failed to read nextGameId from game contract", "CONTRACT_ERROR");
+        return;
+    }
+    for (let i = nextId - 1; i >= 0; i--) {
         try {
             const game = (await client.readContract({
                 address: contractAddr,
@@ -63,8 +77,8 @@ export async function findGameCommand(matchId) {
             }
         }
         catch {
-            // Revert = no game at this ID, we've passed the last game
-            break;
+            // Revert = no game at this ID, skip
+            continue;
         }
     }
     // No game found
