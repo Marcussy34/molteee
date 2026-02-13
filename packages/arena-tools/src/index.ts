@@ -42,6 +42,7 @@ import {
 import { claimTimeoutCommand } from "./commands/claim-timeout.js";
 import { rpsRoundCommand } from "./commands/rps-round.js";
 import { pokerStepCommand } from "./commands/poker-step.js";
+import { pokerRoundCommand } from "./commands/poker-round.js";
 import { auctionRoundCommand } from "./commands/auction-round.js";
 import {
     listMarketsCommand,
@@ -303,6 +304,18 @@ program
     .option("--amount <amount>", "Amount in MON (for bet/raise)")
     .action(wrapCommand(async (gameId: string, decision: string, opts: any) => {
         await pokerStepCommand(gameId, decision, opts);
+    }));
+
+program
+    .command("poker-round")
+    .description("Play one full Poker round (commit + betting + showdown). Agent picks hand value + strategy.")
+    .argument("<game_id>", "Poker game ID")
+    .argument("<hand_value>", "Hand value 1-100 (costs budget on reveal)")
+    .option("--bet <action>", "Action when no active bet: check, bet, or fold (default: check)")
+    .option("--if-bet <action>", "Action when opponent bets: call, fold, or raise (default: call)")
+    .option("--amount <amount>", "Amount in MON (for bet/raise)")
+    .action(wrapCommand(async (gameId: string, handValue: string, opts: any) => {
+        await pokerRoundCommand(gameId, handValue, opts);
     }));
 
 program
