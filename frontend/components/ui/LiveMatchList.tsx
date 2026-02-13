@@ -30,7 +30,7 @@ export function LiveMatchList({
   onSelectMatch,
 }: LiveMatchListProps) {
   return (
-    <div className="flex flex-col h-full">
+    <div className="relative flex flex-col h-full">
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-3 py-2 border-b border-monad-purple/15">
         {TABS.map((tab) => (

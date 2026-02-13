@@ -64,9 +64,9 @@ export default function ArenaPage() {
     setSelectedMatchId(id);
   };
 
-  // Find selected match object
+  // Find selected match object (use === null to allow matchId 0)
   const selectedMatch = useMemo(() => {
-    if (!selectedMatchId) return null;
+    if (selectedMatchId === null) return null;
     return (
       liveMatches.find((m) => m.matchId === selectedMatchId) ||
       recentSettled.find((m) => m.matchId === selectedMatchId) ||
@@ -198,7 +198,7 @@ export default function ArenaPage() {
             </div>
 
             {/* Center: Animated game visualization (or loading) */}
-            <div className="relative flex-1">
+            <div className="relative flex-1 min-h-0 overflow-hidden">
               {/* Loading state while game ID is being discovered */}
               {!hasGame && (
                 <div className="flex h-full flex-col items-center justify-center gap-3">
@@ -307,7 +307,7 @@ export default function ArenaPage() {
           </>
         ) : (
           // ─── No match selected: full-width match list ───────────────────
-          <div className="flex-1">
+          <div className="relative z-10 flex-1 min-h-0">
             <LiveMatchList
               liveMatches={liveMatches}
               recentSettled={recentSettled}
@@ -323,7 +323,7 @@ export default function ArenaPage() {
 
       {/* Bottom: Match list (collapsed when viewing a game) */}
       {selectedMatch && (
-        <div className="shrink-0 border-t border-monad-purple/20 bg-monad-deeper/80 max-h-48 overflow-y-auto">
+        <div className="relative z-20 shrink-0 border-t border-monad-purple/20 bg-monad-deeper/80 max-h-48 overflow-y-auto">
           <LiveMatchList
             liveMatches={liveMatches}
             recentSettled={recentSettled}

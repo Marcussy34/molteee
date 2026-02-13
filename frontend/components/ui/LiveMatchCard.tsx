@@ -35,6 +35,7 @@ export function LiveMatchCard({ match, isSelected, onClick }: LiveMatchCardProps
 
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`w-full text-left px-3 py-2.5 border transition-all ${
         isSelected
@@ -73,10 +74,14 @@ export function LiveMatchCard({ match, isSelected, onClick }: LiveMatchCardProps
         </div>
       </div>
 
-      {/* Winner (settled only) */}
-      {match.status === "settled" && winnerName && (
+      {/* Winner or draw (settled only) */}
+      {match.status === "settled" && (
         <div className="mt-1 text-center">
-          <span className="font-pixel text-[7px] text-neon-green">{winnerName} WINS</span>
+          {winnerName ? (
+            <span className="font-pixel text-[7px] text-neon-green">{winnerName} WINS</span>
+          ) : (
+            <span className="font-pixel text-[7px] text-neon-yellow">DRAW</span>
+          )}
         </div>
       )}
     </button>

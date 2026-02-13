@@ -15,7 +15,7 @@ export function ScoreTicker({ items }: ScoreTickerProps) {
   const doubled = [...items, ...items];
 
   return (
-    <div className="shrink-0 overflow-hidden border-b border-monad-purple/20 bg-monad-deeper/80">
+    <div className="shrink-0 overflow-hidden border-b border-monad-purple/20 bg-monad-deeper/80 pointer-events-none">
       <div
         className="flex gap-12 whitespace-nowrap py-1.5 px-4"
         style={{
