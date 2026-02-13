@@ -67,7 +67,7 @@ export async function pokerStepCommand(gameId, decision, opts) {
     const client = getPublicClient();
     const myAddress = getAddress();
     const gid = BigInt(gameId);
-    const addr = CONTRACTS.PokerGameV2;
+    const addr = CONTRACTS.PokerGame;
     // Read game state
     const game = await retry(() => client.readContract({ address: addr, abi: pokerGameV2Abi, functionName: "getGame", args: [gid] }), "getGame");
     if (game.settled) {

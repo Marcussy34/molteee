@@ -31,7 +31,7 @@ export default function TournamentsPage() {
       ) : (
         <div className="space-y-4">
           {tournaments.map((t) => {
-            const key = `v${t.version}-${t.id}`;
+            const key = `tournament-${t.id}`;
             const isExpanded = expanded === key;
             return (
               <div key={key} className="space-y-2">

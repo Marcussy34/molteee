@@ -41,7 +41,7 @@ export async function getGameCommand(gameType: string, gameId: string) {
     }
     else if (gt === "poker") {
         const game = (await client.readContract({
-            address: CONTRACTS.PokerGameV2,
+            address: CONTRACTS.PokerGame,
             abi: pokerGameV2Abi,
             functionName: "getGame",
             args: [id],

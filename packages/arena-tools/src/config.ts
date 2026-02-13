@@ -37,15 +37,13 @@ export function getPrivateKey(): `0x${string}` {
     return prefixed as `0x${string}`;
 }
 
-// ─── Contract Addresses (V5 deployment — hardcoded, immutable on-chain) ──────
+// ─── Contract Addresses (V5 deployment — Monad testnet) ──────────────────────
 export const CONTRACTS: Record<string, `0x${string}`> = {
     AgentRegistry: "0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101",
     Escrow: "0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E",
     RPSGame: "0xCe117380073c1B425273cf0f3cB098eb6e54F147",
-    PokerGame: "0x63fF00026820eeBCF6f7FF4eE9C2629Bf914a509",      // V1 — single-round (legacy)
-    PokerGameV2: "0x2Ad3a193F88f93f3B06121aF530ee626c50aD113",      // Budget Poker — deployed Feb 13, 2026
+    PokerGame: "0x2Ad3a193F88f93f3B06121aF530ee626c50aD113",   // PokerGameV2 (Budget Poker)
     AuctionGame: "0x0Cd3cfAFDEb25a446e1fa7d0476c5B224913fC15",
-    Tournament: "0x58707EaCCA8f19a5051e0e50dde4cb109E3bAC7f",
     TournamentV2: "0xECcbb759CD3642333D8E8D91350a40D8E02aBe65",
     PredictionMarket: "0xf38C7642a6B21220404c886928DcD6783C33c2b1",
 };
@@ -67,9 +65,8 @@ export function getAddressFromKey(): `0x${string}` | null {
 export const GAME_TYPES: Record<string, number> = { rps: 0, poker: 1, auction: 2 };
 
 // ─── Game contract mapping ──────────────────────────────────────────────────
-// Poker now points to V2 (Budget Poker). V1 kept in CONTRACTS for legacy game lookup.
 export const GAME_CONTRACTS: Record<string, `0x${string}`> = {
     rps: CONTRACTS.RPSGame,
-    poker: CONTRACTS.PokerGameV2,
+    poker: CONTRACTS.PokerGame,
     auction: CONTRACTS.AuctionGame,
 };

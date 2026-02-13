@@ -13,7 +13,7 @@ export async function claimTimeoutCommand(gameType: string, gameId: string) {
 
     const contractMap: Record<string, { address: `0x${string}`; abi: any }> = {
         rps: { address: CONTRACTS.RPSGame, abi: rpsGameAbi },
-        poker: { address: CONTRACTS.PokerGameV2, abi: pokerGameV2Abi },
+        poker: { address: CONTRACTS.PokerGame, abi: pokerGameV2Abi },
         auction: { address: CONTRACTS.AuctionGame, abi: auctionGameAbi },
     };
 

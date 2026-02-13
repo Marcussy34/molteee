@@ -26,13 +26,13 @@ export async function pokerCreateCommand(matchId) {
         args: [BigInt(matchId)],
     });
     const { hash, logs } = await sendTx({
-        to: CONTRACTS.PokerGameV2,
+        to: CONTRACTS.PokerGame,
         data,
     });
     // Parse the game ID from the GameCreated event in tx logs
     let gameId = -1;
     for (const log of logs) {
-        if (log.address.toLowerCase() === CONTRACTS.PokerGameV2.toLowerCase() && log.topics.length > 1) {
+        if (log.address.toLowerCase() === CONTRACTS.PokerGame.toLowerCase() && log.topics.length > 1) {
             gameId = Number(BigInt(log.topics[1]));
             break;
         }
@@ -61,7 +61,7 @@ export async function pokerCommitCommand(gameId, handValue) {
         args: [BigInt(gameId), hash],
     });
     const { hash: txHash } = await sendTx({
-        to: CONTRACTS.PokerGameV2,
+        to: CONTRACTS.PokerGame,
         data,
     });
     ok({
@@ -93,7 +93,7 @@ export async function pokerActionCommand(gameId, action, amount) {
         // Read currentBet from contract so the user doesn't need to pass it
         const client = getPublicClient();
         const game = (await client.readContract({
-            address: CONTRACTS.PokerGameV2,
+            address: CONTRACTS.PokerGame,
             abi: pokerGameV2Abi,
             functionName: "getGame",
             args: [BigInt(gameId)],
@@ -101,7 +101,7 @@ export async function pokerActionCommand(gameId, action, amount) {
         value = game.currentBet ?? game[4] ?? 0n; // currentBet field
     }
     const { hash: txHash } = await sendTx({
-        to: CONTRACTS.PokerGameV2,
+        to: CONTRACTS.PokerGame,
         data,
         value,
     });
@@ -128,7 +128,7 @@ export async function pokerRevealCommand(gameId) {
         args: [BigInt(gameId), handValue, saved.salt],
     });
     const { hash: txHash } = await sendTx({
-        to: CONTRACTS.PokerGameV2,
+        to: CONTRACTS.PokerGame,
         data,
     });
     // Only delete salt after successful reveal TX

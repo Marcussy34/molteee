@@ -93,7 +93,6 @@ export const ADDRESSES = {
   rpsGame: "0xCe117380073c1B425273cf0f3cB098eb6e54F147" as const,
   pokerGame: "0x2Ad3a193F88f93f3B06121aF530ee626c50aD113" as const,   // PokerGameV2 (Budget Poker)
   auctionGame: "0x0Cd3cfAFDEb25a446e1fa7d0476c5B224913fC15" as const,
-  tournament: "0x58707EaCCA8f19a5051e0e50dde4cb109E3bAC7f" as const,
   predictionMarket: "0xf38C7642a6B21220404c886928DcD6783C33c2b1" as const,
   tournamentV2: "0xECcbb759CD3642333D8E8D91350a40D8E02aBe65" as const,
 } as const;

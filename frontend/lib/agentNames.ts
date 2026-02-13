@@ -13,7 +13,7 @@ for (const agent of agentsData) {
 // Additional known addresses (real deployed bots on Monad testnet)
 const EXTRA_NAMES: Record<string, string> = {
   "0x218b5f1254e77e08f2ff9ee4b4a0ec8a3fe5d101": "AgentRegistry",
-  "0x3f07e6302459edb555fdecdepe2817f0fe5dca7e": "Escrow",
+  "0x3f07e6302459edb555fdecdefe2817f0fe5dca7e": "Escrow",
 };
 
 // Merge extras (don't overwrite agents.json entries)

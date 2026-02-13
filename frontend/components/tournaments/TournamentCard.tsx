@@ -9,7 +9,7 @@ interface TournamentCardProps {
 const STATUS_LABELS: Record<number, string> = {
   [TournamentStatus.Registration]: "Registration",
   [TournamentStatus.Active]: "Active",
-  [TournamentStatus.Completed]: "Completed",
+  [TournamentStatus.Complete]: "Complete",
   [TournamentStatus.Cancelled]: "Cancelled",
 };
 
@@ -27,7 +27,7 @@ function statusVariant(status: number) {
   switch (status) {
     case TournamentStatus.Active:
       return "default" as const;
-    case TournamentStatus.Completed:
+    case TournamentStatus.Complete:
       return "secondary" as const;
     case TournamentStatus.Cancelled:
       return "destructive" as const;
@@ -42,13 +42,13 @@ export function TournamentCard({ tournament: t }: TournamentCardProps) {
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <span className="text-sm">
-            V{t.version} Tournament #{t.id}
+            Tournament #{t.id}
           </span>
           <Badge variant={statusVariant(t.status)}>
             {STATUS_LABELS[t.status] ?? "Unknown"}
           </Badge>
         </CardTitle>
-        {t.version === 2 && t.format !== undefined && (
+        {t.format !== undefined && (
           <p className="text-xs text-muted-foreground">
             {FORMAT_LABELS[t.format] ?? "Unknown Format"}
           </p>
