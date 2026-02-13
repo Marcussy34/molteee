@@ -4,9 +4,10 @@ export function ok(data) {
     console.log(JSON.stringify({ ok: true, data }, null, 2));
     process.exit(0);
 }
-/** Print an error response and exit */
+/** Print an error response and exit.
+ *  Uses stdout (not stderr) so JSON output is always visible even with 2>/dev/null. */
 export function fail(error, code) {
-    console.error(JSON.stringify({ ok: false, error, code }, null, 2));
+    console.log(JSON.stringify({ ok: false, error, code }, null, 2));
     process.exit(1);
 }
 /** Print a streaming event (JSONL — one JSON object per line) */

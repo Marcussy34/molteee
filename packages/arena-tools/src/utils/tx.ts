@@ -1,9 +1,11 @@
 import { getPublicClient, getWalletClient } from "../client.js";
 
 // Default gas limit — skips estimateGas to save 1 RPC call per transaction.
-// 300k covers all arena contracts (commits ~70k, creates ~150k, reveals ~120k).
-// If estimation is needed, set ARENA_ESTIMATE_GAS=1 in env.
-const DEFAULT_GAS = 300_000n;
+// 1M covers all arena contracts including claim-timeout which triggers
+// _resolveRound + _settleGame + escrow.settle() + ELO updates (~600k+ gas).
+// On Monad you only pay for gas USED, not the limit, so overshooting is free.
+// Set ARENA_ESTIMATE_GAS=1 to use dynamic estimation instead.
+const DEFAULT_GAS = 1_000_000n;
 const SHOULD_ESTIMATE = !!process.env.ARENA_ESTIMATE_GAS;
 
 // Max retries for 429 rate limit errors at the sendTx level
