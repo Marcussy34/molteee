@@ -86,16 +86,16 @@ if (typeof window !== "undefined") {
   }
 }
 
-// Deployed contract addresses on Monad testnet
+// Deployed contract addresses on Monad testnet (V5 deployment)
 export const ADDRESSES = {
-  agentRegistry: "0x96728e0962d7B3fA3B1c632bf489004803C165cE" as const,
-  escrow: "0x6A52Bd7fe53f022bb7c392DE6285BfEc2d7dD163" as const,
-  rpsGame: "0x4f66f4a355Ea9a54fB1F39eC9Be0E3281c2Cf415" as const,
-  pokerGame: "0xB7B9741da4417852f42267FA1d295E399d11801C" as const,
-  auctionGame: "0x1Fc358c48e7523800Eec9B0baeD5F7C145e9E847" as const,
-  tournament: "0xB9a2634E53EA9dF280Bb93195898B7166b2CadAb" as const,
-  predictionMarket: "0xEb40a1F092e7e2015A39E4E5355A252b57440563" as const,
-  tournamentV2: "0x90a4FacAE37E8d98C36404055Ab8f629bE64b30e" as const,
+  agentRegistry: "0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101" as const,
+  escrow: "0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E" as const,
+  rpsGame: "0xCe117380073c1B425273cf0f3cB098eb6e54F147" as const,
+  pokerGame: "0x2Ad3a193F88f93f3B06121aF530ee626c50aD113" as const,   // PokerGameV2 (Budget Poker)
+  auctionGame: "0x0Cd3cfAFDEb25a446e1fa7d0476c5B224913fC15" as const,
+  tournament: "0x58707EaCCA8f19a5051e0e50dde4cb109E3bAC7f" as const,
+  predictionMarket: "0xf38C7642a6B21220404c886928DcD6783C33c2b1" as const,
+  tournamentV2: "0xECcbb759CD3642333D8E8D91350a40D8E02aBe65" as const,
 } as const;
 
 // Game type enum matching the contract
