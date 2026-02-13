@@ -1,7 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { formatEther } from "viem";
 import { PixelAvatar } from "@/components/ui/PixelAvatar";
-import type { Match } from "@/lib/types";
+import { useAllMatches } from "@/hooks/useAllMatches";
+import type { MatchWithProof } from "@/hooks/useAllMatches";
+import { getAgentName } from "@/lib/agentNames";
+import { monadTestnet, ADDRESSES } from "@/lib/contracts";
+
+// ─── Filter definitions ────────────────────────────────────────────────────
 
 const GAME_FILTERS = [
   { key: "", label: "ALL" },
@@ -17,43 +23,80 @@ const RESULT_FILTERS = [
   { key: "draw", label: "DRAW" },
 ];
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+// Block explorer URL for on-chain verification links
+const EXPLORER_URL = monadTestnet.blockExplorers.default.url;
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
+/** Derive result string from on-chain match data */
+function getResult(m: MatchWithProof): "p1" | "p2" | "draw" | null {
+  if (m.status !== "settled") return null;
+  if (!m.winner || m.winner === ZERO_ADDRESS) return "draw";
+  if (m.winner.toLowerCase() === m.player1.toLowerCase()) return "p1";
+  if (m.winner.toLowerCase() === m.player2.toLowerCase()) return "p2";
+  return null;
+}
+
+/** Format unix timestamp as "Feb 12" style date */
+function formatDate(timestamp: number): string {
+  if (!timestamp) return "-";
+  return new Date(timestamp * 1000).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+// ─── Page component ────────────────────────────────────────────────────────
+
 export default function MatchesPage() {
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { matches: allMatches, loading } = useAllMatches();
   const [gameFilter, setGameFilter] = useState("");
   const [resultFilter, setResultFilter] = useState("");
 
-  useEffect(() => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (gameFilter) params.set("gameType", gameFilter);
-    const qs = params.toString();
-    fetch(`/api/match-data${qs ? `?${qs}` : ""}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.ok) setMatches(d.data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [gameFilter]);
+  // Apply game type filter
+  const gameFiltered = gameFilter
+    ? allMatches.filter((m) => m.gameType === gameFilter)
+    : allMatches;
 
+  // Apply result filter (only settled matches have results)
   const filtered = resultFilter
-    ? matches.filter((m) => m.result === resultFilter)
-    : matches;
+    ? gameFiltered.filter((m) => {
+        const result = getResult(m);
+        if (resultFilter === "playerA") return result === "p1";
+        if (resultFilter === "playerB") return result === "p2";
+        if (resultFilter === "draw") return result === "draw";
+        return true;
+      })
+    : gameFiltered;
 
   return (
     <div className="min-h-screen bg-monad-dark">
       <div className="crt-overlay" />
 
-      <div className="relative z-10 mx-auto max-w-4xl px-6 pt-16 pb-12">
+      <div className="relative z-10 mx-auto max-w-5xl px-6 pt-16 pb-12">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <Link href="/arena" className="font-pixel text-xs text-text-dim hover:text-monad-purple transition-colors">
-            &larr; RPS
+            &larr; ARENA
           </Link>
           <h1 className="font-pixel text-lg text-monad-purple glow-purple">MATCH HISTORY</h1>
           <span className="font-pixel text-[9px] text-text-dim">
             {filtered.length} MATCHES
+          </span>
+        </div>
+
+        {/* On-chain verification banner */}
+        <div className="mb-4 flex items-center justify-between rounded border border-monad-purple/20 bg-monad-deeper/50 px-4 py-2">
+          <span className="font-pixel text-[8px] text-text-dim">
+            ON-CHAIN DATA FROM ESCROW CONTRACT
+          </span>
+          <span
+            onClick={() => window.open(`${EXPLORER_URL}/address/${ADDRESSES.escrow}`, "_blank")}
+            className="font-pixel text-[8px] text-monad-purple/70 hover:text-monad-purple cursor-pointer transition-colors"
+          >
+            {ADDRESSES.escrow.slice(0, 6)}...{ADDRESSES.escrow.slice(-4)} ↗
           </span>
         </div>
 
@@ -110,73 +153,96 @@ export default function MatchesPage() {
         ) : (
           <div className="space-y-2">
             {/* Table header */}
-            <div className="grid grid-cols-[60px_1fr_60px_1fr_80px_80px_70px] gap-2 px-4 py-2 text-[8px] text-text-dim font-pixel">
+            <div className="grid grid-cols-[36px_50px_1fr_40px_1fr_70px_70px_50px] gap-2 px-4 py-2 text-[8px] text-text-dim font-pixel">
+              <span>#</span>
               <span>TYPE</span>
-              <span>PLAYER A</span>
+              <span>PLAYER 1</span>
               <span>VS</span>
-              <span>PLAYER B</span>
+              <span>PLAYER 2</span>
               <span>RESULT</span>
               <span>WAGER</span>
-              <span>ELO</span>
+              <span>DATE</span>
             </div>
 
             {/* Match rows */}
             {filtered.map((m) => {
-              const date = new Date(m.timestamp * 1000).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              });
-              const winnerIsA = m.result === "playerA";
-              const isDraw = m.result === "draw";
+              const result = getResult(m);
+              const isP1Win = result === "p1";
+              const isP2Win = result === "p2";
+              const isDraw = result === "draw";
+
+              // Status badge for non-settled matches
+              const statusLabel =
+                m.status === "pending" ? "PENDING" :
+                m.status === "active" ? "ACTIVE" :
+                m.status === "cancelled" ? "CANCELLED" :
+                isDraw ? "DRAW" :
+                isP1Win ? "P1 WIN" :
+                isP2Win ? "P2 WIN" : "-";
+
+              const statusColor =
+                m.status === "pending" ? "text-neon-yellow" :
+                m.status === "active" ? "text-monad-purple" :
+                m.status === "cancelled" ? "text-text-dim" :
+                isDraw ? "text-neon-yellow" :
+                isP1Win ? "text-neon-green" :
+                isP2Win ? "text-neon-red" : "text-text-dim";
 
               return (
                 <Link
-                  key={m.id}
-                  href={`/matches/${m.id}`}
-                  className="grid grid-cols-[60px_1fr_60px_1fr_80px_80px_70px] gap-2 items-center rounded border border-monad-purple/10 bg-monad-deeper/50 px-4 py-3 transition-colors hover:bg-monad-purple/5 hover:border-monad-purple/25"
+                  key={m.matchId}
+                  href={`/matches/${m.matchId}`}
+                  className="grid grid-cols-[36px_50px_1fr_40px_1fr_70px_70px_50px] gap-2 items-center rounded border border-monad-purple/10 bg-monad-deeper/50 px-4 py-3 transition-colors hover:bg-monad-purple/5 hover:border-monad-purple/25"
                 >
-                  {/* Game type */}
-                  <span className="font-pixel text-[9px] text-monad-purple">
-                    {m.gameType.toUpperCase()}
+                  {/* Match ID */}
+                  <span className="font-pixel text-[9px] text-text-dim">
+                    {m.matchId}
                   </span>
 
-                  {/* Player A */}
+                  {/* Game type */}
+                  <span className="font-pixel text-[9px] text-monad-purple">
+                    {m.gameType === "unknown" ? "?" : m.gameType.toUpperCase()}
+                  </span>
+
+                  {/* Player 1 — name + ELO rating */}
                   <div className="flex items-center gap-2 overflow-hidden">
-                    <PixelAvatar address={m.playerA.address} size={20} />
-                    <span className={`text-xs truncate ${winnerIsA ? "text-neon-green" : "text-text-primary"}`}>
-                      {m.playerA.name}
+                    <PixelAvatar address={m.player1} size={20} />
+                    <span className={`text-xs truncate ${isP1Win ? "text-neon-green" : "text-text-primary"}`}>
+                      {getAgentName(m.player1)}
+                      {m.player1Elo !== undefined && m.player1Elo > 0 && (
+                        <span className="text-[8px] text-text-dim ml-1">({m.player1Elo})</span>
+                      )}
                     </span>
                   </div>
 
                   {/* VS */}
                   <span className="text-center text-[8px] text-text-dim">vs</span>
 
-                  {/* Player B */}
+                  {/* Player 2 — name + ELO rating */}
                   <div className="flex items-center gap-2 overflow-hidden">
-                    <PixelAvatar address={m.playerB.address} size={20} />
-                    <span className={`text-xs truncate ${!winnerIsA && !isDraw ? "text-neon-green" : "text-text-primary"}`}>
-                      {m.playerB.name}
+                    <PixelAvatar address={m.player2} size={20} />
+                    <span className={`text-xs truncate ${isP2Win ? "text-neon-green" : "text-text-primary"}`}>
+                      {getAgentName(m.player2)}
+                      {m.player2Elo !== undefined && m.player2Elo > 0 && (
+                        <span className="text-[8px] text-text-dim ml-1">({m.player2Elo})</span>
+                      )}
                     </span>
                   </div>
 
-                  {/* Result */}
-                  <span className={`font-pixel text-[9px] ${isDraw ? "text-neon-yellow" : winnerIsA ? "text-neon-green" : "text-neon-red"}`}>
-                    {isDraw ? "DRAW" : winnerIsA ? "P1 WIN" : "P2 WIN"}
+                  {/* Result / Status */}
+                  <span className={`font-pixel text-[9px] ${statusColor}`}>
+                    {statusLabel}
                   </span>
 
                   {/* Wager */}
-                  <span className="text-[10px] text-neon-yellow">{m.wager} MON</span>
+                  <span className="text-[10px] text-neon-yellow">
+                    {formatEther(m.wager)} MON
+                  </span>
 
-                  {/* ELO change */}
-                  <div className="text-[9px]">
-                    <span className={m.eloChange.playerA >= 0 ? "text-neon-green" : "text-neon-red"}>
-                      {m.eloChange.playerA >= 0 ? "+" : ""}{m.eloChange.playerA}
-                    </span>
-                    <span className="text-text-dim"> / </span>
-                    <span className={m.eloChange.playerB >= 0 ? "text-neon-green" : "text-neon-red"}>
-                      {m.eloChange.playerB >= 0 ? "+" : ""}{m.eloChange.playerB}
-                    </span>
-                  </div>
+                  {/* Date */}
+                  <span className="font-pixel text-[9px] text-text-dim">
+                    {formatDate(m.createdAt)}
+                  </span>
                 </Link>
               );
             })}

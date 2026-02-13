@@ -36,11 +36,11 @@ const GAME_CONTRACT_MAP: Record<string, "rps" | "poker" | "auction"> = {
   [ADDRESSES.auctionGame.toLowerCase()]: "auction",
 };
 
-function detectGameType(gameContract: string): "rps" | "poker" | "auction" | "unknown" {
+export function detectGameType(gameContract: string): "rps" | "poker" | "auction" | "unknown" {
   return GAME_CONTRACT_MAP[gameContract.toLowerCase()] || "unknown";
 }
 
-function parseStatus(status: number): MatchStatus {
+export function parseStatus(status: number): MatchStatus {
   switch (status) {
     case 0: return "pending";
     case 1: return "active";
