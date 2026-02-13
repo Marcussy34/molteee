@@ -1,6 +1,6 @@
 {
   "name": "@molteee/arena-tools",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "CLI tool for interacting with the Molteee Gaming Arena on Monad testnet",
   "type": "module",
   "bin": {

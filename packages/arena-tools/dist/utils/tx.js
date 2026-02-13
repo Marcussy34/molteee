@@ -1,11 +1,10 @@
 import { getPublicClient, getWalletClient } from "../client.js";
-// Default gas limit — skips estimateGas to save 1 RPC call per transaction.
-// 1M covers all arena contracts including claim-timeout which triggers
-// _resolveRound + _settleGame + escrow.settle() + ELO updates (~600k+ gas).
-// On Monad you only pay for gas USED, not the limit, so overshooting is free.
-// Set ARENA_ESTIMATE_GAS=1 to use dynamic estimation instead.
-const DEFAULT_GAS = 1000000n;
-const SHOULD_ESTIMATE = !!process.env.ARENA_ESTIMATE_GAS;
+// IMPORTANT: Monad charges for the FULL gas limit, not just gas used.
+// A hardcoded 1M limit costs ~0.102 MON per tx even for simple actions (~170k actual).
+// Always estimate gas to avoid 5-6x overpay. Fallback to 1M only if estimation fails.
+// Set ARENA_SKIP_ESTIMATE=1 to use fixed gas limit (NOT recommended).
+const FALLBACK_GAS = 1000000n;
+const SHOULD_SKIP_ESTIMATE = !!process.env.ARENA_SKIP_ESTIMATE;
 // Max retries for 429 rate limit errors at the sendTx level
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 2000;
@@ -20,8 +19,8 @@ function sleep(ms) {
 }
 /**
  * Send a write transaction with automatic retry on 429 rate limits.
- * By default uses a fixed gas limit (300k) to skip estimateGas and save an RPC call.
- * Set ARENA_ESTIMATE_GAS=1 to use dynamic gas estimation instead.
+ * Always estimates gas to avoid overpaying (Monad charges full gas limit).
+ * Falls back to 1M gas limit only if estimation fails or ARENA_SKIP_ESTIMATE=1.
  * Returns the transaction hash, gas used, and receipt logs.
  */
 export async function sendTx(params) {
@@ -31,17 +30,23 @@ export async function sendTx(params) {
     let lastError;
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         try {
-            // Gas: use fixed default or estimate dynamically
-            let gas = DEFAULT_GAS;
-            if (SHOULD_ESTIMATE) {
-                const gasEstimate = await publicClient.estimateGas({
-                    account: account.address,
-                    to: params.to,
-                    data: params.data,
-                    value: params.value ?? 0n,
-                });
-                // 1.5x buffer — Monad needs more headroom than Ethereum
-                gas = (gasEstimate * 3n) / 2n;
+            // Gas: always estimate to avoid overpay. Fallback to 1M on failure.
+            let gas = FALLBACK_GAS;
+            if (!SHOULD_SKIP_ESTIMATE) {
+                try {
+                    const gasEstimate = await publicClient.estimateGas({
+                        account: account.address,
+                        to: params.to,
+                        data: params.data,
+                        value: params.value ?? 0n,
+                    });
+                    // 1.5x buffer — Monad needs more headroom than Ethereum
+                    gas = (gasEstimate * 3n) / 2n;
+                }
+                catch {
+                    // Estimation failed (e.g. rate limited) — use fallback
+                    gas = FALLBACK_GAS;
+                }
             }
             // Send transaction
             const hash = await walletClient.sendTransaction({
