@@ -48,9 +48,12 @@ interface ArenaSceneProps {
 export function ArenaScene({ battleState }: ArenaSceneProps) {
   const { phase, phaseElapsed, match, matchWinner, roundWinner, moveA, moveB } = battleState;
 
-  const showWeapons =
-    phase === "thinking" || phase === "clash" || phase === "round_result";
-  const winnerMove = getWinnerMove(moveA, moveB, roundWinner);
+  // Only reveal moves at clash or after — keeps suspense until the reveal moment
+  const revealedMoveA = phase === "clash" || phase === "round_result" || phase === "victory" ? moveA : undefined;
+  const revealedMoveB = phase === "clash" || phase === "round_result" || phase === "victory" ? moveB : undefined;
+
+  const showWeapons = phase === "clash" || phase === "round_result";
+  const winnerMove = getWinnerMove(revealedMoveA, revealedMoveB, roundWinner);
 
   return (
     <Canvas
@@ -76,7 +79,7 @@ export function ArenaScene({ battleState }: ArenaSceneProps) {
         side="left"
         battlePhase={phase}
         phaseElapsed={phaseElapsed}
-        currentMove={moveA}
+        currentMove={revealedMoveA}
         isRoundWinner={roundWinner === "A"}
         isMatchWinner={matchWinner === "A"}
       />
@@ -85,24 +88,24 @@ export function ArenaScene({ battleState }: ArenaSceneProps) {
         side="right"
         battlePhase={phase}
         phaseElapsed={phaseElapsed}
-        currentMove={moveB}
+        currentMove={revealedMoveB}
         isRoundWinner={roundWinner === "B"}
         isMatchWinner={matchWinner === "B"}
       />
 
-      {/* ═══ FINAL SMASH MANIFESTATIONS ═══ */}
-      {showWeapons && moveA && (
+      {/* ═══ FINAL SMASH MANIFESTATIONS — only at clash/round_result ═══ */}
+      {showWeapons && revealedMoveA && (
         <MoveWeapon
-          move={moveA}
+          move={revealedMoveA}
           side="left"
           battlePhase={phase}
           phaseElapsed={phaseElapsed}
           isWinner={roundWinner === "A"}
         />
       )}
-      {showWeapons && moveB && (
+      {showWeapons && revealedMoveB && (
         <MoveWeapon
-          move={moveB}
+          move={revealedMoveB}
           side="right"
           battlePhase={phase}
           phaseElapsed={phaseElapsed}
@@ -113,8 +116,8 @@ export function ArenaScene({ battleState }: ArenaSceneProps) {
       {/* ═══ CINEMATIC CLASH RESOLUTION ═══ */}
       {phase === "round_result" && (
         <ClashResolver
-          moveA={moveA}
-          moveB={moveB}
+          moveA={revealedMoveA}
+          moveB={revealedMoveB}
           roundWinner={roundWinner}
           phaseElapsed={phaseElapsed}
         />

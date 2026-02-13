@@ -87,6 +87,11 @@ function getPhaseLabel(gameType: string, phase: number): string {
 
 const gameIdCache = new Map<string, number>(); // key: `${matchId}-${gameContract}`
 
+// ─── Settled match cache (past matches never change — skip chain calls) ───────
+// Key: `${matchId}-${gameType}`. Settled game state is immutable.
+const settledMatchCache = new Map<string, LiveGameState>();
+const SETTLED_CACHE_MAX = 50; // Limit memory use
+
 // ─── ABI mapping ──────────────────────────────────────────────────────────────
 
 function getGameAbi(gameType: string) {
@@ -162,9 +167,21 @@ async function discoverGameId(
 
 const POLL_INTERVAL_MS = 5_000;
 
+function getSettledCacheKey(matchId: number, gameType: string): string {
+  return `${matchId}-${gameType}`;
+}
+
+function evictSettledCacheIfNeeded() {
+  while (settledMatchCache.size > SETTLED_CACHE_MAX) {
+    const firstKey = settledMatchCache.keys().next().value;
+    if (firstKey !== undefined) settledMatchCache.delete(firstKey);
+  }
+}
+
 export function useLiveGameState(
   matchId: number | null,
   gameType: "rps" | "poker" | "auction" | "unknown" | null,
+  isSettled?: boolean,
 ) {
   const [state, setState] = useState<LiveGameState | null>(null);
   const [loading, setLoading] = useState(false);
@@ -178,6 +195,19 @@ export function useLiveGameState(
     fetchingRef.current = true;
 
     try {
+      // Cache hit for past match — no chain calls needed
+      if (isSettled) {
+        const cacheKey = getSettledCacheKey(matchId, gameType);
+        const cached = settledMatchCache.get(cacheKey);
+        if (cached) {
+          setState(cached);
+          setError(null);
+          setLoading(false);
+          fetchingRef.current = false;
+          return;
+        }
+      }
+
       // Discover game ID if we don't have it yet
       if (gameIdRef.current === null) {
         setLoading(true);
@@ -273,6 +303,13 @@ export function useLiveGameState(
 
       setState(liveState);
       setError(null);
+
+      // Cache settled matches — they never change, so skip future chain calls
+      if (liveState.settled) {
+        const cacheKey = getSettledCacheKey(matchId, gameType);
+        settledMatchCache.set(cacheKey, liveState);
+        evictSettledCacheIfNeeded();
+      }
     } catch (err) {
       console.error("[useLiveGameState] fetch error:", err);
       setError(String(err));
@@ -280,7 +317,7 @@ export function useLiveGameState(
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [matchId, gameType]);
+  }, [matchId, gameType, isSettled]);
 
   // Reset when match changes
   useEffect(() => {
@@ -289,14 +326,18 @@ export function useLiveGameState(
     setError(null);
   }, [matchId, gameType]);
 
-  // Initial fetch + polling
+  // Initial fetch + polling (no polling for settled matches — they never change)
   useEffect(() => {
     if (!matchId || !gameType || gameType === "unknown") return;
 
     fetchState();
+    if (isSettled) {
+      // Past match: no polling needed
+      return;
+    }
     const interval = setInterval(fetchState, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [fetchState, matchId, gameType]);
+  }, [fetchState, matchId, gameType, isSettled]);
 
   return { state, loading, error };
 }

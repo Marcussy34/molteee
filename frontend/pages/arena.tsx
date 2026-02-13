@@ -13,7 +13,7 @@ import { useLiveGameState } from "@/hooks/useLiveGameState";
 import { useBattleDirector } from "@/hooks/useBattleDirector";
 import { usePokerDirector } from "@/hooks/usePokerDirector";
 import { useAuctionDirector } from "@/hooks/useAuctionDirector";
-import { liveToRpsMatch, liveToPokerMatch, liveToAuctionMatch, rpsMoveLabel } from "@/lib/liveStateAdapters";
+import { liveToRpsMatch, liveToPokerMatch, liveToAuctionMatch } from "@/lib/liveStateAdapters";
 import { getAgentName } from "@/lib/agentNames";
 import { formatEther } from "viem";
 
@@ -78,6 +78,7 @@ export default function ArenaPage() {
   const { state: gameState, loading: gameLoading } = useLiveGameState(
     selectedMatch?.matchId ?? null,
     selectedMatch?.gameType ?? null,
+    selectedMatch?.status === "settled",
   );
 
   // ─── Build synthetic Match arrays for each director ───────────────────────
@@ -135,6 +136,11 @@ export default function ArenaPage() {
     : "idle";
   const isAnimating = activePhase !== "idle" && activePhase !== "reset";
 
+  // Only reveal moves at clash or after — keeps suspense until the reveal animation
+  const shouldRevealMoves =
+    gameType === "rps" &&
+    (activePhase === "clash" || activePhase === "round_result" || activePhase === "victory");
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-monad-dark pt-14">
       {/* CRT Overlay */}
@@ -161,7 +167,10 @@ export default function ArenaPage() {
             <span className="font-pixel text-[9px] text-neon-green animate-blink">LIVE</span>
           )}
           {hasGame && gameState.settled && (
-            <span className="font-pixel text-[9px] text-text-dim">SETTLED</span>
+            <>
+              <span className="font-pixel text-[9px] text-monad-purple">REPLAY</span>
+              <span className="font-pixel text-[8px] text-text-dim">(past match — showing final round)</span>
+            </>
           )}
           <button
             onClick={() => selectMatch(null)}
@@ -189,7 +198,7 @@ export default function ArenaPage() {
                 side="left"
                 isWinner={hasGame && gameState.settled && (gameState.p1Score || 0) > (gameState.p2Score || 0)}
                 currentMove={
-                  gameType === "rps" && isAnimating ? battleState.moveA :
+                  gameType === "rps" && shouldRevealMoves ? battleState.moveA :
                   gameType === "poker" && isAnimating ? pokerState.actionA :
                   gameType === "auction" && isAnimating && auctionState.bidA ? `${auctionState.bidA} MON` :
                   undefined
@@ -297,7 +306,7 @@ export default function ArenaPage() {
                 side="right"
                 isWinner={hasGame && gameState.settled && (gameState.p2Score || 0) > (gameState.p1Score || 0)}
                 currentMove={
-                  gameType === "rps" && isAnimating ? battleState.moveB :
+                  gameType === "rps" && shouldRevealMoves ? battleState.moveB :
                   gameType === "poker" && isAnimating ? pokerState.actionB :
                   gameType === "auction" && isAnimating && auctionState.bidB ? `${auctionState.bidB} MON` :
                   undefined
