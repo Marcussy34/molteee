@@ -2,7 +2,6 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 
 const NAV_LINKS = [
-  { href: "/", label: "HOME" },
   { href: "/arena", label: "ARENA" },
   { href: "/leaderboard", label: "SCORES" },
   { href: "/matches", label: "MATCHES" },

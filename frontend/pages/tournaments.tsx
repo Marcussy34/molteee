@@ -78,8 +78,9 @@ export default function TournamentsPage() {
             ))}
           </div>
         ) : tournaments.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="font-pixel text-[9px] text-text-dim">NO TOURNAMENTS YET.</p>
+          <div className="text-center py-24">
+            <p className="font-pixel text-lg text-monad-purple glow-purple mb-4">COMING SOON</p>
+            <p className="font-pixel text-[9px] text-text-dim">TOURNAMENTS ARE BEING PREPARED. STAY TUNED.</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12">
