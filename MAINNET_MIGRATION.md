@@ -17,8 +17,8 @@ Centralizes all config into environment variables so future changes only require
 | Socialscan | `https://monad-testnet.socialscan.io` | `https://monad.socialscan.io` |
 | MonadVision | `https://testnet.monadvision.com` | `https://monadvision.com` |
 | Verification API | `https://agents.devnads.com/v1/verify` | Same (supports both chains) |
-| ERC-8004 Identity | `0x8004A818BFB912233c491871b3d84c89A494BD9e` | **TBD — confirm if deployed on mainnet** |
-| ERC-8004 Reputation | `0x8004B663056A597Dffe9eCcC1965A193B7388713` | **TBD — confirm if deployed on mainnet** |
+| ERC-8004 Identity | `0x8004A818BFB912233c491871b3d84c89A494BD9e` | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
+| ERC-8004 Reputation | `0x8004B663056A597Dffe9eCcC1965A193B7388713` | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
 
 ---
 
@@ -29,7 +29,7 @@ Testnet private keys are committed to git in `.env`. **NEVER reuse them on mainn
 - [ ] Generate new deployer wallet: `cast wallet new`
 - [ ] Generate new opponent bot wallets (if running bots on mainnet)
 - [ ] Fund deployer wallet with real MON for gas + treasury
-- [ ] Confirm ERC-8004 registry addresses on mainnet
+- [x] ERC-8004 registry addresses confirmed (see table above)
 
 ---
 
@@ -71,8 +71,8 @@ PREDICTION_MARKET_ADDRESS=
 TOURNAMENT_V2_ADDRESS=
 
 # ERC-8004 Registries (confirm mainnet addresses)
-ERC8004_IDENTITY_REGISTRY=<mainnet_address_TBD>
-ERC8004_REPUTATION_REGISTRY=<mainnet_address_TBD>
+ERC8004_IDENTITY_REGISTRY=0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
+ERC8004_REPUTATION_REGISTRY=0x8004BAa17C55a88189AE136b182e5fdA19dE9b63
 
 # ERC-8004 Fighter Agent (filled after registration)
 ERC8004_AGENT_ID=
@@ -111,8 +111,8 @@ NEXT_PUBLIC_POKER_GAME_ADDRESS=<filled_after_deploy>
 NEXT_PUBLIC_AUCTION_GAME_ADDRESS=<filled_after_deploy>
 NEXT_PUBLIC_PREDICTION_MARKET_ADDRESS=<filled_after_deploy>
 NEXT_PUBLIC_TOURNAMENT_V2_ADDRESS=<filled_after_deploy>
-NEXT_PUBLIC_ERC8004_IDENTITY_REGISTRY=<address_TBD>
-NEXT_PUBLIC_ERC8004_REPUTATION_REGISTRY=<address_TBD>
+NEXT_PUBLIC_ERC8004_IDENTITY_REGISTRY=0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
+NEXT_PUBLIC_ERC8004_REPUTATION_REGISTRY=0x8004BAa17C55a88189AE136b182e5fdA19dE9b63
 ```
 
 ---
