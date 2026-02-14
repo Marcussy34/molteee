@@ -25,7 +25,8 @@ export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
 
   // Arcade pages render full-screen without the dashboard sidebar
-  const arcadePages = ["/", "/arena", "/poker", "/auction", "/leaderboard", "/matches", "/bot", "/about"];
+  // Arcade pages render full-screen without the dashboard sidebar
+  const arcadePages = ["/", "/arena", "/poker", "/auction", "/leaderboard", "/matches", "/markets", "/bot", "/about"];
   const isArcade =
     arcadePages.includes(router.pathname) ||
     router.pathname.startsWith("/agents/") ||

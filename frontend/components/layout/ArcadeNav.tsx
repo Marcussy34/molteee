@@ -6,6 +6,7 @@ const NAV_LINKS = [
   { href: "/arena", label: "ARENA" },
   { href: "/leaderboard", label: "SCORES" },
   { href: "/matches", label: "MATCHES" },
+  { href: "/markets", label: "BETS" },
   { href: "/bot", label: "BOT" },
   { href: "/about", label: "ABOUT" },
 ];

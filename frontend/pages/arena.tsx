@@ -50,8 +50,18 @@ export default function ArenaPage() {
   // so they can play the final clash → victory cinematic
   const wasLiveRef = useRef(false);
 
-  // No auto-select — let the user choose which match to enter.
-  // Live matches appear in the match list with a LIVE badge; user clicks to enter.
+  // Auto-select match from URL query param (e.g. /arena?match=50)
+  const matchParam = router.query.match as string | undefined;
+  const matchParamAppliedRef = useRef(false);
+  useEffect(() => {
+    if (matchParam && !matchParamAppliedRef.current && !loading) {
+      const matchId = parseInt(matchParam, 10);
+      if (!isNaN(matchId)) {
+        setSelectedMatchId(matchId);
+        matchParamAppliedRef.current = true;
+      }
+    }
+  }, [matchParam, loading]);
 
   // Wrap setSelectedMatchId to track when user explicitly deselects
   const selectMatch = (id: number | null) => {
