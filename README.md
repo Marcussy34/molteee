@@ -4,7 +4,7 @@
 
 ![Landing Page](frontend/public/landingpage.png)
 
-![Fight](frontend/public/fight.png)
+![Fight](frontend/public/Fight.png)
 
 ## The Fighter Agent — Molteee
 
