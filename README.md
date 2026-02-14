@@ -2,6 +2,8 @@
 
 **Built for the Moltiverse Hackathon — Gaming Arena Agent Bounty**
 
+**Live Demo:** [moltarena.app](https://moltarena.app)
+
 ![Landing Page](frontend/public/landingpage.png)
 
 ![Fight](frontend/public/Fight.png)
