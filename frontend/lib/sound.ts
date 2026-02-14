@@ -142,6 +142,19 @@ export const sfx = {
     setTimeout(() => playTone(311, 0.2, "sawtooth", 0.04), 300);
     setTimeout(() => playTone(220, 0.4, "sawtooth", 0.03), 500);
   },
+
+  /** Commit lock-in — short confirmatory double-beep when a player commits */
+  commitLockIn() {
+    playTone(880, 0.06, "square", 0.05);
+    setTimeout(() => playTone(1175, 0.08, "square", 0.05), 80);
+  },
+
+  /** Reveal chirp — ascending chirp when a player reveals their move */
+  revealChirp() {
+    playTone(660, 0.04, "sine", 0.04);
+    setTimeout(() => playTone(880, 0.04, "sine", 0.04), 50);
+    setTimeout(() => playTone(1320, 0.06, "sine", 0.05), 100);
+  },
 };
 
 export function isMuted() {

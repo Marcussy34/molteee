@@ -2,7 +2,7 @@
 // that the existing director hooks (useBattleDirector, usePokerDirector, useAuctionDirector)
 // can consume to drive their full animation sequences.
 
-import type { LiveGameState } from "@/hooks/useLiveGameState";
+import type { LiveGameState, RoundHistoryEntry } from "@/hooks/useLiveGameState";
 import type { OnChainMatch } from "@/hooks/useActiveMatches";
 import type { Match, MatchRound } from "@/lib/types";
 import { getAgentName } from "@/lib/agentNames";
@@ -39,19 +39,34 @@ function determineRpsRoundWinner(p1Move: number, p2Move: number): "A" | "B" | "d
 
 /**
  * Build a synthetic Match for RPS from live chain data.
- * The director will auto-play through its phase animations using the round data.
+ * Includes full round history from completed rounds + current round in progress.
+ * The director uses roundHistory for past rounds and current round for live animation.
  */
 export function liveToRpsMatch(live: LiveGameState, onChain: OnChainMatch): Match {
+  const rounds: MatchRound[] = [];
+
+  // Add completed rounds from history (immutable, cached on chain)
+  if (live.roundHistory && live.roundHistory.length > 0) {
+    for (const entry of live.roundHistory) {
+      rounds.push({
+        round: entry.round,
+        moveA: rpsMoveLabel(entry.p1Move) || undefined,
+        moveB: rpsMoveLabel(entry.p2Move) || undefined,
+        winner: entry.winner,
+      });
+    }
+  }
+
+  // Add current round (may be in-progress with partial data)
   const p1Move = live.p1Move || 0;
   const p2Move = live.p2Move || 0;
-
-  // Build round data — if moves are revealed, include them
-  const round: MatchRound = {
+  const currentRound: MatchRound = {
     round: live.currentRound || 0,
     moveA: rpsMoveLabel(p1Move) || undefined,
     moveB: rpsMoveLabel(p2Move) || undefined,
     winner: determineRpsRoundWinner(p1Move, p2Move),
   };
+  rounds.push(currentRound);
 
   // Determine overall match result from scores
   let result: "playerA" | "playerB" | "draw" = "draw";
@@ -67,7 +82,7 @@ export function liveToRpsMatch(live: LiveGameState, onChain: OnChainMatch): Matc
     playerA: { address: live.player1, name: getAgentName(live.player1) },
     playerB: { address: live.player2, name: getAgentName(live.player2) },
     wager: formatEther(onChain.wager),
-    rounds: [round],
+    rounds,
     result,
     eloChange: { playerA: 0, playerB: 0 },
     strategyUsed: "",

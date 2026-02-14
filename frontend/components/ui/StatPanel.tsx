@@ -11,6 +11,10 @@ interface StatPanelProps {
   side: "left" | "right";
   isWinner?: boolean;
   currentMove?: string;
+  // ─── Live mode commit/reveal indicators ───────────────────────
+  hasCommitted?: boolean;
+  hasRevealed?: boolean;
+  isLive?: boolean;
 }
 
 export function StatPanel({
@@ -24,8 +28,27 @@ export function StatPanel({
   side,
   isWinner,
   currentMove,
+  hasCommitted,
+  hasRevealed,
+  isLive,
 }: StatPanelProps) {
   const align = side === "right" ? "text-right" : "text-left";
+
+  // Compute per-player live status label
+  const liveStatus = isLive
+    ? hasRevealed
+      ? "REVEALED"
+      : hasCommitted
+        ? "LOCKED IN"
+        : "CHOOSING..."
+    : null;
+
+  // Status color: choosing = dim, locked = yellow, revealed = green
+  const liveStatusColor = hasRevealed
+    ? "text-neon-green"
+    : hasCommitted
+      ? "text-neon-yellow"
+      : "text-text-dim";
 
   return (
     <div className="flex h-full flex-col p-4">
@@ -39,6 +62,15 @@ export function StatPanel({
           <p className="text-[8px] text-text-dim font-mono">{address.slice(0, 8)}...</p>
         </div>
       </div>
+
+      {/* Live status indicator */}
+      {isLive && liveStatus && (
+        <div className={`mt-3 ${align}`}>
+          <span className={`font-pixel text-[9px] ${liveStatusColor} ${!hasRevealed && hasCommitted ? "animate-pulse" : ""}`}>
+            {liveStatus}
+          </span>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="mt-4 space-y-2">

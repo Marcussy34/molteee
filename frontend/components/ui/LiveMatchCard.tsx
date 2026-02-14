@@ -19,8 +19,10 @@ interface LiveMatchCardProps {
 }
 
 export function LiveMatchCard({ match, isSelected, onClick }: LiveMatchCardProps) {
-  // Only truly live if game is actively in progress on-chain
+  // Active match with game in progress on-chain
   const isLive = match.isPlaying === true;
+  // Active match but game is finished (escrow not yet settled)
+  const isJustEnded = match.status === "active" && match.isPlaying === false && match.gamePhase !== undefined;
   const isPending = match.status === "pending";
   const badge = GAME_BADGE[match.gameType] || GAME_BADGE.unknown;
   const wagerStr = formatEther(match.wager);
@@ -66,6 +68,17 @@ export function LiveMatchCard({ match, isSelected, onClick }: LiveMatchCardProps
               )}
             </>
           )}
+          {isJustEnded && (
+            <span className="font-pixel text-[7px] text-monad-purple">
+              ENDED
+            </span>
+          )}
+          {/* Active match not yet checked by liveness — show as active */}
+          {match.status === "active" && match.isPlaying === undefined && (
+            <span className="font-pixel text-[7px] text-neon-cyan animate-pulse">
+              ACTIVE
+            </span>
+          )}
           {isPending && (
             <span className="font-pixel text-[7px] text-neon-yellow animate-pulse">
               PENDING
@@ -88,13 +101,25 @@ export function LiveMatchCard({ match, isSelected, onClick }: LiveMatchCardProps
         </div>
       </div>
 
-      {/* Winner or draw (settled only) */}
+      {/* Result: winner, draw, expired, or forfeited */}
       {match.status === "settled" && (
         <div className="mt-1 text-center">
           {winnerName ? (
             <span className="font-pixel text-[7px] text-neon-green">{winnerName} WINS</span>
           ) : (
             <span className="font-pixel text-[7px] text-neon-yellow">DRAW</span>
+          )}
+        </div>
+      )}
+      {/* Active match with finished game — show reason (expired/complete/no game) */}
+      {match.status === "active" && match.isPlaying === false && (
+        <div className="mt-1 text-center">
+          {match.gamePhase === "EXPIRED" ? (
+            <span className="font-pixel text-[7px] text-neon-red">TIMED OUT</span>
+          ) : match.gamePhase === "COMPLETE" ? (
+            <span className="font-pixel text-[7px] text-text-dim">SETTLING...</span>
+          ) : (
+            <span className="font-pixel text-[7px] text-text-dim">NO GAME CREATED</span>
           )}
         </div>
       )}

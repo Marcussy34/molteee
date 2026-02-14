@@ -13,7 +13,7 @@ import { useLiveGameState } from "@/hooks/useLiveGameState";
 import { useBattleDirector } from "@/hooks/useBattleDirector";
 import { usePokerDirector } from "@/hooks/usePokerDirector";
 import { useAuctionDirector } from "@/hooks/useAuctionDirector";
-import { liveToRpsMatch, liveToPokerMatch, liveToAuctionMatch } from "@/lib/liveStateAdapters";
+import { liveToRpsMatch, liveToPokerMatch, liveToAuctionMatch, rpsMoveLabel } from "@/lib/liveStateAdapters";
 import { getAgentName } from "@/lib/agentNames";
 import { formatEther } from "viem";
 
@@ -46,13 +46,12 @@ export default function ArenaPage() {
   // ─── Selected match ───────────────────────────────────────────────────────
   const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
   const userDeselectedRef = useRef(false);
+  // Latch: keep passing game state to directors even after settlement
+  // so they can play the final clash → victory cinematic
+  const wasLiveRef = useRef(false);
 
-  // Auto-select first live match on initial load only (not after user clicks BACK)
-  useEffect(() => {
-    if (selectedMatchId === null && liveMatches.length > 0 && !userDeselectedRef.current) {
-      setSelectedMatchId(liveMatches[0].matchId);
-    }
-  }, [liveMatches, selectedMatchId]);
+  // No auto-select — let the user choose which match to enter.
+  // Live matches appear in the match list with a LIVE badge; user clicks to enter.
 
   // Wrap setSelectedMatchId to track when user explicitly deselects
   const selectMatch = (id: number | null) => {
@@ -63,6 +62,9 @@ export default function ArenaPage() {
     }
     setSelectedMatchId(id);
   };
+
+  // Reset live latch when match changes
+  useEffect(() => { wasLiveRef.current = false; }, [selectedMatchId]);
 
   // Find selected match object (use === null to allow matchId 0)
   const selectedMatch = useMemo(() => {
@@ -76,10 +78,13 @@ export default function ArenaPage() {
   }, [selectedMatchId, liveMatches, pendingChallenges, recentSettled]);
 
   // ─── Live game state for selected match ───────────────────────────────────
+  // Use faster polling (2s) for live matches, default (5s) for settled replays
+  const isSelectedLive = selectedMatch?.isPlaying === true;
   const { state: gameState, loading: gameLoading } = useLiveGameState(
     selectedMatch?.matchId ?? null,
     selectedMatch?.gameType ?? null,
     selectedMatch?.status === "settled",
+    isSelectedLive ? 2000 : 5000,
   );
 
   // ─── Build synthetic Match arrays for each director ───────────────────────
@@ -100,9 +105,21 @@ export default function ArenaPage() {
   }, [gameState, selectedMatch]);
 
   // ─── Director hooks drive animations ──────────────────────────────────────
-  const battleState = useBattleDirector(rpsMatches);
-  const pokerState = usePokerDirector(pokerMatches);
-  const auctionState = useAuctionDirector(auctionMatches);
+  // Pass liveChainState for live matches so directors can be chain-reactive;
+  // pass null/undefined for settled matches to use replay mode (fixed timeline).
+  // Activate latch when viewing a live match
+  if (isSelectedLive && gameState && !gameState.settled) {
+    wasLiveRef.current = true;
+  }
+  // Keep passing chain state to directors even after settlement, so they can
+  // play the final clash → round_result → victory cinematic sequence
+  const liveChainStateForDirector = (wasLiveRef.current || isSelectedLive) && gameState
+    ? gameState
+    : null;
+
+  const battleState = useBattleDirector(rpsMatches, liveChainStateForDirector);
+  const pokerState = usePokerDirector(pokerMatches, liveChainStateForDirector);
+  const auctionState = useAuctionDirector(auctionMatches, liveChainStateForDirector);
 
   // ─── Score ticker items ───────────────────────────────────────────────────
   const tickerItems = useMemo(() => {
@@ -143,6 +160,18 @@ export default function ArenaPage() {
     gameType === "rps" &&
     (activePhase === "clash" || activePhase === "round_result" || activePhase === "victory");
 
+  // Active chain phase label from the live director
+  const chainPhaseLabel = gameType === "rps" ? battleState.chainPhaseLabel
+    : gameType === "poker" ? pokerState.chainPhaseLabel
+    : gameType === "auction" ? auctionState.chainPhaseLabel
+    : null;
+
+  // Waiting-for label from the live director
+  const waitingFor = gameType === "rps" ? battleState.waitingFor
+    : gameType === "poker" ? pokerState.waitingFor
+    : gameType === "auction" ? auctionState.waitingFor
+    : null;
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-monad-dark pt-14">
       {/* CRT Overlay */}
@@ -157,17 +186,29 @@ export default function ArenaPage() {
           <span className="font-pixel text-[9px] text-monad-purple">
             {selectedMatch.gameType.toUpperCase()}
           </span>
-          {hasGame && gameState.currentRound !== undefined && (
+          {hasGame && gameState.totalRounds !== undefined && (
             <span className="font-pixel text-[9px] text-text-dim">
-              ROUND {(gameState.currentRound || 0) + 1} OF {gameState.totalRounds || 1}
+              ROUND {(gameType === "rps" ? battleState.roundIndex : (gameState.currentRound || 0)) + 1} OF {gameState.totalRounds || 1}
             </span>
           )}
           <span className="font-pixel text-[9px] text-neon-yellow">
             {formatEther(selectedMatch.wager)} MON
           </span>
+
+          {/* Live mode: show chain phase label during waiting phases, LIVE during cinematics */}
+          {isLive && (!hasGame || !gameState.settled) && chainPhaseLabel &&
+            !["clash", "round_result", "victory"].includes(activePhase) && (
+            <span className="font-pixel text-[9px] text-neon-green animate-blink">
+              {chainPhaseLabel}
+            </span>
+          )}
+          {/* Fallback LIVE indicator when no chain label or during cinematics */}
           {isLive && (!hasGame || !gameState.settled) && (
+            !chainPhaseLabel || ["clash", "round_result", "victory"].includes(activePhase)
+          ) && (
             <span className="font-pixel text-[9px] text-neon-green animate-blink">LIVE</span>
           )}
+
           {hasGame && gameState.settled && (
             <>
               <span className="font-pixel text-[9px] text-monad-purple">REPLAY</span>
@@ -205,6 +246,9 @@ export default function ArenaPage() {
                   gameType === "auction" && isAnimating && auctionState.bidA ? `${auctionState.bidA} MON` :
                   undefined
                 }
+                hasCommitted={hasGame ? gameState.p1Committed : undefined}
+                hasRevealed={hasGame ? gameState.p1Revealed : undefined}
+                isLive={isLive && hasGame && !gameState.settled}
               />
             </div>
 
@@ -226,6 +270,24 @@ export default function ArenaPage() {
               {hasGame && gameType === "rps" && (
                 <>
                   <ArenaScene battleState={battleState} />
+
+                  {/* ─── Round history indicators (past rounds) ──────────── */}
+                  {battleState.roundHistory.length > 0 && (
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 flex gap-2">
+                      {battleState.roundHistory.map((rh, i) => (
+                        <div key={i} className="flex items-center gap-1 rounded border border-monad-purple/20 bg-monad-deeper/70 px-2 py-0.5 backdrop-blur-sm">
+                          <span className="font-pixel text-[7px] text-text-dim">R{i + 1}:</span>
+                          <span className="font-pixel text-[7px] text-neon-cyan">{rpsMoveLabel(rh.p1Move).toUpperCase() || "?"}</span>
+                          <span className="font-pixel text-[6px] text-text-dim">vs</span>
+                          <span className="font-pixel text-[7px] text-neon-cyan">{rpsMoveLabel(rh.p2Move).toUpperCase() || "?"}</span>
+                          <span className={`font-pixel text-[7px] ${rh.winner === "A" ? "text-neon-green" : rh.winner === "B" ? "text-neon-red" : "text-neon-yellow"}`}>
+                            {rh.winner === "A" ? "P1" : rh.winner === "B" ? "P2" : "TIE"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Phase overlays */}
                   {battleState.phase === "round_result" && battleState.roundWinner && (
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded border border-monad-purple/30 bg-monad-deeper/80 px-6 py-2 backdrop-blur-sm">
@@ -266,10 +328,32 @@ export default function ArenaPage() {
                       </span>
                     </div>
                   )}
+
+                  {/* Standoff overlay: chain-reactive for live, static for replay */}
                   {battleState.phase === "standoff" && (
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                      <span className="font-pixel text-4xl text-neon-red animate-blink" style={{ textShadow: "0 0 25px #FF3131" }}>
-                        VS
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+                      {battleState.isLiveMode && waitingFor ? (
+                        <>
+                          <span className="font-pixel text-lg text-neon-red animate-pulse" style={{ textShadow: "0 0 15px #FF3131" }}>
+                            {`ROUND ${battleState.roundIndex + 1}`}
+                          </span>
+                          <span className="font-pixel text-sm text-monad-purple block mt-2 animate-pulse">
+                            {waitingFor}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-pixel text-4xl text-neon-red animate-blink" style={{ textShadow: "0 0 25px #FF3131" }}>
+                          VS
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Thinking overlay: chain-reactive for live */}
+                  {battleState.phase === "thinking" && battleState.isLiveMode && waitingFor && (
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+                      <span className="font-pixel text-sm text-monad-purple animate-pulse" style={{ textShadow: "0 0 10px #836EF9" }}>
+                        {waitingFor}
                       </span>
                     </div>
                   )}
@@ -313,6 +397,9 @@ export default function ArenaPage() {
                   gameType === "auction" && isAnimating && auctionState.bidB ? `${auctionState.bidB} MON` :
                   undefined
                 }
+                hasCommitted={hasGame ? gameState.p2Committed : undefined}
+                hasRevealed={hasGame ? gameState.p2Revealed : undefined}
+                isLive={isLive && hasGame && !gameState.settled}
               />
             </div>
           </>

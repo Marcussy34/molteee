@@ -72,30 +72,27 @@ function getGameAddress(gameType: string): `0x${string}` {
 
 // ─── Phase label maps ─────────────────────────────────────────────────────────
 
-// RPS: 0=Idle, 1=Commit, 2=Reveal, 3=Complete
+// RPS: 0=Commit, 1=Reveal, 2=Complete (contract enum starts at Commit, no Idle)
 const RPS_PHASES: Record<number, string> = {
-  0: "WAITING",
-  1: "COMMITTING MOVES",
-  2: "REVEALING",
-  3: "COMPLETE",
+  0: "COMMITTING MOVES",
+  1: "REVEALING",
+  2: "COMPLETE",
 };
 
-// PokerGameV2: 0=Idle, 1=Commit, 2=BettingRound1, 3=BettingRound2, 4=Showdown, 5=Settled
+// PokerGameV2: 0=Commit, 1=BettingRound1, 2=BettingRound2, 3=Showdown, 4=Complete
 const POKER_PHASES: Record<number, string> = {
-  0: "WAITING",
-  1: "COMMITTING HANDS",
-  2: "BETTING ROUND 1",
-  3: "BETTING ROUND 2",
-  4: "SHOWDOWN",
-  5: "SETTLED",
+  0: "COMMITTING HANDS",
+  1: "BETTING ROUND 1",
+  2: "BETTING ROUND 2",
+  3: "SHOWDOWN",
+  4: "SETTLED",
 };
 
-// AuctionGame: 0=Idle, 1=Commit, 2=Reveal, 3=Complete
+// AuctionGame: 0=Commit, 1=Reveal, 2=Complete
 const AUCTION_PHASES: Record<number, string> = {
-  0: "WAITING",
-  1: "SEALED BIDDING",
-  2: "REVEALING BIDS",
-  3: "COMPLETE",
+  0: "SEALED BIDDING",
+  1: "REVEALING BIDS",
+  2: "COMPLETE",
 };
 
 function getPhaseLabel(gameType: string, phase: number): string {
@@ -111,9 +108,9 @@ function getPhaseLabel(gameType: string, phase: number): string {
 function isGameComplete(gameType: string, phase: number, settled: boolean): boolean {
   if (settled) return true;
   switch (gameType) {
-    case "rps": return phase === 3;     // Complete
-    case "poker": return phase === 5;   // Settled
-    case "auction": return phase === 3; // Complete
+    case "rps": return phase === 2;     // Complete (0=Commit, 1=Reveal, 2=Complete)
+    case "poker": return phase === 4;   // Complete (0=Commit, 1=Bet1, 2=Bet2, 3=Showdown, 4=Complete)
+    case "auction": return phase === 2; // Complete (0=Commit, 1=Reveal, 2=Complete)
     default: return false;
   }
 }
@@ -122,7 +119,8 @@ function isGameComplete(gameType: string, phase: number, settled: boolean): bool
 // Persists match data across page navigations and refreshes so the UI renders
 // immediately with stale data while fresh data loads in the background.
 
-const STORAGE_KEY = "arena-matches-v1";
+// Bumped to v3: completed games now move to settled, not live
+const STORAGE_KEY = "arena-matches-v3";
 
 // bigint can't be JSON.stringified, so we convert wager to a hex string
 interface SerializedMatch extends Omit<OnChainMatch, "wager"> {
@@ -175,6 +173,55 @@ function loadFromStorage(): { live: OnChainMatch[]; pending: OnChainMatch[]; set
   }
 }
 
+// ─── Permanent settled match cache ──────────────────────────────────────────
+// Settled matches (escrow status = "settled") are immutable — cache them forever
+// so we never re-fetch from chain. Survives page refreshes.
+const SETTLED_PERM_KEY = "arena-settled-perm";
+const SETTLED_PERM_MAX = 200;
+
+// In-memory mirror of the permanent localStorage cache
+let permanentSettledCache = new Map<number, OnChainMatch>(); // matchId → match
+let permanentCacheLoaded = false;
+
+function loadPermanentSettled(): Map<number, OnChainMatch> {
+  try {
+    const raw = localStorage.getItem(SETTLED_PERM_KEY);
+    if (!raw) return new Map();
+    const entries: SerializedMatch[] = JSON.parse(raw);
+    const map = new Map<number, OnChainMatch>();
+    for (const s of entries) {
+      map.set(s.matchId, deserializeMatch(s));
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+function savePermanentSettled() {
+  try {
+    const entries = Array.from(permanentSettledCache.values())
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, SETTLED_PERM_MAX);
+    localStorage.setItem(SETTLED_PERM_KEY, JSON.stringify(entries.map(serializeMatch)));
+  } catch {
+    // localStorage may be full — non-critical
+  }
+}
+
+function addToPermanentCache(match: OnChainMatch) {
+  permanentSettledCache.set(match.matchId, match);
+  // Batch-save: only write to localStorage if we added something new
+  savePermanentSettled();
+}
+
+function ensurePermanentCacheLoaded() {
+  if (!permanentCacheLoaded) {
+    permanentSettledCache = loadPermanentSettled();
+    permanentCacheLoaded = true;
+  }
+}
+
 // ─── Module-level caches ─────────────────────────────────────────────────────
 // Start empty — localStorage hydration happens in useEffect to avoid SSR mismatch
 
@@ -188,9 +235,9 @@ let hydratedFromStorage = false; // tracks if we've loaded localStorage yet
 const gameIdByMatch = new Map<number, number>();      // matchId → gameId
 const settledGameMatches = new Set<number>();          // matchIds with complete games (skip re-poll)
 
-const CACHE_TTL_MS = 8_000;          // Don't re-fetch escrow data if <8s old
-const ESCROW_POLL_MS = 15_000;       // Tier 1: escrow scan every 15s
-const LIVENESS_POLL_MS = 5_000;      // Tier 2: game liveness check every 5s
+const CACHE_TTL_MS = 3_000;          // Don't re-fetch escrow data if <3s old
+const ESCROW_POLL_MS = 6_000;        // Tier 1: escrow scan every 6s
+const LIVENESS_POLL_MS = 2_000;      // Tier 2: game liveness check every 2s
 const SCAN_WINDOW = 30;              // How many recent matches to scan
 const PENDING_MAX_AGE_S = 3600;      // Hide pending challenges older than 1 hour
 
@@ -262,6 +309,9 @@ export function useActiveMatches(filter: GameFilter = "all") {
     if (hydratedFromStorage) return;
     hydratedFromStorage = true;
 
+    // Load permanent settled cache first
+    ensurePermanentCacheLoaded();
+
     const stored = loadFromStorage();
     if (stored && (stored.live.length + stored.pending.length + stored.settled.length) > 0) {
       cachedLive = stored.live;
@@ -270,6 +320,14 @@ export function useActiveMatches(filter: GameFilter = "all") {
       setLiveMatches(stored.live);
       setPendingChallenges(stored.pending);
       setRecentSettled(stored.settled);
+      setLoading(false);
+    } else if (permanentSettledCache.size > 0) {
+      // Even with no ephemeral cache, show permanently cached settled matches
+      const settled = Array.from(permanentSettledCache.values())
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, 15);
+      cachedSettled = settled;
+      setRecentSettled(settled);
       setLoading(false);
     }
   }, []);
@@ -313,6 +371,9 @@ export function useActiveMatches(filter: GameFilter = "all") {
         return;
       }
 
+      // Load permanent cache so we can skip RPC calls for settled matches
+      ensurePermanentCacheLoaded();
+
       // Scan the last SCAN_WINDOW matches
       const startId = Math.max(0, total - SCAN_WINDOW);
       const matchPromises: Promise<OnChainMatch | null>[] = [];
@@ -320,6 +381,10 @@ export function useActiveMatches(filter: GameFilter = "all") {
       for (let id = startId; id < total; id++) {
         matchPromises.push(
           (async () => {
+            // Skip RPC if match is permanently cached (settled = immutable)
+            const cached = permanentSettledCache.get(id);
+            if (cached) return cached;
+
             try {
               const data = await publicClient.readContract({
                 address: ADDRESSES.escrow,
@@ -340,7 +405,7 @@ export function useActiveMatches(filter: GameFilter = "all") {
                 gameType: detectGameType(data.gameContract),
               };
 
-              // Get winner for settled matches
+              // Get winner for settled matches, then cache permanently
               if (status === "settled") {
                 try {
                   const winner = await publicClient.readContract({
@@ -355,6 +420,8 @@ export function useActiveMatches(filter: GameFilter = "all") {
                 } catch {
                   // Winner lookup is best-effort
                 }
+                // Permanently cache — this match will never need RPC again
+                addToPermanentCache(match);
               }
 
               return match;
@@ -378,10 +445,14 @@ export function useActiveMatches(filter: GameFilter = "all") {
         .filter((m) => m.status === "pending" && (nowSecs - m.createdAt) < PENDING_MAX_AGE_S)
         .sort((a, b) => b.createdAt - a.createdAt);
 
-      const settled = matches
-        .filter((m) => m.status === "settled")
-        .sort((a, b) => b.createdAt - a.createdAt)
-        .slice(0, 10);
+      // Settled from scan + older entries from permanent cache (beyond scan window)
+      const scanSettledIds = new Set(matches.filter((m) => m.status === "settled").map((m) => m.matchId));
+      const olderSettled = Array.from(permanentSettledCache.values())
+        .filter((m) => !scanSettledIds.has(m.matchId));
+      const settled = [
+        ...matches.filter((m) => m.status === "settled"),
+        ...olderSettled,
+      ].sort((a, b) => b.createdAt - a.createdAt).slice(0, 15);
 
       // For active matches, preserve existing isPlaying from previous liveness check
       const active = matches.filter((m) => m.status === "active");
@@ -395,21 +466,30 @@ export function useActiveMatches(filter: GameFilter = "all") {
         }
       }
 
-      // Live = active matches verified as playing (or not yet checked)
+      // Live = ONLY active matches confirmed as playing by liveness check
+      // Unchecked (undefined) and completed (false) do NOT appear in live
       const live = active
         .filter((m) => m.isPlaying === true)
         .sort((a, b) => b.createdAt - a.createdAt);
 
+      // Not-live = completed games OR not-yet-checked matches
+      const notLive = active
+        .filter((m) => m.isPlaying !== true)
+        .sort((a, b) => b.createdAt - a.createdAt);
+
+      // Merge not-live active matches into settled list
+      const allSettled = [...notLive, ...settled].sort((a, b) => b.createdAt - a.createdAt).slice(0, 15);
+
       // Update caches + persist to localStorage for instant load on next visit
       cachedLive = live;
       cachedPending = pending;
-      cachedSettled = settled;
+      cachedSettled = allSettled;
       lastFetchTime = Date.now();
       persistToStorage(live, pending, settled);
 
       setLiveMatches(live);
       setPendingChallenges(pending);
-      setRecentSettled(settled);
+      setRecentSettled(allSettled);
     } catch (err) {
       console.error("[useActiveMatches] fetch error:", err);
     } finally {
@@ -477,10 +557,9 @@ export function useActiveMatches(filter: GameFilter = "all") {
           const nowSecs = Math.floor(Date.now() / 1000);
 
           // Check if the game is stale:
-          // 1. Phase 0 (IDLE/WAITING) = game created but nobody committed yet
-          // 2. phaseDeadline passed = players abandoned, nobody moved in time
-          const isStale = phase === 0
-            || (phaseDeadline > 0 && phaseDeadline < nowSecs);
+          // phaseDeadline passed = players abandoned, nobody moved in time
+          // NOTE: phase 0 is Commit (not Idle) — all contracts start at Commit
+          const isStale = phaseDeadline > 0 && phaseDeadline < nowSecs;
 
           if (complete || isStale) {
             // Game is done or abandoned — cache permanently so we never re-poll
@@ -507,21 +586,30 @@ export function useActiveMatches(filter: GameFilter = "all") {
         }
       }
 
-      // Rebuild live/pending arrays if anything changed
+      // Rebuild live/pending/settled arrays if anything changed
       if (changed) {
         const rebuildNow = Math.floor(Date.now() / 1000);
+
+        // Live = ONLY active matches confirmed as playing
         const live = allMatches
           .filter((m) => m.status === "active" && m.isPlaying === true)
+          .sort((a, b) => b.createdAt - a.createdAt);
+
+        // Not-live = active matches that are completed, stale, or unchecked
+        const notLive = allMatches
+          .filter((m) => m.status === "active" && m.isPlaying !== true)
           .sort((a, b) => b.createdAt - a.createdAt);
 
         const pending = allMatches
           .filter((m) => m.status === "pending" && (rebuildNow - m.createdAt) < PENDING_MAX_AGE_S)
           .sort((a, b) => b.createdAt - a.createdAt);
 
-        const settled = allMatches
+        const escrowSettled = allMatches
           .filter((m) => m.status === "settled")
-          .sort((a, b) => b.createdAt - a.createdAt)
-          .slice(0, 10);
+          .sort((a, b) => b.createdAt - a.createdAt);
+
+        // Merge not-live into settled — completed/unchecked games show in RECENT RESULTS
+        const settled = [...notLive, ...escrowSettled].sort((a, b) => b.createdAt - a.createdAt).slice(0, 15);
 
         cachedLive = live;
         cachedPending = pending;

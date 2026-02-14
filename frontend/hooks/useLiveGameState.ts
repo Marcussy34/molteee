@@ -6,6 +6,14 @@ import { auctionGameAbi } from "@/lib/abi/AuctionGame";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+/** Completed round data fetched from chain (immutable once round is done) */
+export interface RoundHistoryEntry {
+  round: number;
+  p1Move: number;   // 0=None, 1=Rock, 2=Paper, 3=Scissors
+  p2Move: number;
+  winner: "A" | "B" | "draw";
+}
+
 export interface LiveGameState {
   gameId: number;
   matchId: number;
@@ -19,7 +27,14 @@ export interface LiveGameState {
   player2: string;
   phaseDeadline: number; // Unix timestamp
 
-  // RPS-specific
+  // ─── Transition detection (computed each poll cycle) ───────────────────────
+  commitCount: number;       // 0, 1, or 2 — how many players have committed
+  revealCount: number;       // 0, 1, or 2 — how many players have revealed
+  phaseChanged: boolean;     // True if phaseRaw changed since last poll
+  commitCountChanged: boolean; // True if commitCount changed since last poll
+  revealCountChanged: boolean; // True if revealCount changed since last poll
+
+  // ─── RPS-specific ─────────────────────────────────────────────────────────
   totalRounds?: number;
   currentRound?: number;
   p1Score?: number;
@@ -31,8 +46,10 @@ export interface LiveGameState {
   p2Committed?: boolean;
   p1Revealed?: boolean;
   p2Revealed?: boolean;
+  // Completed rounds history (immutable, cached permanently per game)
+  roundHistory: RoundHistoryEntry[];
 
-  // Poker-specific
+  // ─── Poker-specific ───────────────────────────────────────────────────────
   startingBudget?: number;
   p1Budget?: number;
   p2Budget?: number;
@@ -41,7 +58,7 @@ export interface LiveGameState {
   p1ExtraBets?: bigint;
   p2ExtraBets?: bigint;
 
-  // Auction-specific
+  // ─── Auction-specific ─────────────────────────────────────────────────────
   prize?: bigint;
   p1Bid?: bigint;
   p2Bid?: bigint;
@@ -49,29 +66,27 @@ export interface LiveGameState {
 
 // ─── Phase label mappings ─────────────────────────────────────────────────────
 
+// RPS phases: 0=Commit, 1=Reveal, 2=Complete (no Idle — contract starts at Commit)
 const RPS_PHASES: Record<number, string> = {
-  0: "WAITING",
-  1: "COMMITTING MOVES",
-  2: "REVEALING",
-  3: "COMPLETE",
+  0: "COMMITTING MOVES",
+  1: "REVEALING",
+  2: "COMPLETE",
 };
 
-// PokerGameV2 phases: 0=Idle, 1=Commit, 2=BettingRound1, 3=BettingRound2, 4=Showdown, 5=Settled
+// PokerGameV2 phases: 0=Commit, 1=BettingRound1, 2=BettingRound2, 3=Showdown, 4=Complete
 const POKER_PHASES: Record<number, string> = {
-  0: "WAITING",
-  1: "COMMITTING HANDS",
-  2: "BETTING ROUND 1",
-  3: "BETTING ROUND 2",
-  4: "SHOWDOWN",
-  5: "SETTLED",
+  0: "COMMITTING HANDS",
+  1: "BETTING ROUND 1",
+  2: "BETTING ROUND 2",
+  3: "SHOWDOWN",
+  4: "SETTLED",
 };
 
-// AuctionGame phases: 0=Idle, 1=Commit, 2=Reveal, 3=Complete
+// AuctionGame phases: 0=Commit, 1=Reveal, 2=Complete
 const AUCTION_PHASES: Record<number, string> = {
-  0: "WAITING",
-  1: "SEALED BIDDING",
-  2: "REVEALING BIDS",
-  3: "COMPLETE",
+  0: "SEALED BIDDING",
+  1: "REVEALING BIDS",
+  2: "COMPLETE",
 };
 
 function getPhaseLabel(gameType: string, phase: number): string {
@@ -92,6 +107,10 @@ const gameIdCache = new Map<string, number>(); // key: `${matchId}-${gameContrac
 const settledMatchCache = new Map<string, LiveGameState>();
 const SETTLED_CACHE_MAX = 50; // Limit memory use
 
+// ─── Round history cache (completed rounds never change) ─────────────────────
+// Key: `${gameId}-${roundIndex}`. Once a round is complete, its data is immutable.
+const roundHistoryCache = new Map<string, RoundHistoryEntry>();
+
 // ─── ABI mapping ──────────────────────────────────────────────────────────────
 
 function getGameAbi(gameType: string) {
@@ -110,6 +129,63 @@ function getGameAddress(gameType: string): `0x${string}` {
     case "auction": return ADDRESSES.auctionGame;
     default: return ADDRESSES.rpsGame;
   }
+}
+
+// ─── RPS round winner logic ──────────────────────────────────────────────────
+
+function determineRoundWinner(p1Move: number, p2Move: number): "A" | "B" | "draw" {
+  if (!p1Move || !p2Move) return "draw";
+  if (p1Move === p2Move) return "draw";
+  if (
+    (p1Move === 1 && p2Move === 3) ||
+    (p1Move === 2 && p2Move === 1) ||
+    (p1Move === 3 && p2Move === 2)
+  ) return "A";
+  return "B";
+}
+
+// ─── Fetch completed round history for RPS ───────────────────────────────────
+// Only fetches rounds we haven't cached yet. Rounds are immutable once complete.
+
+async function fetchRoundHistory(
+  gameId: number,
+  currentRound: number,
+): Promise<RoundHistoryEntry[]> {
+  const history: RoundHistoryEntry[] = [];
+
+  for (let i = 0; i < currentRound; i++) {
+    const cacheKey = `${gameId}-${i}`;
+
+    // Use cached data if available (rounds are immutable)
+    if (roundHistoryCache.has(cacheKey)) {
+      history.push(roundHistoryCache.get(cacheKey)!);
+      continue;
+    }
+
+    // Fetch from chain — this only happens once per completed round
+    try {
+      const round = await publicClient.readContract({
+        address: ADDRESSES.rpsGame,
+        abi: rpsGameAbi,
+        functionName: "getRound",
+        args: [BigInt(gameId), BigInt(i)],
+      }) as any;
+
+      const entry: RoundHistoryEntry = {
+        round: i,
+        p1Move: Number(round.p1Move),
+        p2Move: Number(round.p2Move),
+        winner: determineRoundWinner(Number(round.p1Move), Number(round.p2Move)),
+      };
+
+      roundHistoryCache.set(cacheKey, entry);
+      history.push(entry);
+    } catch {
+      // Skip rounds we can't fetch (shouldn't happen for completed rounds)
+    }
+  }
+
+  return history;
 }
 
 // ─── Game ID discovery ────────────────────────────────────────────────────────
@@ -163,9 +239,15 @@ async function discoverGameId(
   return null;
 }
 
+// ─── Helper: compute commit/reveal counts from booleans ──────────────────────
+
+function computeCommitCount(p1: boolean, p2: boolean): number {
+  return (p1 ? 1 : 0) + (p2 ? 1 : 0);
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-const POLL_INTERVAL_MS = 5_000;
+const DEFAULT_POLL_INTERVAL = 5_000;
 
 function getSettledCacheKey(matchId: number, gameType: string): string {
   return `${matchId}-${gameType}`;
@@ -182,12 +264,20 @@ export function useLiveGameState(
   matchId: number | null,
   gameType: "rps" | "poker" | "auction" | "unknown" | null,
   isSettled?: boolean,
+  pollInterval: number = DEFAULT_POLL_INTERVAL,
 ) {
   const [state, setState] = useState<LiveGameState | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fetchingRef = useRef(false);
   const gameIdRef = useRef<number | null>(null);
+
+  // Track previous state for transition detection
+  const prevStateRef = useRef<{
+    phaseRaw: number;
+    commitCount: number;
+    revealCount: number;
+  } | null>(null);
 
   const fetchState = useCallback(async () => {
     if (!matchId || !gameType || gameType === "unknown") return;
@@ -237,7 +327,13 @@ export function useLiveGameState(
 
       const phaseRaw = Number(game.phase);
 
-      // Build base state
+      // ─── Compute commit/reveal counts ───────────────────────────────────
+      let p1Committed = false;
+      let p2Committed = false;
+      let p1Revealed = false;
+      let p2Revealed = false;
+
+      // Build base state (common fields first, game-specific below)
       const liveState: LiveGameState = {
         gameId,
         matchId,
@@ -248,6 +344,14 @@ export function useLiveGameState(
         player1: game.player1,
         player2: game.player2,
         phaseDeadline: Number(game.phaseDeadline),
+        // Transition detection — computed after we know commit/reveal
+        commitCount: 0,
+        revealCount: 0,
+        phaseChanged: false,
+        commitCountChanged: false,
+        revealCountChanged: false,
+        // Round history (populated for RPS below)
+        roundHistory: [],
       };
 
       // Game-type-specific fields
@@ -268,13 +372,20 @@ export function useLiveGameState(
 
           liveState.p1Move = Number(round.p1Move);
           liveState.p2Move = Number(round.p2Move);
-          liveState.p1Committed = round.p1Commit !== "0x0000000000000000000000000000000000000000000000000000000000000000";
-          liveState.p2Committed = round.p2Commit !== "0x0000000000000000000000000000000000000000000000000000000000000000";
-          liveState.p1Revealed = round.p1Revealed;
-          liveState.p2Revealed = round.p2Revealed;
+          p1Committed = round.p1Commit !== "0x0000000000000000000000000000000000000000000000000000000000000000";
+          p2Committed = round.p2Commit !== "0x0000000000000000000000000000000000000000000000000000000000000000";
+          p1Revealed = round.p1Revealed;
+          p2Revealed = round.p2Revealed;
+          liveState.p1Committed = p1Committed;
+          liveState.p2Committed = p2Committed;
+          liveState.p1Revealed = p1Revealed;
+          liveState.p2Revealed = p2Revealed;
         } catch {
           // Round data is supplementary
         }
+
+        // Fetch completed round history (only new rounds, rest from cache)
+        liveState.roundHistory = await fetchRoundHistory(gameId, Number(game.currentRound));
       } else if (gameType === "poker") {
         liveState.totalRounds = Number(game.totalRounds);
         liveState.currentRound = Number(game.currentRound);
@@ -285,21 +396,43 @@ export function useLiveGameState(
         liveState.p2Budget = Number(game.p2Budget);
         liveState.currentBet = game.currentBet;
         liveState.currentTurn = game.currentTurn;
-        liveState.p1Committed = game.p1Committed;
-        liveState.p2Committed = game.p2Committed;
-        liveState.p1Revealed = game.p1Revealed;
-        liveState.p2Revealed = game.p2Revealed;
+        p1Committed = game.p1Committed;
+        p2Committed = game.p2Committed;
+        p1Revealed = game.p1Revealed;
+        p2Revealed = game.p2Revealed;
+        liveState.p1Committed = p1Committed;
+        liveState.p2Committed = p2Committed;
+        liveState.p1Revealed = p1Revealed;
+        liveState.p2Revealed = p2Revealed;
         liveState.p1ExtraBets = game.p1ExtraBets;
         liveState.p2ExtraBets = game.p2ExtraBets;
       } else if (gameType === "auction") {
         liveState.prize = game.prize;
         liveState.p1Bid = game.p1Bid;
         liveState.p2Bid = game.p2Bid;
-        liveState.p1Committed = game.p1Committed;
-        liveState.p2Committed = game.p2Committed;
-        liveState.p1Revealed = game.p1Revealed;
-        liveState.p2Revealed = game.p2Revealed;
+        p1Committed = game.p1Committed;
+        p2Committed = game.p2Committed;
+        p1Revealed = game.p1Revealed;
+        p2Revealed = game.p2Revealed;
+        liveState.p1Committed = p1Committed;
+        liveState.p2Committed = p2Committed;
+        liveState.p1Revealed = p1Revealed;
+        liveState.p2Revealed = p2Revealed;
       }
+
+      // ─── Compute commit/reveal counts and transition flags ──────────────
+      const commitCount = computeCommitCount(p1Committed, p2Committed);
+      const revealCount = computeCommitCount(p1Revealed, p2Revealed);
+      const prev = prevStateRef.current;
+
+      liveState.commitCount = commitCount;
+      liveState.revealCount = revealCount;
+      liveState.phaseChanged = prev !== null && prev.phaseRaw !== phaseRaw;
+      liveState.commitCountChanged = prev !== null && prev.commitCount !== commitCount;
+      liveState.revealCountChanged = prev !== null && prev.revealCount !== revealCount;
+
+      // Update previous state ref for next poll cycle
+      prevStateRef.current = { phaseRaw, commitCount, revealCount };
 
       setState(liveState);
       setError(null);
@@ -322,6 +455,7 @@ export function useLiveGameState(
   // Reset when match changes
   useEffect(() => {
     gameIdRef.current = null;
+    prevStateRef.current = null;
     setState(null);
     setError(null);
   }, [matchId, gameType]);
@@ -335,9 +469,9 @@ export function useLiveGameState(
       // Past match: no polling needed
       return;
     }
-    const interval = setInterval(fetchState, POLL_INTERVAL_MS);
+    const interval = setInterval(fetchState, pollInterval);
     return () => clearInterval(interval);
-  }, [fetchState, matchId, gameType, isSettled]);
+  }, [fetchState, matchId, gameType, isSettled, pollInterval]);
 
   return { state, loading, error };
 }

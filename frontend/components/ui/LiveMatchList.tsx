@@ -78,7 +78,7 @@ export function LiveMatchList({
           </div>
         )}
 
-        {/* Empty live state */}
+        {/* Empty state — no active or pending matches */}
         {liveMatches.length === 0 && pendingChallenges.length === 0 && !loading && (
           <div className="flex flex-col items-center justify-center py-8">
             <span className="font-pixel text-[10px] text-text-dim">NO LIVE MATCHES</span>
