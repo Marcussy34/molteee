@@ -214,12 +214,19 @@ export default function LandingPage({ appReady }: { appReady?: boolean }) {
         <div className="cabinet-side cabinet-side-left" />
         <div className="cabinet-side cabinet-side-right" />
 
-        {/* Marquee */}
+        {/* Marquee — logo + wordmark */}
         <div className="cabinet-marquee">
           <div className="marquee-glow" />
-          <h1 className="font-pixel text-2xl sm:text-3xl tracking-wider text-monad-purple glow-purple relative z-10">
-            MOLTEEE
-          </h1>
+          <div className="flex items-center justify-center gap-2 relative z-10 w-full">
+            <img
+              src="/Moltee_Log.png"
+              alt=""
+              className="h-8 w-auto"
+            />
+            <h1 className="font-pixel text-2xl sm:text-3xl tracking-wider text-monad-purple glow-purple">
+              molteee
+            </h1>
+          </div>
           <p className="font-pixel text-[8px] sm:text-[10px] tracking-[0.25em] text-text-primary relative z-10 mt-1">
             AUTONOMOUS GAMING ARENA
           </p>

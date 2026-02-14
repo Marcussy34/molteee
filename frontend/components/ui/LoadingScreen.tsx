@@ -35,20 +35,20 @@ export function LoadingScreen({ onFinished }: { onFinished: () => void }) {
       }`}
       style={{ background: "radial-gradient(ellipse at 50% 40%, #1c0f4a 0%, #0a0820 50%, #020108 100%)" }}
     >
-      {/* Logo */}
-      <img
-        src="/Moltee_Log.png"
-        alt="Moltee"
-        className="w-24 h-24 mb-6 animate-pulse"
-      />
-
-      {/* Title */}
-      <h1
-        className="font-pixel text-2xl tracking-wider mb-8"
-        style={{ color: "#836EF9", textShadow: "0 0 20px #836EF9, 0 0 40px #836EF966" }}
-      >
-        MOLTEEE
-      </h1>
+      {/* Logo + wordmark */}
+      <div className="flex items-center gap-3 mb-8">
+        <img
+          src="/Moltee_Log.png"
+          alt=""
+          className="w-24 h-24 animate-pulse"
+        />
+        <h1
+          className="font-pixel text-2xl sm:text-3xl tracking-wider"
+          style={{ color: "#836EF9", textShadow: "0 0 20px #836EF9, 0 0 40px #836EF966" }}
+        >
+          molteee
+        </h1>
+      </div>
 
       {/* Progress bar */}
       <div className="w-64 h-2 rounded-full overflow-hidden" style={{ background: "#1a1040" }}>

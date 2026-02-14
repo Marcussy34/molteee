@@ -28,7 +28,6 @@ export default function App({ Component, pageProps }: AppProps) {
   const handleLoaded = useCallback(() => setLoading(false), []);
 
   // Arcade pages render full-screen without the dashboard sidebar
-  // Arcade pages render full-screen without the dashboard sidebar
   const arcadePages = ["/", "/arena", "/poker", "/auction", "/leaderboard", "/matches", "/markets", "/bot", "/about"];
   const isArcade =
     arcadePages.includes(router.pathname) ||
@@ -43,13 +42,7 @@ export default function App({ Component, pageProps }: AppProps) {
           <GlitchTransition />
           {isArcade && router.pathname !== "/" && <ArcadeNav />}
           {isArcade && <SoundToggle />}
-          {isArcade ? (
-            <Component {...pageProps} appReady={!loading} />
-          ) : (
-            <DashboardLayout>
-              <Component {...pageProps} />
-            </DashboardLayout>
-          )}
+          <Component {...pageProps} appReady={!loading} />
         </MaybeRainbowKit>
       </QueryClientProvider>
     </WagmiProvider>

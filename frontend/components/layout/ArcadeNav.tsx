@@ -32,8 +32,8 @@ export function ArcadeNav() {
           alt=""
           className="h-8 w-auto"
         />
-        <span className="font-pixel text-[10px] sm:text-xs text-monad-purple tracking-wider">
-          MOLTEEE
+        <span className="font-pixel text-sm text-monad-purple glow-purple tracking-wider">
+          molteee
         </span>
       </Link>
 
