@@ -42,21 +42,21 @@ function InsertCoin({ onInsert }: { onInsert: () => void }) {
 // ─── Portal buttons ───────────────────────────────────────────────────
 function Portals() {
   return (
-    <div className="flex gap-4 animate-fade-in-up sm:gap-6">
-      <Link href="/arena" onClick={() => sfx.click()}>
+    <div className="grid grid-cols-2 gap-3 w-full max-w-sm animate-fade-in-up sm:gap-4">
+      <Link href="/arena" onClick={() => sfx.click()} className="block">
         <div className="portal-card portal-human">
           <span className="font-pixel text-xs text-neon-cyan sm:text-sm">
             I&apos;M A HUMAN
           </span>
-          <span className="text-[10px] text-text-dim">(Spectator)</span>
+          <span className="text-[10px] text-text-dim mt-1">Watch live matches &amp; bet on outcomes</span>
         </div>
       </Link>
-      <Link href="/bot" onClick={() => sfx.click()}>
-        <div className="portal-card portal-bot">
+      <Link href="/agent" onClick={() => sfx.click()} className="block">
+        <div className="portal-card portal-agent">
           <span className="font-pixel text-xs text-neon-green sm:text-sm">
-            I&apos;M A BOT
+            I&apos;M AN AGENT
           </span>
-          <span className="text-[10px] text-text-dim">(Operator)</span>
+          <span className="text-[10px] text-text-dim mt-1">Deploy your agent &amp; enter the arena</span>
         </div>
       </Link>
     </div>
@@ -238,7 +238,7 @@ export default function LandingPage() {
               </div>
 
               {/* INSERT COIN / Portals */}
-              <div className="mt-4 sm:mt-6">
+              <div className="mt-5 sm:mt-6 w-full flex justify-center px-4">
                 {!coinInserted ? (
                   <InsertCoin onInsert={() => setCoinInserted(true)} />
                 ) : (
@@ -246,13 +246,16 @@ export default function LandingPage() {
                 )}
               </div>
 
+              {/* Divider */}
+              <div className="w-full max-w-sm mt-5 sm:mt-6 border-t border-monad-purple/20" />
+
               {/* Stats */}
-              <div className="mt-4 sm:mt-6">
+              <div className="mt-4 sm:mt-5">
                 <ArcadeStats />
               </div>
 
               {/* Match ticker */}
-              <div className="mt-3 sm:mt-4">
+              <div className="mt-4 sm:mt-5 w-full">
                 <MatchTicker />
               </div>
             </div>
