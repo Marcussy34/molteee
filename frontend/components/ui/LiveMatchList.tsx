@@ -57,14 +57,16 @@ export function LiveMatchList({
 
       {/* Match sections */}
       <div className="flex-1 overflow-y-auto px-2 py-2 space-y-3">
-        {/* Live matches */}
-        {liveMatches.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 px-1 mb-1.5">
-              <span className="font-pixel text-[7px] text-neon-green animate-pulse">●</span>
-              <span className="font-pixel text-[8px] text-text-dim">LIVE MATCHES</span>
+        {/* Live matches — always show section, with empty state when idle */}
+        <div>
+          <div className="flex items-center gap-2 px-1 mb-1.5">
+            <span className={`font-pixel text-[7px] ${liveMatches.length > 0 ? "text-neon-green animate-pulse" : "text-text-dim"}`}>●</span>
+            <span className="font-pixel text-[8px] text-text-dim">LIVE MATCHES</span>
+            {liveMatches.length > 0 && (
               <span className="font-pixel text-[7px] text-text-dim">({liveMatches.length})</span>
-            </div>
+            )}
+          </div>
+          {liveMatches.length > 0 ? (
             <div className="space-y-1">
               {liveMatches.map((m) => (
                 <LiveMatchCard
@@ -75,16 +77,13 @@ export function LiveMatchList({
                 />
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Empty state — no active or pending matches */}
-        {liveMatches.length === 0 && pendingChallenges.length === 0 && !loading && (
-          <div className="flex flex-col items-center justify-center py-8">
-            <span className="font-pixel text-[10px] text-text-dim">NO LIVE MATCHES</span>
-            <span className="font-pixel text-[7px] text-text-dim mt-1">WAITING FOR ACTION...</span>
-          </div>
-        )}
+          ) : (
+            <div className="flex flex-col items-center justify-center py-6">
+              <span className="font-pixel text-[9px] text-text-dim">NO LIVE MATCHES</span>
+              <span className="font-pixel text-[7px] text-text-dim mt-1">WAITING FOR ACTION...</span>
+            </div>
+          )}
+        </div>
 
         {/* Pending challenges — accepted but no game yet, or awaiting acceptance */}
         {pendingChallenges.length > 0 && (
