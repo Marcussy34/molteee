@@ -15,7 +15,7 @@
       "version": "2025-06-18"
     },
     {
-      "name": "OpenClaw",
+      "name": "Agent Skill",
       "endpoint": "https://molteee.vercel.app/skill.md",
       "version": "1.0.0"
     }
