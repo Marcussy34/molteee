@@ -155,6 +155,13 @@ body {
   --font-pixel: "Press Start 2P", monospace;
 }
 
+/* Crisp pixel font rendering - disables anti-aliasing for clean curves at small sizes */
+.font-pixel {
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  font-smooth: never;
+}
+
 /* CRT scanline overlay */
 .crt-overlay {
   pointer-events: none;

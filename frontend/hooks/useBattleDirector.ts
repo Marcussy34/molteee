@@ -377,6 +377,37 @@ export function useBattleDirector(
       return; // Skip normal chain state mapping this cycle
     }
 
+    // ─── Safety fallback: if settled but director is stuck in a non-cinematic phase ──
+    // This catches edge cases where the round transition was missed or the closure
+    // captured a stale chain state, preventing the victory phase from being reached.
+    if (liveChainState.settled && !CINEMATIC_PHASES.has(phase) && phase !== "victory") {
+      prevChainRoundRef.current = chainRound;
+      prevSettledRef.current = true;
+      cinematicLockRef.current = true;
+      if (timerRef.current) clearTimeout(timerRef.current);
+
+      // Jump straight to victory with the final round's data
+      const lastRound = Math.max(0, chainRound > 0 ? chainRound - 1 : 0);
+      setRoundIndex(lastRound);
+      transitionTo("clash");
+
+      const clashDur = CINEMATIC_DURATIONS["clash"] || REPLAY_DURATIONS["clash"];
+      const resultDur = CINEMATIC_DURATIONS["round_result"] || REPLAY_DURATIONS["round_result"];
+      const victoryDur = CINEMATIC_DURATIONS["victory"] || REPLAY_DURATIONS["victory"];
+
+      timerRef.current = setTimeout(() => {
+        transitionTo("round_result");
+        timerRef.current = setTimeout(() => {
+          transitionTo("victory");
+          timerRef.current = setTimeout(() => {
+            cinematicLockRef.current = false;
+          }, victoryDur);
+        }, resultDur);
+      }, clashDur);
+
+      return;
+    }
+
     // ─── Normal chain state mapping (no round transition) ──────────
     // Update tracking refs
     prevChainRoundRef.current = chainRound;

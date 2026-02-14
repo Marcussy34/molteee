@@ -57,6 +57,7 @@ export default function ArenaPage() {
   const selectMatch = (id: number | null) => {
     if (id === null) {
       userDeselectedRef.current = true;
+      lastSelectedRef.current = null; // Clear safety ref on explicit deselect
     } else {
       userDeselectedRef.current = false;
     }
@@ -67,14 +68,23 @@ export default function ArenaPage() {
   useEffect(() => { wasLiveRef.current = false; }, [selectedMatchId]);
 
   // Find selected match object (use === null to allow matchId 0)
+  // Safety: keep a ref to prevent the match from vanishing mid-animation
+  // if it briefly disappears from arrays during state transitions
+  const lastSelectedRef = useRef<OnChainMatch | null>(null);
+
   const selectedMatch = useMemo(() => {
     if (selectedMatchId === null) return null;
-    return (
+    const found =
       liveMatches.find((m) => m.matchId === selectedMatchId) ||
       pendingChallenges.find((m) => m.matchId === selectedMatchId) ||
       recentSettled.find((m) => m.matchId === selectedMatchId) ||
-      null
-    );
+      null;
+    // Fallback to last known match if it briefly vanishes during settlement transition
+    if (found) {
+      lastSelectedRef.current = found;
+      return found;
+    }
+    return lastSelectedRef.current;
   }, [selectedMatchId, liveMatches, pendingChallenges, recentSettled]);
 
   // ─── Live game state for selected match ───────────────────────────────────
@@ -195,21 +205,26 @@ export default function ArenaPage() {
             {formatEther(selectedMatch.wager)} MON
           </span>
 
-          {/* Live mode: show chain phase label during waiting phases, LIVE during cinematics */}
+          {/* Live mode indicators — show during active play AND during settlement grace period */}
+          {/* Grace period: isLive may still be true (match in liveMatches) even after settlement */}
           {isLive && (!hasGame || !gameState.settled) && chainPhaseLabel &&
             !["clash", "round_result", "victory"].includes(activePhase) && (
             <span className="font-pixel text-[9px] text-neon-green animate-blink">
               {chainPhaseLabel}
             </span>
           )}
-          {/* Fallback LIVE indicator when no chain label or during cinematics */}
+          {/* Live cinematic (clash/result/victory) or live without chain label */}
           {isLive && (!hasGame || !gameState.settled) && (
             !chainPhaseLabel || ["clash", "round_result", "victory"].includes(activePhase)
           ) && (
             <span className="font-pixel text-[9px] text-neon-green animate-blink">LIVE</span>
           )}
-
-          {hasGame && gameState.settled && (
+          {/* Settlement detected but cinematic still playing (grace period) */}
+          {isLive && hasGame && gameState.settled && (
+            <span className="font-pixel text-[9px] text-neon-green animate-blink">MATCH COMPLETE</span>
+          )}
+          {/* Truly past match — not live, not in grace period */}
+          {!isLive && hasGame && gameState.settled && (
             <>
               <span className="font-pixel text-[9px] text-monad-purple">REPLAY</span>
               <span className="font-pixel text-[8px] text-text-dim">(past match — showing final round)</span>

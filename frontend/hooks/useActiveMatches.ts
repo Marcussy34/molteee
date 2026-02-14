@@ -235,6 +235,13 @@ let hydratedFromStorage = false; // tracks if we've loaded localStorage yet
 const gameIdByMatch = new Map<number, number>();      // matchId → gameId
 const settledGameMatches = new Set<number>();          // matchIds with complete games (skip re-poll)
 
+// ─── Settlement grace period ──────────────────────────────────────────────────
+// When a game completes/settles, keep it in LIVE MATCHES for a grace period so
+// the battle director can play the full cinematic (clash → round_result → victory).
+// Without this, the match instantly moves to RECENT RESULTS and the 3D scene unmounts.
+const SETTLEMENT_GRACE_MS = 15_000; // 15 seconds — enough for clash(1.8s)+result(3.2s)+victory(5s)
+const settlementGraceMap = new Map<number, number>(); // matchId → Date.now() when settlement first detected
+
 const CACHE_TTL_MS = 3_000;          // Don't re-fetch escrow data if <3s old
 const ESCROW_POLL_MS = 6_000;        // Tier 1: escrow scan every 6s
 const LIVENESS_POLL_MS = 2_000;      // Tier 2: game liveness check every 2s
@@ -446,11 +453,21 @@ export function useActiveMatches(filter: GameFilter = "all") {
         .sort((a, b) => b.createdAt - a.createdAt);
 
       // Settled from scan + older entries from permanent cache (beyond scan window)
+      // Exclude matches still in settlement grace period (they stay in LIVE)
       const scanSettledIds = new Set(matches.filter((m) => m.status === "settled").map((m) => m.matchId));
       const olderSettled = Array.from(permanentSettledCache.values())
         .filter((m) => !scanSettledIds.has(m.matchId));
+
+      // Matches in grace period should stay in LIVE, not settled
+      const graceMatchIds = new Set<number>();
+      for (const [mid, graceStart] of settlementGraceMap) {
+        if (Date.now() - graceStart < SETTLEMENT_GRACE_MS) {
+          graceMatchIds.add(mid);
+        }
+      }
+
       const settled = [
-        ...matches.filter((m) => m.status === "settled"),
+        ...matches.filter((m) => m.status === "settled" && !graceMatchIds.has(m.matchId)),
         ...olderSettled,
       ].sort((a, b) => b.createdAt - a.createdAt).slice(0, 15);
 
@@ -466,11 +483,17 @@ export function useActiveMatches(filter: GameFilter = "all") {
         }
       }
 
-      // Live = ONLY active matches confirmed as playing by liveness check
-      // Unchecked (undefined) and completed (false) do NOT appear in live
-      const live = active
-        .filter((m) => m.isPlaying === true)
-        .sort((a, b) => b.createdAt - a.createdAt);
+      // Settled matches still in grace period → inject into live array with isPlaying=true
+      // so the battle director can finish its cinematic sequence
+      const graceMatches = matches
+        .filter((m) => m.status === "settled" && graceMatchIds.has(m.matchId))
+        .map((m) => ({ ...m, isPlaying: true as boolean | undefined, gamePhase: "COMPLETE" }));
+
+      // Live = active matches confirmed as playing + grace-period settled matches
+      const live = [
+        ...active.filter((m) => m.isPlaying === true),
+        ...graceMatches,
+      ].sort((a, b) => b.createdAt - a.createdAt);
 
       // Not-live = completed games OR not-yet-checked matches
       const notLive = active
@@ -517,11 +540,26 @@ export function useActiveMatches(filter: GameFilter = "all") {
 
       for (const match of activeMatches) {
         // Skip matches we already know are settled/complete — 0 RPC calls
+        // But respect the grace period: keep isPlaying=true during cinematic window
         if (settledGameMatches.has(match.matchId)) {
-          if (match.isPlaying !== false) {
-            match.isPlaying = false;
-            match.gamePhase = "COMPLETE";
-            changed = true;
+          const graceStart = settlementGraceMap.get(match.matchId);
+          const inGrace = graceStart && (Date.now() - graceStart < SETTLEMENT_GRACE_MS);
+
+          if (inGrace) {
+            // Grace period active — keep in live so cinematic can finish
+            if (match.isPlaying !== true) {
+              match.isPlaying = true;
+              match.gamePhase = "COMPLETE";
+              changed = true;
+            }
+          } else {
+            // Grace expired — move to recent results
+            settlementGraceMap.delete(match.matchId);
+            if (match.isPlaying !== false) {
+              match.isPlaying = false;
+              match.gamePhase = "COMPLETE";
+              changed = true;
+            }
           }
           continue;
         }
@@ -562,13 +600,34 @@ export function useActiveMatches(filter: GameFilter = "all") {
           const isStale = phaseDeadline > 0 && phaseDeadline < nowSecs;
 
           if (complete || isStale) {
-            // Game is done or abandoned — cache permanently so we never re-poll
+            // Game is done or abandoned — start grace period for cinematic playback
             settledGameMatches.add(match.matchId);
-            if (match.isPlaying !== false) {
-              match.isPlaying = false;
-              match.gamePhase = complete ? "COMPLETE" : "EXPIRED";
-              match.gamePhaseRaw = phase;
-              changed = true;
+
+            // Start grace timer on first detection (don't restart if already ticking)
+            if (!settlementGraceMap.has(match.matchId)) {
+              settlementGraceMap.set(match.matchId, Date.now());
+            }
+
+            const graceStart = settlementGraceMap.get(match.matchId)!;
+            const inGrace = Date.now() - graceStart < SETTLEMENT_GRACE_MS;
+
+            if (inGrace) {
+              // Grace period: keep in live matches so the director can animate
+              if (match.isPlaying !== true || match.gamePhaseRaw !== phase) {
+                match.isPlaying = true;
+                match.gamePhase = complete ? "COMPLETE" : "EXPIRED";
+                match.gamePhaseRaw = phase;
+                changed = true;
+              }
+            } else {
+              // Grace expired — move to recent results
+              settlementGraceMap.delete(match.matchId);
+              if (match.isPlaying !== false) {
+                match.isPlaying = false;
+                match.gamePhase = complete ? "COMPLETE" : "EXPIRED";
+                match.gamePhaseRaw = phase;
+                changed = true;
+              }
             }
           } else {
             // Game is actively in progress
