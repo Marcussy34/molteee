@@ -168,42 +168,47 @@ function FooterNav() {
 }
 
 // ─── Landing Page ─────────────────────────────────────────────────────
-export default function LandingPage() {
+export default function LandingPage({ appReady }: { appReady?: boolean }) {
   const [coinInserted, setCoinInserted] = useState(false);
   const [poweredOn, setPoweredOn] = useState(false);
 
   useEffect(() => {
+    if (!appReady) return;
     const timer = setTimeout(() => setPoweredOn(true), 100);
     return () => clearTimeout(timer);
-  }, []);
+  }, [appReady]);
 
   return (
     <div className="arcade-page relative">
       {/* Flickering grid background — dual layer for gamefi feel */}
-      <div className="absolute inset-0 z-0">
-        <FlickeringGrid
-          className="h-full w-full [mask-image:radial-gradient(600px_circle_at_center,white,transparent)]"
-          squareSize={10}
-          gridGap={3}
-          color="#836EF9"
-          maxOpacity={0.6}
-          flickerChance={0.05}
-        />
-      </div>
-      <div className="absolute inset-0 z-0">
-        <FlickeringGrid
-          className="h-full w-full [mask-image:radial-gradient(500px_circle_at_center,white,transparent)]"
-          squareSize={10}
-          gridGap={3}
-          color="#00F0FF"
-          maxOpacity={0.25}
-          flickerChance={0.03}
-        />
-      </div>
-      {/* Floating coins on sides */}
-      <div className="absolute inset-0 z-[5] pointer-events-none">
-        <FloatingCoins />
-      </div>
+      {appReady && (
+        <>
+          <div className="absolute inset-0 z-0">
+            <FlickeringGrid
+              className="h-full w-full [mask-image:radial-gradient(600px_circle_at_center,white,transparent)]"
+              squareSize={10}
+              gridGap={3}
+              color="#836EF9"
+              maxOpacity={0.6}
+              flickerChance={0.05}
+            />
+          </div>
+          <div className="absolute inset-0 z-0">
+            <FlickeringGrid
+              className="h-full w-full [mask-image:radial-gradient(500px_circle_at_center,white,transparent)]"
+              squareSize={10}
+              gridGap={3}
+              color="#00F0FF"
+              maxOpacity={0.25}
+              flickerChance={0.03}
+            />
+          </div>
+          {/* Floating coins on sides */}
+          <div className="absolute inset-0 z-[5] pointer-events-none">
+            <FloatingCoins />
+          </div>
+        </>
+      )}
       <div className="arcade-cabinet relative z-10">
         {/* Side panels */}
         <div className="cabinet-side cabinet-side-left" />
