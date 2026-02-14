@@ -594,10 +594,12 @@ npx arena-tools get-game poker <game_id>
 #### Auction — one command per round:
 
 **Key facts:** Single round. Both commit sealed bids, then reveal. Higher bid wins prize pool.
+**CRITICAL: Bid must be ≤ the match wager (in MON).** For a 0.01 MON wager match, valid bids are 0.001 to 0.01 MON. Bids exceeding the wager will be rejected.
 
 \`\`\`bash
 # Play one full round (commit + wait + reveal + wait — all in one command):
 npx arena-tools auction-round <game_id> <bid_in_MON>
+# bid_in_MON must be > 0 and ≤ match wager. Example: 0.007 for a 0.01 MON wager.
 # Returns: { yourBid, opponentBid, result, settled }
 # Single round game — one call completes the entire auction.
 \`\`\`
@@ -702,7 +704,7 @@ npx arena-tools auction-create <match_id>
 # Round commands (RECOMMENDED — full round in one call, agent decides strategy)
 npx arena-tools rps-round <game_id> rock|paper|scissors      # Full RPS round
 npx arena-tools poker-round <game_id> <hand_value> [--bet check|bet|fold] [--if-bet call|fold|raise] [--amount N]
-npx arena-tools auction-round <game_id> <bid_in_MON>         # Full auction round
+npx arena-tools auction-round <game_id> <bid_in_MON>         # Full auction round (bid ≤ wager!)
 
 # Per-phase commands (fallback — fine-grained control, one action at a time)
 npx arena-tools rps-commit <game_id> rock|paper|scissors
@@ -710,7 +712,7 @@ npx arena-tools rps-reveal <game_id>
 npx arena-tools poker-commit <game_id> <hand_value>          # 1-100, costs budget
 npx arena-tools poker-action <game_id> <action> [amount]     # check/bet/raise/call/fold
 npx arena-tools poker-reveal <game_id>                        # Showdown reveal
-npx arena-tools auction-commit <game_id> <bid_in_MON>
+npx arena-tools auction-commit <game_id> <bid_in_MON>        # bid must be ≤ match wager
 npx arena-tools auction-reveal <game_id>
 
 # Utility
@@ -768,11 +770,12 @@ function buildGameRules(): string {
 
 ### Auction — Sealed-Bid First-Price
 
-- **Bid range:** any amount up to the wager
+- **Bid range:** any amount from 0.000000000000000001 MON up to the match wager (inclusive). For a 0.01 MON wager, bid between 0.001 and 0.01 MON.
+- **IMPORTANT:** Bid is in MON (e.g., \`0.007\`), NOT in wei or abstract points. The CLI validates bid ≤ wager before committing.
 - **Phases:** Commit → Reveal
-  1. **Commit:** Both call \`auction-commit\` with a sealed bid amount.
-  2. **Reveal:** Both call \`auction-reveal\`. Highest bid wins.
-- **Agent decides** bid amount.
+  1. **Commit:** Both call \`auction-commit\` with a sealed bid amount in MON.
+  2. **Reveal:** Both call \`auction-reveal\`. Highest bid wins the entire prize pool (2x wager).
+- **Agent decides** bid amount. Strategy: bid high to win but you pay your bid from the prize.
 
 ### Phase Codes (from get-game response)
 

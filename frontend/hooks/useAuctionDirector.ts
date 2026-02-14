@@ -201,8 +201,18 @@ export function useAuctionDirector(
   const cinematicLockRef = useRef(false);
   const entranceDoneRef = useRef(false);
   const prevCommitCountRef = useRef(0);
+  const prevRevealCountRef = useRef(0);
+  // Latch: once live mode activates, stays active until match resets.
+  // Prevents settlement from causing a jarring switch to replay mode mid-cinematic.
+  const liveModeActiveRef = useRef(false);
 
-  const isLiveMode = !!(liveChainState && !liveChainState.settled);
+  // Activate latch when we see an unsettled chain state
+  if (liveChainState && !liveChainState.settled) {
+    liveModeActiveRef.current = true;
+  }
+  // isLiveMode stays true even after settlement so the director can handle
+  // the final result → victory cinematic sequence
+  const isLiveMode = liveModeActiveRef.current && !!liveChainState;
 
   const match = matches.length > 0 ? matches[matchIndex % matches.length] : null;
   const totalRounds = match?.rounds?.length || 1;
@@ -292,6 +302,12 @@ export function useAuctionDirector(
     }
     prevCommitCountRef.current = liveChainState.commitCount;
 
+    // Reveal SFX
+    if (liveChainState.revealCountChanged && liveChainState.revealCount > prevRevealCountRef.current) {
+      sfx.revealChirp();
+    }
+    prevRevealCountRef.current = liveChainState.revealCount;
+
     // Map chain state to desired phase
     const { phase: desiredPhase } = chainStateToAuctionPhase(liveChainState);
 
@@ -369,6 +385,8 @@ export function useAuctionDirector(
       entranceDoneRef.current = false;
       cinematicLockRef.current = false;
       prevCommitCountRef.current = 0;
+      prevRevealCountRef.current = 0;
+      liveModeActiveRef.current = false;
       setRoundIndex(0);
     }
   }, [matches.length]);

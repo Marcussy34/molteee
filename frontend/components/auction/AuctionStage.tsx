@@ -5,6 +5,8 @@ interface AuctionStageProps {
   auctionState: AuctionState;
   playerAName: string;
   playerBName: string;
+  isLiveMode?: boolean;
+  waitingFor?: string | null;
 }
 
 const COUNTDOWN_COLORS: Record<number, string> = {
@@ -21,7 +23,7 @@ const COUNTDOWN_TEXT: Record<number, string> = {
   0: "REVEAL!",
 };
 
-export function AuctionStage({ auctionState, playerAName, playerBName }: AuctionStageProps) {
+export function AuctionStage({ auctionState, playerAName, playerBName, isLiveMode, waitingFor }: AuctionStageProps) {
   const { phase, bidA, bidB, roundWinner, matchWinner, match, countdownNumber } = auctionState;
 
   const showEnvelopes = phase === "sealed" || phase === "countdown" || phase === "reveal_a" || phase === "reveal_b" || phase === "result";
@@ -43,10 +45,10 @@ export function AuctionStage({ auctionState, playerAName, playerBName }: Auction
           minHeight: 340,
         }}
       >
-        {/* Title */}
+        {/* Title — live mode shows dynamic chain status, replay shows static label */}
         {(phase === "sealed" || phase === "countdown") && (
           <span className="font-pixel text-[10px] text-monad-purple glow-purple tracking-wider">
-            SEALED BID AUCTION
+            {isLiveMode && waitingFor ? waitingFor : "SEALED BID AUCTION"}
           </span>
         )}
 
@@ -86,6 +88,13 @@ export function AuctionStage({ auctionState, playerAName, playerBName }: Auction
               side="right"
             />
           </div>
+        )}
+
+        {/* Live mode: waiting for second reveal overlay */}
+        {isLiveMode && phase === "reveal_a" && waitingFor && (
+          <span className="font-pixel text-[10px] text-monad-purple animate-pulse" style={{ textShadow: "0 0 10px #836EF9" }}>
+            {waitingFor}
+          </span>
         )}
 
         {/* Prize display */}

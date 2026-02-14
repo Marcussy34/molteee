@@ -390,6 +390,8 @@ export default function ArenaPage() {
                   auctionState={auctionState}
                   playerAName={p1Name}
                   playerBName={p2Name}
+                  isLiveMode={auctionState.isLiveMode}
+                  waitingFor={auctionState.waitingFor}
                 />
               )}
             </div>
