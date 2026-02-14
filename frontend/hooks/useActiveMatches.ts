@@ -269,7 +269,7 @@ const settlementGraceMap = new Map<number, number>(); // matchId → Date.now() 
 const CACHE_TTL_MS = 3_000;          // Don't re-fetch escrow data if <3s old
 const ESCROW_POLL_MS = 6_000;        // Tier 1: escrow scan every 6s
 const LIVENESS_POLL_MS = 2_000;      // Tier 2: game liveness check every 2s
-const SCAN_WINDOW = 30;              // How many recent matches to scan
+const MULTICALL_BATCH = 50;          // Batch size for multicall requests
 const PENDING_MAX_AGE_S = 3600;      // Hide pending challenges older than 1 hour
 
 // ─── Game ID discovery ───────────────────────────────────────────────────────
@@ -360,28 +360,46 @@ export function useActiveMatches(filter: GameFilter = "all") {
       // Load permanent cache so we can skip RPC calls for settled matches
       ensurePermanentCacheLoaded();
 
-      // Scan the last SCAN_WINDOW matches
-      const startId = Math.max(0, total - SCAN_WINDOW);
-      const matchPromises: Promise<OnChainMatch | null>[] = [];
+      // ── Scan ALL matches via multicall (efficient batch fetching) ──────────
+      // Split IDs into cached (settled, from permanent cache) and uncached.
+      // Multicall batches getMatch calls — 50 per RPC request instead of 1.
+      const cachedMatches: OnChainMatch[] = [];
+      const uncachedIds: number[] = [];
 
-      for (let id = startId; id < total; id++) {
-        matchPromises.push(
-          (async () => {
-            // Skip RPC if match is permanently cached (settled = immutable)
-            const cached = permanentSettledCache.get(id);
-            if (cached) return cached;
+      for (let id = 0; id < total; id++) {
+        const cached = permanentSettledCache.get(id);
+        if (cached) {
+          cachedMatches.push(cached);
+        } else {
+          uncachedIds.push(id);
+        }
+      }
 
-            try {
-              const data = await publicClient.readContract({
-                address: ADDRESSES.escrow,
-                abi: escrowAbi,
-                functionName: "getMatch",
-                args: [BigInt(id)],
-              }) as any;
+      // Batch-fetch uncached matches via multicall
+      const fetchedMatches: OnChainMatch[] = [];
+      for (let i = 0; i < uncachedIds.length; i += MULTICALL_BATCH) {
+        const batch = uncachedIds.slice(i, i + MULTICALL_BATCH);
+        const contracts = batch.map((id) => ({
+          address: ADDRESSES.escrow,
+          abi: escrowAbi,
+          functionName: "getMatch" as const,
+          args: [BigInt(id)],
+        }));
 
+        try {
+          const results = await publicClient.multicall({
+            contracts: contracts as any,
+            allowFailure: true,
+          });
+
+          for (let j = 0; j < results.length; j++) {
+            const r = results[j];
+            if (r.status === "success" && r.result) {
+              const data = r.result as any;
+              const matchId = batch[j];
               const status = parseStatus(Number(data.status));
-              const match: OnChainMatch = {
-                matchId: id,
+              fetchedMatches.push({
+                matchId,
                 player1: data.player1,
                 player2: data.player2,
                 wager: data.wager,
@@ -389,37 +407,75 @@ export function useActiveMatches(filter: GameFilter = "all") {
                 status,
                 createdAt: Number(data.createdAt),
                 gameType: detectGameType(data.gameContract),
-              };
-
-              // Get winner for settled matches, then cache permanently
-              if (status === "settled") {
-                try {
-                  const winner = await publicClient.readContract({
-                    address: ADDRESSES.escrow,
-                    abi: escrowAbi,
-                    functionName: "winners",
-                    args: [BigInt(id)],
-                  }) as string;
-                  if (winner && winner !== "0x0000000000000000000000000000000000000000") {
-                    match.winner = winner;
-                  }
-                } catch {
-                  // Winner lookup is best-effort
-                }
-                // Permanently cache — this match will never need RPC again
-                addToPermanentCache(match);
-              }
-
-              return match;
-            } catch {
-              return null;
+              });
             }
-          })()
-        );
+          }
+        } catch (mcErr) {
+          // Multicall failed — fall back to sequential for this batch
+          console.warn("[fetchMatches] multicall failed, using sequential:", mcErr);
+          for (const id of batch) {
+            try {
+              const data = await publicClient.readContract({
+                address: ADDRESSES.escrow,
+                abi: escrowAbi,
+                functionName: "getMatch",
+                args: [BigInt(id)],
+              }) as any;
+              fetchedMatches.push({
+                matchId: id,
+                player1: data.player1,
+                player2: data.player2,
+                wager: data.wager,
+                gameContract: data.gameContract,
+                status: parseStatus(Number(data.status)),
+                createdAt: Number(data.createdAt),
+                gameType: detectGameType(data.gameContract),
+              });
+            } catch {
+              // Skip failed IDs
+            }
+          }
+        }
       }
 
-      const results = await Promise.all(matchPromises);
-      const matches = results.filter((m): m is OnChainMatch => m !== null);
+      // Batch-fetch winners for newly discovered settled matches
+      const newlySettled = fetchedMatches.filter((m) => m.status === "settled");
+      for (let i = 0; i < newlySettled.length; i += MULTICALL_BATCH) {
+        const batch = newlySettled.slice(i, i + MULTICALL_BATCH);
+        const contracts = batch.map((m) => ({
+          address: ADDRESSES.escrow,
+          abi: escrowAbi,
+          functionName: "winners" as const,
+          args: [BigInt(m.matchId)],
+        }));
+
+        try {
+          const results = await publicClient.multicall({
+            contracts: contracts as any,
+            allowFailure: true,
+          });
+          for (let j = 0; j < results.length; j++) {
+            const r = results[j];
+            if (r.status === "success" && r.result) {
+              const winner = r.result as string;
+              if (winner && winner !== "0x0000000000000000000000000000000000000000") {
+                batch[j].winner = winner;
+              }
+            }
+          }
+        } catch {
+          // Winner lookup is best-effort
+        }
+
+        // Permanently cache settled matches — they never change
+        for (const m of batch) {
+          addToPermanentCache(m);
+        }
+      }
+
+      // Combine cached + fetched, filter out unknown game types (old contracts)
+      const matches = [...cachedMatches, ...fetchedMatches]
+        .filter((m) => m.gameType !== "unknown");
 
       // Store all matches for the liveness checker to use
       allMatchesRef.current = matches;
