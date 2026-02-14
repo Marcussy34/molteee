@@ -57,16 +57,20 @@ export function liveToRpsMatch(live: LiveGameState, onChain: OnChainMatch): Matc
     }
   }
 
-  // Add current round (may be in-progress with partial data)
-  const p1Move = live.p1Move || 0;
-  const p2Move = live.p2Move || 0;
-  const currentRound: MatchRound = {
-    round: live.currentRound || 0,
-    moveA: rpsMoveLabel(p1Move) || undefined,
-    moveB: rpsMoveLabel(p2Move) || undefined,
-    winner: determineRpsRoundWinner(p1Move, p2Move),
-  };
-  rounds.push(currentRound);
+  // Only add current round for in-progress games — settled games have all data
+  // in roundHistory already. Appending a phantom empty round for settled games
+  // causes the round counter to show an extra non-existent round.
+  if (!live.settled) {
+    const p1Move = live.p1Move || 0;
+    const p2Move = live.p2Move || 0;
+    const currentRound: MatchRound = {
+      round: live.currentRound || 0,
+      moveA: rpsMoveLabel(p1Move) || undefined,
+      moveB: rpsMoveLabel(p2Move) || undefined,
+      winner: determineRpsRoundWinner(p1Move, p2Move),
+    };
+    rounds.push(currentRound);
+  }
 
   // Determine overall match result from scores
   let result: "playerA" | "playerB" | "draw" = "draw";

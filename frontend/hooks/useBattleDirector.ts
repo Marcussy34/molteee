@@ -333,47 +333,67 @@ export function useBattleDirector(
     const justSettled = liveChainState.settled && !prevSettledRef.current;
 
     if (roundAdvanced || justSettled) {
-      // The round that just completed is the previous chain round
       const completedRound = prevChainRoundRef.current;
 
-      // Keep roundIndex at the completed round so match.rounds[completedRound]
-      // has the actual moves from roundHistory for the clash animation
-      setRoundIndex(completedRound);
+      // Build list of ALL rounds that need animation (multi-round catch-up).
+      // When multiple rounds complete between 2s poll cycles, we animate each one
+      // sequentially instead of skipping to the latest.
+      const roundsToAnimate: number[] = [];
+      for (let i = completedRound; i < chainRound; i++) {
+        roundsToAnimate.push(i);
+      }
+      // If game just settled with no round gap, add the final round
+      if (justSettled && roundsToAnimate.length === 0) {
+        roundsToAnimate.push(Math.max(0, chainRound > 0 ? chainRound - 1 : 0));
+      }
 
       // Update refs immediately to prevent re-triggering on next render
       prevChainRoundRef.current = chainRound;
       prevSettledRef.current = liveChainState.settled;
 
-      // Start clash cinematic with actual moves from the completed round
+      // Capture settled state to avoid stale closure referencing liveChainState
+      const isSettled = liveChainState.settled;
+
+      // Lock cinematic for the entire animation chain
       cinematicLockRef.current = true;
       if (timerRef.current) clearTimeout(timerRef.current);
-      transitionTo("clash");
 
       const clashDur = CINEMATIC_DURATIONS["clash"] || REPLAY_DURATIONS["clash"];
       const resultDur = CINEMATIC_DURATIONS["round_result"] || REPLAY_DURATIONS["round_result"];
+      const victoryDur = CINEMATIC_DURATIONS["victory"] || REPLAY_DURATIONS["victory"];
 
-      timerRef.current = setTimeout(() => {
-        // After clash → show round result
-        transitionTo("round_result");
+      // Recursive function: animate each missed round in sequence
+      // clash → round_result → (next round | victory | unlock)
+      function animateRound(idx: number) {
+        const roundNum = roundsToAnimate[idx];
+        setRoundIndex(roundNum);
+        transitionTo("clash");
 
         timerRef.current = setTimeout(() => {
-          cinematicLockRef.current = false;
+          transitionTo("round_result");
 
-          if (liveChainState.settled) {
-            // Game over — show victory animation
-            cinematicLockRef.current = true;
-            transitionTo("victory");
-            timerRef.current = setTimeout(() => {
+          timerRef.current = setTimeout(() => {
+            const isLast = idx === roundsToAnimate.length - 1;
+
+            if (isLast && isSettled) {
+              // Final round of a settled game → play victory animation
+              transitionTo("victory");
+              timerRef.current = setTimeout(() => {
+                cinematicLockRef.current = false;
+              }, victoryDur);
+            } else if (isLast) {
+              // Final animated round but game continues — unlock and return to chain-driven state
               cinematicLockRef.current = false;
-            }, CINEMATIC_DURATIONS["victory"] || REPLAY_DURATIONS["victory"]);
-          } else {
-            // More rounds — advance roundIndex to current chain round
-            setRoundIndex(chainRound);
-            // Next useEffect cycle will map chain state → director phase
-          }
-        }, resultDur);
-      }, clashDur);
+              setRoundIndex(chainRound);
+            } else {
+              // More rounds to animate → continue the chain
+              animateRound(idx + 1);
+            }
+          }, resultDur);
+        }, clashDur);
+      }
 
+      animateRound(0);
       return; // Skip normal chain state mapping this cycle
     }
 

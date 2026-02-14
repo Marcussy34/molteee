@@ -18,24 +18,58 @@ export function MoveWeapon({
   phaseElapsed,
   isWinner,
 }: MoveWeaponProps) {
+  // Ref for animating position/scale during clash phase
+  const groupRef = useRef<THREE.Group>(null!);
+
   const normalized = move?.toLowerCase();
-  if (!normalized || !["rock", "paper", "scissors"].includes(normalized)) return null;
+  const isValid = normalized && ["rock", "paper", "scissors"].includes(normalized);
 
   const armX = side === "left" ? -3.05 : 3.05;
   const armY = 0.45;
 
   // Lifecycle scale: charge up during thinking, hold during clash
-  let scale = 0;
+  let baseScale = 0;
   if (battlePhase === "thinking") {
-    scale = Math.min(phaseElapsed * 1.6, 1); // grow over ~60% of thinking phase
+    baseScale = Math.min(phaseElapsed * 1.6, 1); // grow over ~60% of thinking phase
   } else if (battlePhase === "clash" || battlePhase === "round_result") {
-    scale = 1;
+    baseScale = 1;
   }
 
-  if (scale <= 0.01) return null;
+  // Animate weapon toward center during clash phase (easeOutQuart deceleration)
+  // Weapons converge at ~55% of clash, then scale to 0 as ClashResolver explosion takes over
+  useFrame(() => {
+    if (!groupRef.current) return;
+
+    if (battlePhase === "clash") {
+      // easeOutQuart: 1 - (1-t)^4 — fast start, smooth arrival
+      const eased = 1 - Math.pow(1 - phaseElapsed, 4);
+      const targetX = side === "left" ? -0.3 : 0.3;
+      // Weapons reach center at ~55% of clash phase (990ms into 1800ms)
+      const convergence = Math.min(eased / 0.55, 1);
+      groupRef.current.position.x = armX + (targetX - armX) * convergence;
+      groupRef.current.position.y = armY;
+      groupRef.current.position.z = 0;
+
+      // Rapidly scale down after convergence (explosion takes over at 60%)
+      if (phaseElapsed > 0.6) {
+        const fadeT = (phaseElapsed - 0.6) / 0.4;
+        groupRef.current.scale.setScalar(Math.max(0, 1 - fadeT) * baseScale);
+      } else {
+        groupRef.current.scale.setScalar(baseScale);
+      }
+    } else {
+      // Non-clash phases: hold at arm position with lifecycle scale
+      groupRef.current.position.set(armX, armY, 0);
+      groupRef.current.scale.setScalar(baseScale);
+    }
+  });
+
+  // Early returns AFTER hooks to satisfy React rules of hooks
+  if (!isValid) return null;
+  if (baseScale <= 0.01) return null;
 
   return (
-    <group position={[armX, armY, 0]} scale={[scale, scale, scale]}>
+    <group ref={groupRef} position={[armX, armY, 0]} scale={[baseScale, baseScale, baseScale]}>
       {normalized === "rock" && (
         <RockManifest phaseElapsed={phaseElapsed} battlePhase={battlePhase} />
       )}

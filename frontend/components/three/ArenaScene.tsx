@@ -52,7 +52,8 @@ export function ArenaScene({ battleState }: ArenaSceneProps) {
   const revealedMoveA = phase === "clash" || phase === "round_result" || phase === "victory" ? moveA : undefined;
   const revealedMoveB = phase === "clash" || phase === "round_result" || phase === "victory" ? moveB : undefined;
 
-  const showWeapons = phase === "clash" || phase === "round_result";
+  // Show weapons during thinking (charge up), clash (fly toward center), and round_result
+  const showWeapons = phase === "thinking" || phase === "clash" || phase === "round_result";
   const winnerMove = getWinnerMove(revealedMoveA, revealedMoveB, roundWinner);
 
   return (
@@ -114,12 +115,19 @@ export function ArenaScene({ battleState }: ArenaSceneProps) {
       )}
 
       {/* ═══ CINEMATIC CLASH RESOLUTION ═══ */}
-      {phase === "round_result" && (
+      {/* Render during clash (after weapons collide at ~55%) and round_result */}
+      {(phase === "clash" || phase === "round_result") && (
         <ClashResolver
           moveA={revealedMoveA}
           moveB={revealedMoveB}
           roundWinner={roundWinner}
-          phaseElapsed={phaseElapsed}
+          phaseElapsed={
+            // During clash: remap last 45% of phase to 0→1 (starts when weapons collide)
+            // During round_result: pass through as-is (continues the effect)
+            phase === "clash"
+              ? Math.max(0, (phaseElapsed - 0.55) / 0.45)
+              : phaseElapsed
+          }
         />
       )}
 
