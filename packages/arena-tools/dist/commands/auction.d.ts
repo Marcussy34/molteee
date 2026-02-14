@@ -1,6 +1,7 @@
 /** Create a new Auction game for a match */
 export declare function auctionCreateCommand(matchId: string): Promise<void>;
-/** Commit a bid amount (in MON) */
+/** Commit a bid amount (in MON).
+ *  Validates bid ≤ match wager BEFORE committing to prevent unrevealable bids. */
 export declare function auctionCommitCommand(gameId: string, bid: string): Promise<void>;
 /** Reveal the committed bid */
 export declare function auctionRevealCommand(gameId: string): Promise<void>;

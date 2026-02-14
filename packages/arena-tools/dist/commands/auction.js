@@ -1,11 +1,11 @@
 // arena-tools auction-* — step-by-step Auction game commands
 // auction-create: Create a new Auction game
-// auction-commit: Commit a bid amount
+// auction-commit: Commit a bid amount (validates bid ≤ wager before committing)
 // auction-reveal: Reveal the committed bid
-import { encodeFunctionData, parseEther } from "viem";
+import { encodeFunctionData, parseEther, formatEther } from "viem";
 import { CONTRACTS } from "../config.js";
-import { auctionGameAbi } from "../contracts.js";
-import { getAddress } from "../client.js";
+import { auctionGameAbi, escrowAbi } from "../contracts.js";
+import { getPublicClient, getAddress } from "../client.js";
 import { sendTx } from "../utils/tx.js";
 import { generateSalt, saveSalt, loadSalt, deleteSalt, commitBidHash } from "../utils/commit-reveal.js";
 import { ok, fail } from "../utils/output.js";
@@ -35,9 +35,35 @@ export async function auctionCreateCommand(matchId) {
         txHash: hash,
     });
 }
-/** Commit a bid amount (in MON) */
+/** Commit a bid amount (in MON).
+ *  Validates bid ≤ match wager BEFORE committing to prevent unrevealable bids. */
 export async function auctionCommitCommand(gameId, bid) {
     const bidWei = parseEther(bid);
+    const client = getPublicClient();
+    const gid = BigInt(gameId);
+    // Fetch game state to get the escrow match ID, then fetch the wager
+    const game = await client.readContract({
+        address: CONTRACTS.AuctionGame,
+        abi: auctionGameAbi,
+        functionName: "getGame",
+        args: [gid],
+    });
+    const match = await client.readContract({
+        address: CONTRACTS.Escrow,
+        abi: escrowAbi,
+        functionName: "getMatch",
+        args: [game.escrowMatchId],
+    });
+    const wager = match.wager;
+    // Validate: bid must be > 0 and ≤ wager (contract enforces at reveal, but catch early)
+    if (bidWei <= 0n) {
+        fail(`Bid must be greater than 0. Got: ${bid} MON`, "INVALID_BID");
+        return;
+    }
+    if (bidWei > wager) {
+        fail(`Bid ${bid} MON exceeds match wager ${formatEther(wager)} MON. Bid must be ≤ wager.`, "BID_EXCEEDS_WAGER");
+        return;
+    }
     const salt = generateSalt();
     const hash = commitBidHash(bidWei, salt);
     // Save salt and bid for reveal (include wallet address to avoid collision)
@@ -46,7 +72,7 @@ export async function auctionCommitCommand(gameId, bid) {
     const data = encodeFunctionData({
         abi: auctionGameAbi,
         functionName: "commitBid",
-        args: [BigInt(gameId), hash],
+        args: [gid, hash],
     });
     const { hash: txHash } = await sendTx({
         to: CONTRACTS.AuctionGame,
@@ -56,6 +82,7 @@ export async function auctionCommitCommand(gameId, bid) {
         action: "auction-commit",
         gameId: parseInt(gameId),
         bid,
+        maxBid: formatEther(wager),
         commitHash: hash,
         txHash,
     });

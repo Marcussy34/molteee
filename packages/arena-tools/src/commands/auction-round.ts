@@ -4,7 +4,7 @@
 // Usage: npx arena-tools auction-round <game_id> <bid_in_MON>
 import { encodeFunctionData, parseEther, formatEther } from "viem";
 import { CONTRACTS } from "../config.js";
-import { auctionGameAbi } from "../contracts.js";
+import { auctionGameAbi, escrowAbi } from "../contracts.js";
 import { getPublicClient, getAddress } from "../client.js";
 import { sendTx } from "../utils/tx.js";
 import { generateSalt, saveSalt, loadSalt, deleteSalt, commitBidHash } from "../utils/commit-reveal.js";
@@ -59,6 +59,19 @@ export async function auctionRoundCommand(gameId: string, bid: string) {
 
     if (game.settled) {
         ok({ gameId: Number(gid), gameComplete: true, message: "Game is already settled." });
+        return;
+    }
+
+    // Validate bid ≤ wager BEFORE committing (contract rejects at reveal, catch early)
+    const match = await retry(() => client.readContract({
+        address: CONTRACTS.Escrow, abi: escrowAbi, functionName: "getMatch", args: [game.escrowMatchId],
+    }), "getMatch") as any;
+    if (bidWei > match.wager) {
+        fail(`Bid ${bid} MON exceeds match wager ${formatEther(match.wager)} MON. Bid must be ≤ wager.`, "BID_EXCEEDS_WAGER");
+        return;
+    }
+    if (bidWei <= 0n) {
+        fail(`Bid must be greater than 0. Got: ${bid} MON`, "INVALID_BID");
         return;
     }
 
