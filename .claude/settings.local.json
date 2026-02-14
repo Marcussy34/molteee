@@ -16,7 +16,15 @@
       "Bash(cast chain-id:*)",
       "Bash(foundryup:*)",
       "Bash(/Users/marcus/.foundry/bin/forge script:*)",
-      "Bash(/Users/marcus/.foundry/bin/cast call:*)"
+      "Bash(/Users/marcus/.foundry/bin/cast call:*)",
+      "Bash(RPC=\"https://monad-mainnet.g.alchemy.com/v2/bl9zbJnm4_TpoPKha-QRB\")",
+      "Bash(for addr in 0xCD40Da7306672aa1151bA43ff479e93023e21e1f 0x37D06C086C9DFC48205d777B0159680ADe7FEfE1 0x8290c36e60A57F86bab44949CE114B348c4C8c5A 0x3828B000Fed74Bac8636405DF366FcEb72710496 0xA56766DD77917EFE3E6403BDDDB32E7c9576CAFE)",
+      "Bash(do echo -n \"$addr: \")",
+      "Bash(/Users/marcus/.foundry/bin/cast balance:*)",
+      "Bash(done)",
+      "Bash(KEY=\"0xb0ea17ff3a4b21dd8bae5c1d62f84b213b54c720baff8548ff6d035fb015f181\")",
+      "Bash(/Users/marcus/.foundry/bin/cast send:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

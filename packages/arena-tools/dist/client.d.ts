@@ -17,8 +17,8 @@ export declare const monadTestnet: {
         erc6492Verifier?: import("viem").ChainContract | undefined;
     }> | undefined;
     ensTlds?: readonly string[] | undefined;
-    id: 10143;
-    name: "Monad Testnet";
+    id: 143;
+    name: "Monad";
     nativeCurrency: {
         readonly name: "MON";
         readonly symbol: "MON";
@@ -47,8 +47,8 @@ export declare const monadTestnet: {
     serializers?: import("viem").ChainSerializers<undefined, import("viem").TransactionSerializable>;
     verifyHash?: ((client: import("viem").Client, parameters: import("viem").VerifyHashActionParameters) => Promise<import("viem").VerifyHashActionReturnType>) | undefined;
     extend: <const extended_1 extends Record<string, unknown>>(extended: extended_1) => import("viem").Assign<import("viem").Assign<import("viem").Chain<undefined>, {
-        readonly id: 10143;
-        readonly name: "Monad Testnet";
+        readonly id: 143;
+        readonly name: "Monad";
         readonly nativeCurrency: {
             readonly name: "MON";
             readonly symbol: "MON";
