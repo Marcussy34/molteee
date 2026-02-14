@@ -162,7 +162,7 @@ function loadFromStorage(): { live: OnChainMatch[]; pending: OnChainMatch[]; set
 // so we never re-fetch from chain. Survives page refreshes.
 // Bumped to v2: invalidate after contract address changes (V1→V2)
 const SETTLED_PERM_KEY = "arena-settled-perm-v2";
-const SETTLED_PERM_MAX = 200;
+const SETTLED_PERM_MAX = 1000;
 
 // In-memory mirror of the permanent localStorage cache
 let permanentSettledCache = new Map<number, OnChainMatch>(); // matchId → match
@@ -311,7 +311,7 @@ export function useActiveMatches(filter: GameFilter = "all") {
       // Even with no ephemeral cache, show permanently cached settled matches
       const settled = Array.from(permanentSettledCache.values())
         .sort((a, b) => b.createdAt - a.createdAt)
-        .slice(0, 15);
+        ;
       cachedSettled = settled;
       setRecentSettled(settled);
       setLoading(false);
@@ -504,7 +504,7 @@ export function useActiveMatches(filter: GameFilter = "all") {
       const settled = [
         ...matches.filter((m) => m.status === "settled" && !graceMatchIds.has(m.matchId)),
         ...olderSettled,
-      ].sort((a, b) => b.createdAt - a.createdAt).slice(0, 15);
+      ].sort((a, b) => b.createdAt - a.createdAt);
 
       // For active matches, preserve existing isPlaying from previous liveness check
       const active = matches.filter((m) => m.status === "active");
@@ -536,7 +536,7 @@ export function useActiveMatches(filter: GameFilter = "all") {
         .sort((a, b) => b.createdAt - a.createdAt);
 
       // Merge not-live active matches into settled list
-      const allSettled = [...notLive, ...settled].sort((a, b) => b.createdAt - a.createdAt).slice(0, 15);
+      const allSettled = [...notLive, ...settled].sort((a, b) => b.createdAt - a.createdAt);
 
       // Update caches + persist to localStorage for instant load on next visit
       cachedLive = live;
@@ -726,7 +726,7 @@ export function useActiveMatches(filter: GameFilter = "all") {
           .sort((a, b) => b.createdAt - a.createdAt);
 
         // Merge not-live into settled — completed/unchecked games show in RECENT RESULTS
-        const settled = [...notLive, ...escrowSettled].sort((a, b) => b.createdAt - a.createdAt).slice(0, 15);
+        const settled = [...notLive, ...escrowSettled].sort((a, b) => b.createdAt - a.createdAt);
 
         cachedLive = live;
         cachedPending = pending;
