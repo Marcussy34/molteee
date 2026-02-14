@@ -23,12 +23,13 @@ export function ArcadeNav() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between border-b border-monad-purple/20 bg-monad-dark/90 backdrop-blur-sm px-4 py-2">
-      {/* Logo */}
-      <Link
-        href="/"
-        className="font-pixel text-sm text-monad-purple glow-purple tracking-wider hover:text-white transition-colors"
-      >
-        MOLTEEE
+      {/* Logo — pixel-art M with flame, links to home */}
+      <Link href="/" className="flex items-center">
+        <img
+          src="/Moltee_Log.png"
+          alt="Molteee"
+          className="h-8 w-auto"
+        />
       </Link>
 
       {/* Nav links */}

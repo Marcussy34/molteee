@@ -195,8 +195,15 @@ export function usePokerDirector(
   const cinematicLockRef = useRef(false);
   const entranceDoneRef = useRef(false);
   const prevCommitCountRef = useRef(0);
+  const prevRevealCountRef = useRef(0);
+  const liveModeActiveRef = useRef(false);
 
-  const isLiveMode = !!(liveChainState && !liveChainState.settled);
+  // Latch: once live mode activates, stays active until match resets
+  // This prevents settlement from dropping live mode mid-cinematic
+  if (liveChainState && !liveChainState.settled) {
+    liveModeActiveRef.current = true;
+  }
+  const isLiveMode = liveModeActiveRef.current && !!liveChainState;
 
   const match = matches.length > 0 ? matches[matchIndex % matches.length] : null;
   const totalRounds = match?.rounds?.length || 1;
@@ -290,6 +297,12 @@ export function usePokerDirector(
     }
     prevCommitCountRef.current = liveChainState.commitCount;
 
+    // Reveal SFX — plays when reveal count increases during showdown
+    if (liveChainState.revealCountChanged && liveChainState.revealCount > prevRevealCountRef.current) {
+      sfx.revealChirp();
+    }
+    prevRevealCountRef.current = liveChainState.revealCount;
+
     // Map chain state to desired phase
     const { phase: desiredPhase } = chainStateToPokerPhase(liveChainState);
 
@@ -357,6 +370,8 @@ export function usePokerDirector(
       entranceDoneRef.current = false;
       cinematicLockRef.current = false;
       prevCommitCountRef.current = 0;
+      prevRevealCountRef.current = 0;
+      liveModeActiveRef.current = false;
       setRoundIndex(0);
     }
   }, [matches.length]);

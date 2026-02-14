@@ -23,11 +23,14 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-screen w-60 flex-col border-r border-border bg-card">
-      {/* Logo / branding */}
-      <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-        <Swords className="h-6 w-6 text-primary" />
-        <span className="text-lg font-bold tracking-tight">Molteee</span>
-      </div>
+      {/* Logo / branding — pixel-art M with flame, links to home */}
+      <Link href="/" className="flex h-16 items-center border-b border-border px-6">
+        <img
+          src="/Moltee_Log.png"
+          alt="Molteee"
+          className="h-8 w-auto"
+        />
+      </Link>
 
       {/* Navigation links */}
       <nav className="flex-1 space-y-1 px-3 py-4">

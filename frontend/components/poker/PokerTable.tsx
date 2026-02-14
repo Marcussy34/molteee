@@ -13,6 +13,7 @@ export function PokerTable({ pokerState, playerAName, playerBName }: PokerTableP
   const {
     phase, actionA, actionB, handValueA, handValueB,
     hasFold, bettingStep, roundWinner, matchWinner, match,
+    isLiveMode, waitingFor,
   } = pokerState;
 
   const showCards = phase === "deal" || phase === "betting" || phase === "showdown" || phase === "round_result";
@@ -56,12 +57,12 @@ export function PokerTable({ pokerState, playerAName, playerBName }: PokerTableP
             </div>
             {phase === "deal" && (
               <span className="font-pixel text-[8px] text-neon-cyan animate-blink">
-                DEALING...
+                {isLiveMode && waitingFor ? waitingFor : "DEALING..."}
               </span>
             )}
             {phase === "betting" && (
               <span className="font-pixel text-[8px] text-neon-yellow">
-                BETTING
+                {isLiveMode && waitingFor ? waitingFor : "BETTING"}
               </span>
             )}
           </div>
@@ -139,6 +140,12 @@ export function PokerTable({ pokerState, playerAName, playerBName }: PokerTableP
           <span className="font-pixel text-xl text-neon-yellow animate-blink" style={{ textShadow: "0 0 20px #FFD700" }}>
             SHOWDOWN!
           </span>
+          {/* Live chain status during showdown */}
+          {isLiveMode && waitingFor && (
+            <span className="font-pixel text-[10px] text-monad-purple animate-pulse mt-1 block" style={{ textShadow: "0 0 10px #836EF9" }}>
+              {waitingFor}
+            </span>
+          )}
         </div>
       )}
 
