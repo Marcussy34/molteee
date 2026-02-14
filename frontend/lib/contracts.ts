@@ -76,7 +76,7 @@ export const ADDRESSES = {
   agentRegistry: "0x88Ca39AE7b2e0fc3aA166DFf93561c71CF129b08" as const,
   escrow: "0x14C394b4042Fd047fD9226082684ED3F174eFD0C" as const,
   rpsGame: "0xE05544220998684540be9DC8859bE9954A6E3B6a" as const,
-  pokerGame: "0xb08e06cF59EDB3aF1Cbf15EBB4EcE9c65876D91a" as const,   // PokerGameV2 (Budget Poker)
+  pokerGame: "0x69F86818e82B023876c2b87Ab0428dc38933897d" as const,   // PokerGameV2 (Budget Poker)
   auctionGame: "0xC5058a75A5E7124F3dB5657C635EB7c3b8C84A3D" as const,
   predictionMarket: "0x4D845ae4B5d640181F0c1bAeCfd0722C792242C0" as const,
   tournamentV2: "0xF1f333a4617186Cf10284Dc9d930f6082cf92A74" as const,

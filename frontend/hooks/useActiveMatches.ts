@@ -103,8 +103,8 @@ function isGameComplete(gameType: string, phase: number, settled: boolean): bool
 // Persists match data across page navigations and refreshes so the UI renders
 // immediately with stale data while fresh data loads in the background.
 
-// Bumped to v3: completed games now move to settled, not live
-const STORAGE_KEY = "arena-matches-v3";
+// Bumped to v4: clear stale cache after pokerGame address changed from V1 to V2
+const STORAGE_KEY = "arena-matches-v4";
 
 // bigint can't be JSON.stringified, so we convert wager to a hex string
 interface SerializedMatch extends Omit<OnChainMatch, "wager"> {
@@ -160,7 +160,8 @@ function loadFromStorage(): { live: OnChainMatch[]; pending: OnChainMatch[]; set
 // ─── Permanent settled match cache ──────────────────────────────────────────
 // Settled matches (escrow status = "settled") are immutable — cache them forever
 // so we never re-fetch from chain. Survives page refreshes.
-const SETTLED_PERM_KEY = "arena-settled-perm";
+// Bumped to v2: invalidate after contract address changes (V1→V2)
+const SETTLED_PERM_KEY = "arena-settled-perm-v2";
 const SETTLED_PERM_MAX = 200;
 
 // In-memory mirror of the permanent localStorage cache
@@ -174,6 +175,10 @@ function loadPermanentSettled(): Map<number, OnChainMatch> {
     const entries: SerializedMatch[] = JSON.parse(raw);
     const map = new Map<number, OnChainMatch>();
     for (const s of entries) {
+      // Validate: skip entries whose gameContract no longer maps to a known type
+      // (e.g., old PokerV1 matches cached before the address changed to V2)
+      const currentType = detectGameType(s.gameContract);
+      if (currentType === "unknown") continue;
       map.set(s.matchId, deserializeMatch(s));
     }
     return map;
@@ -221,7 +226,8 @@ const settledGameMatches = new Set<number>();          // matchIds with complete
 // ─── Persist settled game match IDs in localStorage ──────────────────────────
 // Prevents the grace period from restarting on page refresh — once a game is
 // detected as complete/expired, we remember it across page loads.
-const SETTLED_GAMES_KEY = "arena-stale-matches";
+// Bumped to v2: invalidate after contract address changes
+const SETTLED_GAMES_KEY = "arena-stale-matches-v2";
 const SETTLED_GAMES_MAX = 200;
 
 function loadSettledGameMatches(): void {
