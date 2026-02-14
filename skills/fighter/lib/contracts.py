@@ -1,5 +1,5 @@
 """
-Contract ABIs, deployed addresses, and web3 wrappers for the Gaming Arena on Monad testnet.
+Contract ABIs, deployed addresses, and web3 wrappers for the Gaming Arena on Monad mainnet.
 
 ABIs are loaded from Foundry build artifacts (contracts/out/).
 Addresses are loaded from .env.
@@ -35,15 +35,15 @@ TOURNAMENT_ADDRESS = os.getenv("TOURNAMENT_ADDRESS", "")
 PREDICTION_MARKET_ADDRESS = os.getenv("PREDICTION_MARKET_ADDRESS", "")
 TOURNAMENT_V2_ADDRESS = os.getenv("TOURNAMENT_V2_ADDRESS", "")
 
-# ─── ERC-8004 Registry Addresses (deployed singletons on Monad Testnet) ─────
+# ─── ERC-8004 Registry Addresses (deployed singletons on Monad Mainnet) ─────
 
-ERC8004_IDENTITY_REGISTRY = "0x8004A818BFB912233c491871b3d84c89A494BD9e"
-ERC8004_REPUTATION_REGISTRY = "0x8004B663056A597Dffe9eCcC1965A193B7388713"
+ERC8004_IDENTITY_REGISTRY = os.getenv("ERC8004_IDENTITY_REGISTRY", "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432")
+ERC8004_REPUTATION_REGISTRY = os.getenv("ERC8004_REPUTATION_REGISTRY", "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63")
 
-# ─── Monad Testnet Config ────────────────────────────────────────────────────
+# ─── Monad Config ────────────────────────────────────────────────────────────
 
-MONAD_RPC_URL = os.getenv("MONAD_RPC_URL", "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3")
-MONAD_CHAIN_ID = 10143
+MONAD_RPC_URL = os.getenv("MONAD_RPC_URL", "https://monad-mainnet.g.alchemy.com/v2/bl9zbJnm4_TpoPKha-QRB")
+MONAD_CHAIN_ID = int(os.getenv("MONAD_CHAIN_ID", "143"))
 
 # ─── Game Constants ──────────────────────────────────────────────────────────
 

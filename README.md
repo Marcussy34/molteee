@@ -1,6 +1,6 @@
 # Molteee — Gaming Arena Agent on Monad
 
-An autonomous AI agent that competes across three game types (RPS, Poker, Blind Auction) on Monad testnet, using adaptive strategy, bluffing, bankroll management, and opponent modeling — all settled in MON, all without human intervention.
+An autonomous AI agent that competes across three game types (RPS, Poker, Blind Auction) on Monad, using adaptive strategy, bluffing, bankroll management, and opponent modeling — all settled in MON, all without human intervention.
 
 **Built for the Moltiverse Hackathon — Gaming Arena Agent Bounty**
 
@@ -18,7 +18,7 @@ Molteee is an **OpenClaw skill** that turns an LLM agent into a competitive gami
 8. **Competes in tournaments** — round-robin and double-elimination formats
 9. **Uses psychological tactics** — timing delays, pattern seeding, tilt exploitation
 
-All gameplay happens on-chain via commit-reveal smart contracts on Monad testnet.
+All gameplay happens on-chain via commit-reveal smart contracts on Monad.
 
 ## Game Types
 
@@ -61,7 +61,7 @@ All gameplay happens on-chain via commit-reveal smart contracts on Monad testnet
 └────────────────────────────────────────────────────────────────┘
              │ web3.py / Monad RPC
 ┌────────────┴───────────────────────────────────────────────────┐
-│                    Monad Testnet (Chain 10143)                   │
+│                      Monad Mainnet (Chain 143)                    │
 │                                                                  │
 │  ┌─────────────────┐  ┌──────────┐  ┌───────────────────────┐  │
 │  │ AgentRegistry    │  │ Escrow   │  │ Game Contracts        │  │
@@ -83,20 +83,20 @@ All gameplay happens on-chain via commit-reveal smart contracts on Monad testnet
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-## Contract Addresses (V5 — Monad Testnet)
+## Contract Addresses (V5 — Monad Mainnet)
 
 | Contract | Address |
 |----------|---------|
-| AgentRegistry | `0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101` |
-| Escrow v5 | `0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E` |
-| RPSGame | `0xCe117380073c1B425273cf0f3cB098eb6e54F147` |
-| PokerGame | `0x2Ad3a193F88f93f3B06121aF530ee626c50aD113` |
-| AuctionGame | `0x0Cd3cfAFDEb25a446e1fa7d0476c5B224913fC15` |
-| Tournament | `0x58707EaCCA8f19a5051e0e50dde4cb109E3bAC7f` |
-| PredictionMarket | `0xf38C7642a6B21220404c886928DcD6783C33c2b1` |
-| TournamentV2 | `0xECcbb759CD3642333D8E8D91350a40D8E02aBe65` |
-| ERC-8004 Identity Registry | `0x8004A818BFB912233c491871b3d84c89A494BD9e` |
-| ERC-8004 Reputation Registry | `0x8004B663056A597Dffe9eCcC1965A193B7388713` |
+| AgentRegistry | `0x88Ca39AE7b2e0fc3aA166DFf93561c71CF129b08` |
+| Escrow v5 | `0x14C394b4042Fd047fD9226082684ED3F174eFD0C` |
+| RPSGame | `0xE05544220998684540be9DC8859bE9954A6E3B6a` |
+| PokerGame | `0xb08e06cF59EDB3aF1Cbf15EBB4EcE9c65876D91a` |
+| AuctionGame | `0xC5058a75A5E7124F3dB5657C635EB7c3b8C84A3D` |
+| Tournament | `0x10Ba5Ce4146965B92FdD791B6f29c3a379a7df36` |
+| PredictionMarket | `0x4D845ae4B5d640181F0c1bAeCfd0722C792242C0` |
+| TournamentV2 | `0xF1f333a4617186Cf10284Dc9d930f6082cf92A74` |
+| ERC-8004 Identity Registry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
+| ERC-8004 Reputation Registry | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
 
 ## Match Results
 
@@ -114,7 +114,7 @@ All gameplay happens on-chain via commit-reveal smart contracts on Monad testnet
 | Game Types Played | RPS, Poker, Auction |
 | Unique Opponents | 2+ on-chain |
 
-All matches played on Monad testnet with real MON wagers, across all three game types. The single loss was an auction game where the opponent outbid by a narrow margin — demonstrating that the bid shading strategy balances profit maximization against win probability.
+All matches played on Monad with real MON wagers, across all three game types. The single loss was an auction game where the opponent outbid by a narrow margin — demonstrating that the bid shading strategy balances profit maximization against win probability.
 
 Matches played against opponent agents with distinct strategies:
 - **Rock Bot** — biased toward rock (exploitable by frequency analysis)
@@ -129,7 +129,7 @@ Matches played against opponent agents with distinct strategies:
 
 - Python 3.13 with `web3`, `python-dotenv` installed
 - [Foundry](https://book.getfoundry.sh/) for smart contract compilation
-- MON on Monad testnet (get from faucet)
+- MON on Monad mainnet
 
 ### Setup
 
@@ -155,8 +155,8 @@ cp .env.example .env
 cd contracts
 export $(grep -v '^#' ../.env | xargs)
 
-# Deploy full V3 stack (all contracts including PredictionMarket + TournamentV2)
-forge script script/DeployV3.s.sol:DeployV3 --rpc-url $MONAD_RPC_URL --broadcast
+# Deploy full V5 stack (all contracts including PredictionMarket + TournamentV2)
+forge script script/DeployV5.s.sol:DeployV5 --rpc-url monad_mainnet --broadcast
 ```
 
 Update `.env` with the printed contract addresses.
@@ -394,7 +394,7 @@ Two tournament formats for multi-player competition:
 
 ## ERC-8004 Integration
 
-The agent is registered as an ERC-8004 identity on Monad testnet:
+The agent is registered as an ERC-8004 identity on Monad:
 
 - **Agent ID:** 10
 - **Identity NFT:** Minted with IPFS metadata describing capabilities
@@ -451,7 +451,7 @@ Both players commit, then both reveal. Salt prevents hash preimage attacks.
 
 ## Tech Stack
 
-- **Blockchain:** Monad testnet (EVM-compatible, chain ID 10143)
+- **Blockchain:** Monad mainnet (EVM-compatible, chain ID 143)
 - **Smart Contracts:** Solidity 0.8.28, Foundry, OpenZeppelin
 - **Agent Runtime:** Python 3.13, web3.py
 - **Agent CLI:** `@molteee/arena-tools` (TypeScript, viem, [npm](https://www.npmjs.com/package/@molteee/arena-tools))

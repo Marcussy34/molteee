@@ -5,7 +5,7 @@
  * Markets use a constant-product AMM (x*y=k):
  *   YES tokens = player1 wins, NO tokens = player2 wins.
  *
- * Plugs directly into the PredictionMarket contract on Monad testnet
+ * Plugs directly into the PredictionMarket contract on Monad
  * with the same caching patterns as leaderboard / matches pages.
  */
 
@@ -14,7 +14,7 @@ import Link from "next/link";
 import { MarketCard } from "@/components/markets/MarketCard";
 import { useMarkets, type MarketFilter } from "@/hooks/useMarkets";
 import { ADDRESSES } from "@/lib/contracts";
-import { monadTestnet } from "@/lib/contracts";
+import { monadChain } from "@/lib/contracts";
 
 // ─── Filter definitions ────────────────────────────────────────────────────
 
@@ -26,7 +26,7 @@ const STATUS_FILTERS: { key: MarketFilter; label: string }[] = [
 ];
 
 // Block explorer base URL
-const EXPLORER = monadTestnet.blockExplorers.default.url;
+const EXPLORER = monadChain.blockExplorers.default.url;
 
 // ─── Page component ────────────────────────────────────────────────────────
 
@@ -63,7 +63,7 @@ export default function MarketsPage() {
               VERIFIED ON-CHAIN
             </span>
             <span className="font-pixel text-[7px] text-text-dim">
-              — MONAD TESTNET
+              — MONAD
             </span>
           </div>
 

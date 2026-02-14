@@ -25,7 +25,7 @@ import "../src/TournamentV2.sol";
 ///   cd contracts
 ///   source ../.env
 ///   forge script script/DeployV5.s.sol:DeployV5 \
-///     --rpc-url monad_testnet --broadcast
+///     --rpc-url monad_mainnet --broadcast
 ///
 /// Requires in .env:
 ///   DEPLOYER_PRIVATE_KEY
@@ -36,13 +36,13 @@ contract DeployV5 is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
-        // ERC-8004 registries on Monad Testnet (singletons)
-        address identityRegistry = 0x8004A818BFB912233c491871b3d84c89A494BD9e;
-        address reputationRegistry = 0x8004B663056A597Dffe9eCcC1965A193B7388713;
+        // ERC-8004 registries on Monad Mainnet (singletons — loaded from .env)
+        address identityRegistry = vm.envAddress("ERC8004_IDENTITY_REGISTRY");
+        address reputationRegistry = vm.envAddress("ERC8004_REPUTATION_REGISTRY");
 
         // Configurable seed/treasury amounts (with defaults)
         uint256 seedAmount = vm.envOr("MARKET_SEED", uint256(0.01 ether));
-        uint256 treasuryFund = vm.envOr("TREASURY_FUND", uint256(1 ether));
+        uint256 treasuryFund = vm.envOr("TREASURY_FUND", uint256(0.1 ether));
 
         vm.startBroadcast(deployerKey);
 

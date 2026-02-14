@@ -1,24 +1,24 @@
 import { createPublicClient, http, fallback, defineChain } from "viem";
 
 // ─── RPC endpoints ──────────────────────────────────────────────────────────
-const ALCHEMY_RPC = "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3";
-const MONAD_PUBLIC_RPC = "https://testnet-rpc.monad.xyz";
+const ALCHEMY_RPC = process.env.NEXT_PUBLIC_MONAD_RPC_URL || "https://monad-mainnet.g.alchemy.com/v2/bl9zbJnm4_TpoPKha-QRB";
+const MONAD_PUBLIC_RPC = "https://rpc.monad.xyz";
 
-// Monad testnet chain definition
-export const monadTestnet = defineChain({
-  id: 10143,
-  name: "Monad Testnet",
+// Monad chain definition
+export const monadChain = defineChain({
+  id: parseInt(process.env.NEXT_PUBLIC_MONAD_CHAIN_ID || "143"),
+  name: process.env.NEXT_PUBLIC_MONAD_CHAIN_NAME || "Monad",
   nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
   rpcUrls: {
     default: { http: [ALCHEMY_RPC] },
   },
   blockExplorers: {
-    default: { name: "Monad Explorer", url: "https://testnet.monadexplorer.com" },
+    default: { name: "Monadscan", url: process.env.NEXT_PUBLIC_MONAD_EXPLORER_URL || "https://monadscan.com" },
   },
 });
 
 // ─── Rate-limited fetch ────────────────────────────────────────────────────
-// Monad testnet RPCs are rate-limited. This queue ensures all hooks share a
+// Monad RPCs are rate-limited. This queue ensures all hooks share a
 // single serialized request pipeline with a delay between calls.
 const RPC_DELAY_MS = 200; // minimum ms between RPC requests
 let lastRequestTime = 0;
@@ -26,13 +26,13 @@ let requestQueue: Promise<unknown> = Promise.resolve();
 
 // Check if a URL is one of our Monad RPC endpoints
 function isMonadRpc(url: string): boolean {
-  return url.includes("monad-testnet.g.alchemy.com") || url.includes("testnet-rpc.monad.xyz");
+  return url.includes("monad-mainnet.g.alchemy.com") || url.includes("rpc.monad.xyz");
 }
 
 // Single public client for all reads — Alchemy primary, public Monad fallback
 // viem's fallback transport auto-switches when Alchemy 429s or times out
 export const publicClient = createPublicClient({
-  chain: monadTestnet,
+  chain: monadChain,
   transport: fallback([
     http(ALCHEMY_RPC, { retryCount: 1, retryDelay: 500, timeout: 8_000 }),
     http(MONAD_PUBLIC_RPC, { retryCount: 2, retryDelay: 1000, timeout: 10_000 }),
@@ -71,15 +71,15 @@ if (typeof window !== "undefined") {
   }
 }
 
-// Deployed contract addresses on Monad testnet (V5 deployment)
+// Deployed contract addresses on Monad mainnet
 export const ADDRESSES = {
-  agentRegistry: "0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101" as const,
-  escrow: "0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E" as const,
-  rpsGame: "0xCe117380073c1B425273cf0f3cB098eb6e54F147" as const,
-  pokerGame: "0x2Ad3a193F88f93f3B06121aF530ee626c50aD113" as const,   // PokerGameV2 (Budget Poker)
-  auctionGame: "0x0Cd3cfAFDEb25a446e1fa7d0476c5B224913fC15" as const,
-  predictionMarket: "0xf38C7642a6B21220404c886928DcD6783C33c2b1" as const,
-  tournamentV2: "0xECcbb759CD3642333D8E8D91350a40D8E02aBe65" as const,
+  agentRegistry: "0x88Ca39AE7b2e0fc3aA166DFf93561c71CF129b08" as const,
+  escrow: "0x14C394b4042Fd047fD9226082684ED3F174eFD0C" as const,
+  rpsGame: "0xE05544220998684540be9DC8859bE9954A6E3B6a" as const,
+  pokerGame: "0xb08e06cF59EDB3aF1Cbf15EBB4EcE9c65876D91a" as const,   // PokerGameV2 (Budget Poker)
+  auctionGame: "0xC5058a75A5E7124F3dB5657C635EB7c3b8C84A3D" as const,
+  predictionMarket: "0x4D845ae4B5d640181F0c1bAeCfd0722C792242C0" as const,
+  tournamentV2: "0xF1f333a4617186Cf10284Dc9d930f6082cf92A74" as const,
 } as const;
 
 // Game type enum matching the contract

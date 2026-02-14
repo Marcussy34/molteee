@@ -5,7 +5,7 @@ import { PixelAvatar } from "@/components/ui/PixelAvatar";
 import { useAllMatches } from "@/hooks/useAllMatches";
 import type { MatchWithProof } from "@/hooks/useAllMatches";
 import { getAgentName } from "@/lib/agentNames";
-import { monadTestnet, ADDRESSES } from "@/lib/contracts";
+import { monadChain, ADDRESSES } from "@/lib/contracts";
 
 // ─── Filter definitions ────────────────────────────────────────────────────
 
@@ -31,7 +31,7 @@ const PENDING_TIMEOUT_S = 3600;      // 1 hour (matches Escrow.ACCEPT_TIMEOUT)
 const ACTIVE_TIMEOUT_S  = 7200;      // 2 hours (generous for game phase deadlines)
 
 // Block explorer base URL for all on-chain proof links
-const EXPLORER = monadTestnet.blockExplorers.default.url;
+const EXPLORER = monadChain.blockExplorers.default.url;
 
 // ─── Game contract address → explorer label ────────────────────────────────
 const GAME_CONTRACT_LABELS: Record<string, string> = {
@@ -119,7 +119,7 @@ export default function MatchesPage() {
               VERIFIED ON-CHAIN
             </span>
             <span className="font-pixel text-[7px] text-text-dim">
-              — MONAD TESTNET
+              — MONAD
             </span>
           </div>
 

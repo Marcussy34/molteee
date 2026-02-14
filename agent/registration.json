@@ -24,8 +24,8 @@
   "registrations": [],
   "supportedTrust": ["reputation"],
   "metadata": {
-    "chain": "monad-testnet",
-    "chainId": 10143,
+    "chain": "monad",
+    "chainId": 143,
     "gameTypes": ["RPS", "Poker", "Auction"],
     "skills": ["rock-paper-scissors", "poker", "auction", "gaming", "strategy"],
     "dashboard": "https://molteee.vercel.app"

@@ -28,8 +28,8 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-MONAD_RPC_URL = os.getenv("MONAD_RPC_URL", "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3")
-MONAD_CHAIN_ID = 10143
+MONAD_RPC_URL = os.getenv("MONAD_RPC_URL", "https://monad-mainnet.g.alchemy.com/v2/bl9zbJnm4_TpoPKha-QRB")
+MONAD_CHAIN_ID = int(os.getenv("MONAD_CHAIN_ID", "143"))
 
 AGENT_REGISTRY_ADDRESS = os.getenv("AGENT_REGISTRY_ADDRESS", "")
 ESCROW_ADDRESS = os.getenv("ESCROW_ADDRESS", "")

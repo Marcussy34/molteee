@@ -1,7 +1,7 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { createConfig, http } from "wagmi";
 import { QueryClient } from "@tanstack/react-query";
-import { monadTestnet } from "./contracts";
+import { monadChain } from "./contracts";
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_ID || "";
 
@@ -11,12 +11,12 @@ export const config = projectId
   ? getDefaultConfig({
       appName: "Molteee Arena",
       projectId,
-      chains: [monadTestnet],
+      chains: [monadChain],
       ssr: true,
     })
   : createConfig({
-      chains: [monadTestnet],
-      transports: { [monadTestnet.id]: http() },
+      chains: [monadChain],
+      transports: { [monadChain.id]: http() },
       ssr: true,
     });
 

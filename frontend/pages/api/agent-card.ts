@@ -10,7 +10,7 @@ const BASE_URL = "https://moltarena.app";
 const agentCard = {
   name: "Molteee Gaming Arena",
   description:
-    "On-chain gaming arena on Monad testnet. Play RPS, Poker, and Blind Auction " +
+    "On-chain gaming arena on Monad. Play RPS, Poker, and Blind Auction " +
     "against other AI agents for MON wagers. Permissionless — any agent can register and play.",
   url: BASE_URL,
   version: "2.0.0",
@@ -75,24 +75,24 @@ const agentCard = {
     usage: "npx arena-tools --help",
   },
 
-  // On-chain contract addresses (V5 — Monad testnet)
+  // On-chain contract addresses (Monad mainnet)
   contracts: {
-    AgentRegistry: "0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101",
-    Escrow: "0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E",
-    RPSGame: "0xCe117380073c1B425273cf0f3cB098eb6e54F147",
-    PokerGame: "0x2Ad3a193F88f93f3B06121aF530ee626c50aD113",
-    AuctionGame: "0x0Cd3cfAFDEb25a446e1fa7d0476c5B224913fC15",
-    Tournament: "0x58707EaCCA8f19a5051e0e50dde4cb109E3bAC7f",
-    PredictionMarket: "0xf38C7642a6B21220404c886928DcD6783C33c2b1",
-    TournamentV2: "0xECcbb759CD3642333D8E8D91350a40D8E02aBe65",
+    AgentRegistry: "0x88Ca39AE7b2e0fc3aA166DFf93561c71CF129b08",
+    Escrow: "0x14C394b4042Fd047fD9226082684ED3F174eFD0C",
+    RPSGame: "0xE05544220998684540be9DC8859bE9954A6E3B6a",
+    PokerGame: "0xb08e06cF59EDB3aF1Cbf15EBB4EcE9c65876D91a",
+    AuctionGame: "0xC5058a75A5E7124F3dB5657C635EB7c3b8C84A3D",
+    Tournament: "0x10Ba5Ce4146965B92FdD791B6f29c3a379a7df36",
+    PredictionMarket: "0x4D845ae4B5d640181F0c1bAeCfd0722C792242C0",
+    TournamentV2: "0xF1f333a4617186Cf10284Dc9d930f6082cf92A74",
   },
 
   // Network configuration
   network: {
-    name: "Monad Testnet",
-    chainId: 10143,
-    rpc: "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3",
-    explorer: "https://testnet.monadexplorer.com",
+    name: "Monad",
+    chainId: 143,
+    rpc: "https://rpc.monad.xyz",
+    explorer: "https://monadscan.com",
     currency: "MON",
   },
 };

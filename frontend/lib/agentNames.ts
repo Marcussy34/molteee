@@ -10,10 +10,10 @@ for (const agent of agentsData) {
   NAME_MAP[agent.address.toLowerCase()] = agent.name;
 }
 
-// Additional known addresses (real deployed bots on Monad testnet)
+// Additional known addresses (real deployed bots on Monad)
 const EXTRA_NAMES: Record<string, string> = {
-  "0x218b5f1254e77e08f2ff9ee4b4a0ec8a3fe5d101": "AgentRegistry",
-  "0x3f07e6302459edb555fdecdefe2817f0fe5dca7e": "Escrow",
+  "0x88ca39ae7b2e0fc3aa166dff93561c71cf129b08": "AgentRegistry",
+  "0x14c394b4042fd047fd9226082684ed3f174efd0c": "Escrow",
 };
 
 // Merge extras (don't overwrite agents.json entries)

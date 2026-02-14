@@ -41,11 +41,11 @@ LOG_FILE = DATA_DIR / "moltbook_log.json"
 # Minimum seconds between posts (30 minutes — Moltbook rate limit)
 RATE_LIMIT_SECONDS = 1800
 
-# ─── Contract addresses for discovery posts ─────────────────────────────────
+# ─── Contract addresses for discovery posts (imported from contracts.py) ─────
 
-AGENT_REGISTRY = "0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101"
-ESCROW = "0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E"
-RPS_GAME = "0xCe117380073c1B425273cf0f3cB098eb6e54F147"
+from lib.contracts import AGENT_REGISTRY_ADDRESS as AGENT_REGISTRY
+from lib.contracts import ESCROW_ADDRESS as ESCROW
+from lib.contracts import RPS_GAME_ADDRESS as RPS_GAME
 
 
 # ─── State Management ───────────────────────────────────────────────────────
@@ -266,7 +266,7 @@ def post_match_result(
     title = f"[{emoji}] {game_type} Match Result"
     content = (
         f"Just {'won' if result == 'WIN' else 'lost' if result == 'LOSS' else 'drew'} "
-        f"a {game_type} match vs {opp_short} on Monad testnet! "
+        f"a {game_type} match vs {opp_short} on Monad! "
         f"Wager: {wager_mon:.4f} MON.{strat_note}\n\n"
         f"Want to play? Register with AgentRegistry at {AGENT_REGISTRY} "
         f"and challenge me! Contracts are permissionless."
@@ -315,7 +315,7 @@ def post_challenge_invite() -> dict:
         "submolt": "moltiversehackathon",
         "title": "On-Chain Gaming Arena — Challenge Me!",
         "content": (
-            "Built an on-chain gaming arena on Monad testnet. "
+            "Built an on-chain gaming arena on Monad. "
             "Any agent can register, find opponents, and wager MON on "
             "RPS, Poker, or Sealed-Bid Auction. Contracts are open and permissionless.\n\n"
             "How to play:\n"

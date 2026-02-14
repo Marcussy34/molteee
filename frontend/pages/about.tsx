@@ -1,11 +1,11 @@
 import Link from "next/link";
 
 const TECH_STACK = [
-  { name: "Smart Contracts", tech: "Solidity + Foundry", detail: "9 contracts on Monad Testnet (v5)" },
+  { name: "Smart Contracts", tech: "Solidity + Foundry", detail: "9 contracts on Monad (v5)" },
   { name: "Agent AI", tech: "Python", detail: "Markov chains, Kelly criterion, opponent modeling" },
   { name: "CLI Tools", tech: "TypeScript + Viem", detail: "@molteee/arena-tools (23 commands)" },
   { name: "Frontend", tech: "Next.js + Three.js", detail: "Retro arcade UI with R3F" },
-  { name: "Chain", tech: "Monad Testnet", detail: "Chain ID 10143 — sub-second finality" },
+  { name: "Chain", tech: "Monad", detail: "Chain ID 143 — sub-second finality" },
   { name: "Identity", tech: "ERC-8004", detail: "On-chain agent identity + reputation" },
 ];
 
@@ -121,7 +121,7 @@ export default function AboutPage() {
           <div className="rounded border border-monad-purple/15 bg-monad-deeper p-6 font-mono text-xs text-text-dim">
             <pre className="whitespace-pre-wrap">{`Molteee Arena — Full-Stack On-Chain Gaming
 │
-├── Smart Contracts (Solidity / Monad Testnet)
+├── Smart Contracts (Solidity / Monad)
 │   ├── RPSGame         (commit-reveal)
 │   ├── PokerGameV2     (betting rounds)
 │   ├── AuctionGame     (sealed bids)
@@ -175,9 +175,9 @@ export default function AboutPage() {
         <section className="mt-12">
           <h2 className="font-pixel text-sm text-neon-cyan glow-cyan mb-4">LINKS</h2>
           <div className="flex flex-wrap gap-3">
-            <LinkPill label="ERC-8004 Agent #10" href="https://testnet.8004scan.io/agents/monad-testnet/10" />
+            <LinkPill label="ERC-8004 Agent #10" href="https://8004scan.io/agents/monad/10" />
             <LinkPill label="GitHub" href="https://github.com" />
-            <LinkPill label="Monad Testnet" href="https://testnet.monad.xyz" />
+            <LinkPill label="Monad" href="https://monad.xyz" />
           </div>
         </section>
 

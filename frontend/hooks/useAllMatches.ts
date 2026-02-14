@@ -30,7 +30,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPublicClient, http } from "viem";
-import { publicClient, ADDRESSES, monadTestnet } from "@/lib/contracts";
+import { publicClient, ADDRESSES, monadChain } from "@/lib/contracts";
 import { escrowAbi } from "@/lib/abi/Escrow";
 import { agentRegistryAbi } from "@/lib/abi/AgentRegistry";
 import type { OnChainMatch } from "./useActiveMatches";
@@ -50,7 +50,7 @@ const STORAGE_KEY = "all-matches-v4"; // bumped — invalidates stale DRAW cache
 const POLL_MS = 30_000;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
-// Monad testnet block time: ~0.4s per block = 2.5 blocks/second
+// Monad block time: ~0.4s per block = 2.5 blocks/second
 const BLOCKS_PER_SECOND = 2.5;
 
 // Separate viem client for the Monad public RPC (supports 100-block getLogs ranges).
@@ -58,8 +58,8 @@ const BLOCKS_PER_SECOND = 2.5;
 // This client is NOT rate-limited by the global Alchemy rate limiter since it's
 // a different endpoint. We process calls sequentially with small delays instead.
 const logsClient = createPublicClient({
-  chain: monadTestnet,
-  transport: http("https://testnet-rpc.monad.xyz", { retryCount: 1 }),
+  chain: monadChain,
+  transport: http("https://rpc.monad.xyz", { retryCount: 1 }),
 });
 
 // MatchCreated event definition for getLogs

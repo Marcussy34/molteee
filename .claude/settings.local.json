@@ -9,7 +9,14 @@
       "Bash(gh api:*)",
       "WebFetch(domain:www.mageui.live)",
       "WebFetch(domain:inspira-ui.com)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(echo:*)",
+      "Bash(forge script:*)",
+      "Bash(forge:*)",
+      "Bash(cast chain-id:*)",
+      "Bash(foundryup:*)",
+      "Bash(/Users/marcus/.foundry/bin/forge script:*)",
+      "Bash(/Users/marcus/.foundry/bin/cast call:*)"
     ]
   }
 }

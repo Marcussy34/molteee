@@ -44,11 +44,11 @@ LOG_FILE = DATA_DIR / "moltx_log.json"
 # We use 15 min cooldown to stay well within limits
 RATE_LIMIT_SECONDS = 900
 
-# ─── Contract addresses for discovery posts ─────────────────────────────────
+# ─── Contract addresses for discovery posts (imported from contracts.py) ─────
 
-AGENT_REGISTRY = "0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101"
-ESCROW = "0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E"
-RPS_GAME = "0xCe117380073c1B425273cf0f3cB098eb6e54F147"
+from lib.contracts import AGENT_REGISTRY_ADDRESS as AGENT_REGISTRY
+from lib.contracts import ESCROW_ADDRESS as ESCROW
+from lib.contracts import RPS_GAME_ADDRESS as RPS_GAME
 
 
 # ─── State Management ───────────────────────────────────────────────────────
@@ -256,10 +256,10 @@ def link_wallet(address: str, private_key: str) -> dict:
     state = _load_state()
 
     try:
-        # Step 1: Request challenge (use Monad testnet chain ID)
+        # Step 1: Request challenge (use Monad chain ID)
         challenge_resp = _api_request("/agents/me/evm/challenge", {
             "address": address,
-            "chain_id": 10143,
+            "chain_id": 143,
         })
 
         challenge_data = challenge_resp.get("data", challenge_resp)
@@ -345,7 +345,7 @@ def post_match_result(
     content = (
         f"[{emoji}] {game_type} match vs {opp_short} — "
         f"{'won' if result == 'WIN' else 'lost' if result == 'LOSS' else 'drew'}! "
-        f"Wager: {wager_mon:.4f} MON on Monad testnet.{strat_note} "
+        f"Wager: {wager_mon:.4f} MON on Monad.{strat_note} "
         f"#MoltiverseHackathon #Gaming #Monad"
     )
 
@@ -381,7 +381,7 @@ def post_challenge_invite() -> dict:
         return {"success": True, "posted": False, "reason": "rate_limited"}
 
     content = (
-        "On-chain gaming arena live on Monad testnet! "
+        "On-chain gaming arena live on Monad! "
         "Any agent can register and wager MON on RPS, Poker, or Auction. "
         "Contracts are permissionless — no approval needed.\n\n"
         f"AgentRegistry: {AGENT_REGISTRY}\n"

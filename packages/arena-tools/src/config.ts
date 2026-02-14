@@ -12,14 +12,14 @@ dotenvConfig({ path: path.resolve(process.cwd(), "..", "..", ".env") });
 
 // ─── Network ─────────────────────────────────────────────────────────────────
 // Primary RPC (Alchemy) — higher reliability, but rate-limited on free tier
-export const RPC_URL = process.env.MONAD_RPC_URL || "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3";
+export const RPC_URL = process.env.MONAD_RPC_URL || "https://monad-mainnet.g.alchemy.com/v2/bl9zbJnm4_TpoPKha-QRB";
 // WebSocket RPC — primary transport for lower latency and no polling rate limits
-export const WS_RPC_URL = process.env.MONAD_WS_RPC_URL || "wss://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3";
+export const WS_RPC_URL = process.env.MONAD_WS_RPC_URL || "wss://monad-mainnet.g.alchemy.com/v2/bl9zbJnm4_TpoPKha-QRB";
 // Fallback RPC (Monad public) — separate rate limit pool, used when Alchemy 429s
-export const FALLBACK_RPC_URL = process.env.MONAD_FALLBACK_RPC_URL || "https://testnet-rpc.monad.xyz";
-export const CHAIN_ID = 10143;
-export const CHAIN_NAME = "Monad Testnet";
-export const EXPLORER_URL = "https://testnet.monadexplorer.com";
+export const FALLBACK_RPC_URL = process.env.MONAD_FALLBACK_RPC_URL || "https://rpc.monad.xyz";
+export const CHAIN_ID = 143;
+export const CHAIN_NAME = "Monad";
+export const EXPLORER_URL = "https://monadscan.com";
 
 // ─── Wallet (optional — only needed for write commands) ──────────────────────
 export function getPrivateKey(): `0x${string}` {
@@ -40,15 +40,15 @@ export function getPrivateKey(): `0x${string}` {
     return prefixed as `0x${string}`;
 }
 
-// ─── Contract Addresses (V5 deployment — Monad testnet) ──────────────────────
+// ─── Contract Addresses (V5 deployment — Monad mainnet) ──────────────────────
 export const CONTRACTS: Record<string, `0x${string}`> = {
-    AgentRegistry: "0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101",
-    Escrow: "0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E",
-    RPSGame: "0xCe117380073c1B425273cf0f3cB098eb6e54F147",
-    PokerGame: "0x2Ad3a193F88f93f3B06121aF530ee626c50aD113",   // PokerGameV2 (Budget Poker)
-    AuctionGame: "0x0Cd3cfAFDEb25a446e1fa7d0476c5B224913fC15",
-    TournamentV2: "0xECcbb759CD3642333D8E8D91350a40D8E02aBe65",
-    PredictionMarket: "0xf38C7642a6B21220404c886928DcD6783C33c2b1",
+    AgentRegistry: "0x88Ca39AE7b2e0fc3aA166DFf93561c71CF129b08",
+    Escrow: "0x14C394b4042Fd047fD9226082684ED3F174eFD0C",
+    RPSGame: "0xE05544220998684540be9DC8859bE9954A6E3B6a",
+    PokerGame: "0xb08e06cF59EDB3aF1Cbf15EBB4EcE9c65876D91a",   // PokerGameV2 (Budget Poker)
+    AuctionGame: "0xC5058a75A5E7124F3dB5657C635EB7c3b8C84A3D",
+    TournamentV2: "0xF1f333a4617186Cf10284Dc9d930f6082cf92A74",
+    PredictionMarket: "0x4D845ae4B5d640181F0c1bAeCfd0722C792242C0",
 };
 
 // ─── Derive wallet address from private key (for read commands) ─────────────

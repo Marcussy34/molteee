@@ -20,11 +20,11 @@ remappings = [
     "forge-std/=lib/forge-std/src/",
 ]
 
-# Monad Testnet Configuration
+# Monad Mainnet Configuration
 [rpc_endpoints]
-monad_testnet = "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3"
+monad_mainnet = "https://monad-mainnet.g.alchemy.com/v2/bl9zbJnm4_TpoPKha-QRB"
 
 [etherscan]
-monad_testnet = { key = "", chain = 10143, url = "https://testnet.monadscan.com/api" }
+monad_mainnet = { key = "", chain = 143, url = "https://monadscan.com/api" }
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
