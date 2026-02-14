@@ -29,6 +29,9 @@ Thumbs.db
 *.swp
 *.swo
 
+# Claude Code local settings (contains user-specific permissions)
+.claude/settings.local.json
+
 # Claude-mem auto-generated context files (keep root CLAUDE.md tracked)
 **/CLAUDE.md
 !/CLAUDE.md
