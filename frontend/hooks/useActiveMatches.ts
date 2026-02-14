@@ -235,6 +235,41 @@ let hydratedFromStorage = false; // tracks if we've loaded localStorage yet
 const gameIdByMatch = new Map<number, number>();      // matchId → gameId
 const settledGameMatches = new Set<number>();          // matchIds with complete games (skip re-poll)
 
+// ─── Persist settled game match IDs in localStorage ──────────────────────────
+// Prevents the grace period from restarting on page refresh — once a game is
+// detected as complete/expired, we remember it across page loads.
+const SETTLED_GAMES_KEY = "arena-stale-matches";
+const SETTLED_GAMES_MAX = 200;
+
+function loadSettledGameMatches(): void {
+  try {
+    const raw = localStorage.getItem(SETTLED_GAMES_KEY);
+    if (!raw) return;
+    const ids: number[] = JSON.parse(raw);
+    for (const id of ids) settledGameMatches.add(id);
+  } catch {
+    // localStorage may be unavailable — non-critical
+  }
+}
+
+function saveSettledGameMatches(): void {
+  try {
+    const ids = Array.from(settledGameMatches).slice(-SETTLED_GAMES_MAX);
+    localStorage.setItem(SETTLED_GAMES_KEY, JSON.stringify(ids));
+  } catch {
+    // localStorage may be full — non-critical
+  }
+}
+
+let settledGameMatchesLoaded = false;
+
+function ensureSettledGameMatchesLoaded(): void {
+  if (!settledGameMatchesLoaded) {
+    loadSettledGameMatches();
+    settledGameMatchesLoaded = true;
+  }
+}
+
 // ─── Settlement grace period ──────────────────────────────────────────────────
 // When a game completes/settles, keep it in LIVE MATCHES for a grace period so
 // the battle director can play the full cinematic (clash → round_result → victory).
@@ -316,8 +351,9 @@ export function useActiveMatches(filter: GameFilter = "all") {
     if (hydratedFromStorage) return;
     hydratedFromStorage = true;
 
-    // Load permanent settled cache first
+    // Load permanent settled cache + settled game match IDs
     ensurePermanentCacheLoaded();
+    ensureSettledGameMatchesLoaded();
 
     const stored = loadFromStorage();
     if (stored && (stored.live.length + stored.pending.length + stored.settled.length) > 0) {
@@ -542,6 +578,15 @@ export function useActiveMatches(filter: GameFilter = "all") {
         // Skip matches we already know are settled/complete — 0 RPC calls
         // But respect the grace period: keep isPlaying=true during cinematic window
         if (settledGameMatches.has(match.matchId)) {
+          // If already marked EXPIRED, keep it that way — no grace needed
+          if (match.gamePhase === "EXPIRED") {
+            if (match.isPlaying !== false) {
+              match.isPlaying = false;
+              changed = true;
+            }
+            continue;
+          }
+
           const graceStart = settlementGraceMap.get(match.matchId);
           const inGrace = graceStart && (Date.now() - graceStart < SETTLEMENT_GRACE_MS);
 
@@ -557,7 +602,7 @@ export function useActiveMatches(filter: GameFilter = "all") {
             settlementGraceMap.delete(match.matchId);
             if (match.isPlaying !== false) {
               match.isPlaying = false;
-              match.gamePhase = "COMPLETE";
+              match.gamePhase = match.gamePhase || "COMPLETE";
               changed = true;
             }
           }
@@ -600,33 +645,47 @@ export function useActiveMatches(filter: GameFilter = "all") {
           const isStale = phaseDeadline > 0 && phaseDeadline < nowSecs;
 
           if (complete || isStale) {
-            // Game is done or abandoned — start grace period for cinematic playback
+            // Mark as settled and persist to localStorage so page refresh
+            // doesn't restart the grace period
             settledGameMatches.add(match.matchId);
+            saveSettledGameMatches();
 
-            // Start grace timer on first detection (don't restart if already ticking)
-            if (!settlementGraceMap.has(match.matchId)) {
-              settlementGraceMap.set(match.matchId, Date.now());
-            }
-
-            const graceStart = settlementGraceMap.get(match.matchId)!;
-            const inGrace = Date.now() - graceStart < SETTLEMENT_GRACE_MS;
-
-            if (inGrace) {
-              // Grace period: keep in live matches so the director can animate
-              if (match.isPlaying !== true || match.gamePhaseRaw !== phase) {
-                match.isPlaying = true;
-                match.gamePhase = complete ? "COMPLETE" : "EXPIRED";
+            if (isStale && !complete) {
+              // Expired/abandoned match — no cinematic needed, skip grace period
+              // Move immediately to RECENT RESULTS with "EXPIRED" label
+              if (match.isPlaying !== false || match.gamePhase !== "EXPIRED") {
+                match.isPlaying = false;
+                match.gamePhase = "EXPIRED";
                 match.gamePhaseRaw = phase;
                 changed = true;
               }
             } else {
-              // Grace expired — move to recent results
-              settlementGraceMap.delete(match.matchId);
-              if (match.isPlaying !== false) {
-                match.isPlaying = false;
-                match.gamePhase = complete ? "COMPLETE" : "EXPIRED";
-                match.gamePhaseRaw = phase;
-                changed = true;
+              // Truly completed game — apply grace period for cinematic playback
+              // Start grace timer on first detection (don't restart if already ticking)
+              if (!settlementGraceMap.has(match.matchId)) {
+                settlementGraceMap.set(match.matchId, Date.now());
+              }
+
+              const graceStart = settlementGraceMap.get(match.matchId)!;
+              const inGrace = Date.now() - graceStart < SETTLEMENT_GRACE_MS;
+
+              if (inGrace) {
+                // Grace period: keep in live matches so the director can animate
+                if (match.isPlaying !== true || match.gamePhaseRaw !== phase) {
+                  match.isPlaying = true;
+                  match.gamePhase = "COMPLETE";
+                  match.gamePhaseRaw = phase;
+                  changed = true;
+                }
+              } else {
+                // Grace expired — move to recent results
+                settlementGraceMap.delete(match.matchId);
+                if (match.isPlaying !== false) {
+                  match.isPlaying = false;
+                  match.gamePhase = "COMPLETE";
+                  match.gamePhaseRaw = phase;
+                  changed = true;
+                }
               }
             }
           } else {

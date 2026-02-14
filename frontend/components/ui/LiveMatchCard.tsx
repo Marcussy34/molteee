@@ -56,7 +56,12 @@ export function LiveMatchCard({ match, isSelected, onClick }: LiveMatchCardProps
           <span className="font-pixel text-[7px] text-text-dim">#{match.matchId}</span>
         </div>
         <div className="flex items-center gap-2">
-          {isLive && (
+          {isLive && match.gamePhase === "EXPIRED" ? (
+            // Expired match briefly in live array — show red EXPIRED, not green LIVE
+            <span className="font-pixel text-[7px] text-neon-red">
+              EXPIRED
+            </span>
+          ) : isLive ? (
             <>
               <span className="font-pixel text-[7px] text-neon-green animate-pulse">
                 LIVE
@@ -67,7 +72,7 @@ export function LiveMatchCard({ match, isSelected, onClick }: LiveMatchCardProps
                 </span>
               )}
             </>
-          )}
+          ) : null}
           {isJustEnded && (
             <span className="font-pixel text-[7px] text-monad-purple">
               ENDED
