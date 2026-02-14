@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.13
 """
-test_prediction_market_e2e.py — Full prediction market lifecycle on Monad testnet.
+test_prediction_market_e2e.py — Full prediction market lifecycle on Monad.
 
 Flow:
   1. Fighter creates escrow match vs Bot1 (RPS, 0.001 MON)
@@ -34,8 +34,8 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-MONAD_RPC_URL = os.getenv("MONAD_RPC_URL", "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3")
-CHAIN_ID = 10143
+MONAD_RPC_URL = os.getenv("MONAD_RPC_URL", "https://monad-mainnet.g.alchemy.com/v2/bl9zbJnm4_TpoPKha-QRB")
+CHAIN_ID = 143
 
 # Contract addresses
 ESCROW_ADDRESS = os.getenv("ESCROW_ADDRESS", "")
@@ -108,7 +108,7 @@ def print_tx(label: str, receipt):
 
 def main():
     print("=" * 70)
-    print("PREDICTION MARKET E2E TEST — Monad Testnet")
+    print("PREDICTION MARKET E2E TEST — Monad")
     print("=" * 70)
 
     # ── Setup ──

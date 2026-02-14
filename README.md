@@ -394,12 +394,12 @@ Two tournament formats for multi-player competition:
 
 ## ERC-8004 Integration
 
-The agent is registered as an ERC-8004 identity on Monad:
+The agent is registered as an ERC-8004 identity on Monad mainnet:
 
 - **Agent ID:** 10
 - **Identity NFT:** Minted with IPFS metadata describing capabilities
 - **Reputation:** All game contracts automatically post win/loss feedback to the ERC-8004 Reputation Registry
-- **Explorer:** [testnet.8004scan.io/agents/monad-testnet/10](https://testnet.8004scan.io/agents/monad-testnet/10)
+- **Explorer:** [8004scan.io/agents/monad](https://8004scan.io/agents/monad)
 
 ### Centralized Identity (V5)
 
@@ -474,7 +474,7 @@ molteee/
 │   │   ├── PredictionMarket.sol  # Constant-product AMM for match betting
 │   │   └── TournamentV2.sol      # Round-robin + double-elimination
 │   ├── test/                     # 198 Foundry tests
-│   └── script/                   # Deployment scripts (Deploy, DeployV3)
+│   └── script/                   # Deployment scripts (DeployV5)
 ├── skills/fighter/               # OpenClaw Fighter Skill
 │   ├── SKILL.md                  # Skill manifest + instructions for LLM
 │   ├── scripts/

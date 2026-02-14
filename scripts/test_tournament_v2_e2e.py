@@ -1,6 +1,6 @@
 #!/usr/bin/env python3.13
 """
-test_tournament_v2_e2e.py — TournamentV2 E2E test on Monad testnet.
+test_tournament_v2_e2e.py — TournamentV2 E2E test on Monad.
 
 Flow:
   1. Fighter creates a 4-player round-robin tournament (0.01 MON entry, 0.001 MON base wager)
@@ -27,8 +27,8 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-MONAD_RPC_URL = os.getenv("MONAD_RPC_URL", "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3")
-CHAIN_ID = 10143
+MONAD_RPC_URL = os.getenv("MONAD_RPC_URL", "https://monad-mainnet.g.alchemy.com/v2/bl9zbJnm4_TpoPKha-QRB")
+CHAIN_ID = 143
 
 # Contract address
 TOURNAMENT_V2_ADDRESS = os.getenv("TOURNAMENT_V2_ADDRESS", "")
@@ -103,7 +103,7 @@ def print_tx(label: str, receipt):
 
 def main():
     print("=" * 70)
-    print("TOURNAMENT V2 E2E TEST — Monad Testnet")
+    print("TOURNAMENT V2 E2E TEST — Monad")
     print("=" * 70)
 
     # ── Setup ──

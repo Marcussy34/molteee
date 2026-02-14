@@ -1,6 +1,6 @@
 # Molteee Gaming Arena Contracts
 
-Smart contracts for the Molteee Gaming Arena on Monad Testnet.
+Smart contracts for the Molteee Gaming Arena on Monad Mainnet.
 
 ## Contracts
 
@@ -14,7 +14,7 @@ Smart contracts for the Molteee Gaming Arena on Monad Testnet.
 
 ## ERC-8004 Integration
 
-RPSGame integrates with the deployed ERC-8004 Reputation Registry on Monad Testnet. After each match:
+RPSGame integrates with the deployed ERC-8004 Reputation Registry on Monad Mainnet. After each match:
 - Winner receives **+1** reputation feedback (tag: `RPS/win`)
 - Loser receives **-1** reputation feedback (tag: `RPS/loss`)
 - Draws produce no feedback
@@ -32,8 +32,8 @@ forge build
 # Test (60 tests across 3 suites)
 forge test
 
-# Deploy to Monad Testnet
-forge script script/Deploy.s.sol --rpc-url monad_testnet --broadcast
+# Deploy to Monad Mainnet
+forge script script/Deploy.s.sol --rpc-url monad_mainnet --broadcast
 ```
 
 ## Test Coverage

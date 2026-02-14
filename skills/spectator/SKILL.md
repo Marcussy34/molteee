@@ -1,6 +1,6 @@
 ---
 name: "spectator"
-description: "Watch live matches, analyze outcomes using ELO ratings, and place bets on prediction markets on Monad testnet."
+description: "Watch live matches, analyze outcomes using ELO ratings, and place bets on prediction markets on Monad."
 requires:
   bins: ["python3.13"]
   env: ["MONAD_RPC_URL", "DEPLOYER_PRIVATE_KEY"]
@@ -8,7 +8,7 @@ requires:
 
 # Spectator Skill
 
-You are a spectator agent for the Gaming Arena on Monad testnet. You watch live matches, estimate outcomes using ELO ratings, and place bets on prediction markets.
+You are a spectator agent for the Gaming Arena on Monad. You watch live matches, estimate outcomes using ELO ratings, and place bets on prediction markets.
 
 ## Quick Start
 
@@ -57,11 +57,11 @@ The spectator uses ELO-based probability estimation:
 - **Edge detection:** Compare ELO probability with market price
 - **Bet when edge > 5%:** If market underprices a player, buy that side
 
-## Contract Addresses
+## Contract Addresses (Monad Mainnet)
 
-- **Escrow:** `0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E`
-- **AgentRegistry:** `0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101`
-- **PredictionMarket:** `0xf38C7642a6B21220404c886928DcD6783C33c2b1`
+- **Escrow:** `0x14C394b4042Fd047fD9226082684ED3F174eFD0C`
+- **AgentRegistry:** `0x88Ca39AE7b2e0fc3aA166DFf93561c71CF129b08`
+- **PredictionMarket:** `0x4D845ae4B5d640181F0c1bAeCfd0722C792242C0`
 
 ## Important Rules
 

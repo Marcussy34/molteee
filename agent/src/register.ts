@@ -1,7 +1,7 @@
 /**
  * ERC-8004 Agent Registration Script
  *
- * Registers the Molteee Fighter agent on the Monad Testnet Identity Registry.
+ * Registers the Molteee Fighter agent on the Monad Mainnet Identity Registry.
  * Steps:
  *   1. Upload registration.json to IPFS via Pinata
  *   2. Mint agent NFT on Identity Registry (0x8004A818...)
@@ -17,10 +17,10 @@ import { fileURLToPath } from "url";
 
 dotenv.config();
 
-// Monad Testnet configuration
+// Monad Mainnet configuration
 const CHAIN_CONFIG = {
-  chainId: 10143,
-  rpcUrl: process.env.RPC_URL || "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3",
+  chainId: 143,
+  rpcUrl: process.env.RPC_URL || "https://monad-mainnet.g.alchemy.com/v2/bl9zbJnm4_TpoPKha-QRB",
   identityRegistry: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
   reputationRegistry: "0x8004B663056A597Dffe9eCcC1965A193B7388713",
 };
@@ -42,7 +42,7 @@ async function main() {
     process.exit(1);
   }
 
-  // Connect to Monad Testnet
+  // Connect to Monad Mainnet
   const provider = new ethers.JsonRpcProvider(CHAIN_CONFIG.rpcUrl);
   const wallet = new ethers.Wallet(privateKey, provider);
   console.log(`Wallet address: ${wallet.address}`);
@@ -139,7 +139,7 @@ async function main() {
 
   console.log(`\nAgent registered successfully!`);
   console.log(`Agent ID: ${agentId}`);
-  console.log(`View on 8004scan: https://testnet.8004scan.io/agents/monad-testnet/${agentId}`);
+  console.log(`View on 8004scan: https://8004scan.io/agents/monad/${agentId}`);
   console.log(
     `\nIMPORTANT: Use this agentId in RPSGame.setAgentId(${wallet.address}, ${agentId})`
   );

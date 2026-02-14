@@ -10,7 +10,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { RPC_URL, WS_RPC_URL, FALLBACK_RPC_URL, CHAIN_ID, CHAIN_NAME, getPrivateKey } from "./config.js";
 
-// Define Monad testnet chain
+// Define Monad chain
 export const monadTestnet = defineChain({
     id: CHAIN_ID,
     name: CHAIN_NAME,

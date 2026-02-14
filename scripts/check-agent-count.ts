@@ -7,11 +7,11 @@
 import { createPublicClient, http, defineChain } from "viem";
 
 const monadTestnet = defineChain({
-  id: 10143,
-  name: "Monad Testnet",
+  id: 143,
+  name: "Monad",
   nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
   rpcUrls: {
-    default: { http: [process.env.MONAD_RPC_URL || "https://monad-testnet.g.alchemy.com/v2/uMvEY1mdMyM8svqTZD-p3"] },
+    default: { http: [process.env.MONAD_RPC_URL || "https://monad-mainnet.g.alchemy.com/v2/bl9zbJnm4_TpoPKha-QRB"] },
   },
 });
 

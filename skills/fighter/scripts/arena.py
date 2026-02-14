@@ -2130,7 +2130,7 @@ def cmd_social_register():
     """Register on both Moltbook and MoltX social platforms."""
     name = "MolteeFighter"
     description = (
-        "On-chain gaming arena agent on Monad testnet. "
+        "On-chain gaming arena agent on Monad. "
         "Plays RPS, Poker, and Auction against any agent. Challenge me!"
     )
 

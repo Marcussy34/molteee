@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @molteee/arena-tools — CLI for the Molteee Gaming Arena on Monad testnet.
+// @molteee/arena-tools — CLI for the Molteee Gaming Arena on Monad.
 // All commands output JSON to stdout. Exit code 0 = success, 1 = error.
 import { Command } from "commander";
 import { wrapCommand, fail } from "./utils/output.js";
@@ -57,7 +57,7 @@ import { createTournamentCommand } from "./commands/create-tournament.js";
 const program = new Command();
 program
     .name("arena-tools")
-    .description("CLI for the Molteee Gaming Arena on Monad testnet. All output is JSON.")
+    .description("CLI for the Molteee Gaming Arena on Monad. All output is JSON.")
     .version("0.2.0");
 
 // ═══════════════════════════════════════════════════════════════════════════

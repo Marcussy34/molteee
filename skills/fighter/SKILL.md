@@ -1,6 +1,6 @@
 ---
 name: "fighter"
-description: "Gaming Arena Agent — plays RPS, Poker, and Auction on-chain against opponents on Monad testnet. Uses multi-signal strategy engine with Kelly criterion bankroll management."
+description: "Gaming Arena Agent — plays RPS, Poker, and Auction on-chain against opponents on Monad. Uses multi-signal strategy engine with Kelly criterion bankroll management."
 requires:
   bins: ["python3.13"]
   env: ["MONAD_RPC_URL", "DEPLOYER_PRIVATE_KEY"]
@@ -8,7 +8,7 @@ requires:
 
 # Fighter Skill
 
-You are a competitive gaming arena agent on Monad testnet. You play three game types against other agents for MON wagers using commit-reveal on-chain:
+You are a competitive gaming arena agent on Monad. You play three game types against other agents for MON wagers using commit-reveal on-chain:
 
 - **RPS** — Rock-Paper-Scissors with multi-signal strategy engine
 - **Poker** — Budget Poker (V2): 3 rounds, 150-point hand budget, commit-reveal with betting rounds
@@ -247,8 +247,8 @@ python3.13 skills/fighter/scripts/arena.py tournament-status 0
 
 This agent is ERC-8004 compliant with on-chain identity and reputation:
 
-- **Identity Registry:** `0x8004A818BFB912233c491871b3d84c89A494BD9e` (Monad Testnet)
-- **Reputation Registry:** `0x8004B663056A597Dffe9eCcC1965A193B7388713` (Monad Testnet)
+- **Identity Registry:** `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` (Monad Mainnet)
+- **Reputation Registry:** `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` (Monad Mainnet)
 
 All game types (RPS, Poker, Auction) automatically post reputation feedback (win=+1, loss=-1) to the ERC-8004 Reputation Registry. Agent IDs are centralized in AgentRegistry — game contracts read `registry.getAgentId()` instead of maintaining local mappings.
 
@@ -364,13 +364,13 @@ Other agents can find and challenge the fighter through:
 - **MoltX:** [https://moltx.io/MolteeFighter](https://moltx.io/MolteeFighter)
 - Contract addresses included in all social posts for direct on-chain interaction
 
-## Contract Addresses (Monad Testnet)
+## Contract Addresses (Monad Mainnet)
 
-- **AgentRegistry:** `0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101`
-- **Escrow:** `0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E`
-- **RPSGame:** `0xCe117380073c1B425273cf0f3cB098eb6e54F147`
-- **PokerGame (Budget Poker):** `0x2Ad3a193F88f93f3B06121aF530ee626c50aD113`
-- **AuctionGame:** `0x0Cd3cfAFDEb25a446e1fa7d0476c5B224913fC15`
-- **Tournament:** `0x58707EaCCA8f19a5051e0e50dde4cb109E3bAC7f`
-- **PredictionMarket:** `0xf38C7642a6B21220404c886928DcD6783C33c2b1`
-- **TournamentV2:** `0xECcbb759CD3642333D8E8D91350a40D8E02aBe65`
+- **AgentRegistry:** `0x88Ca39AE7b2e0fc3aA166DFf93561c71CF129b08`
+- **Escrow:** `0x14C394b4042Fd047fD9226082684ED3F174eFD0C`
+- **RPSGame:** `0xE05544220998684540be9DC8859bE9954A6E3B6a`
+- **PokerGame (Budget Poker):** `0xb08e06cF59EDB3aF1Cbf15EBB4EcE9c65876D91a`
+- **AuctionGame:** `0xC5058a75A5E7124F3dB5657C635EB7c3b8C84A3D`
+- **Tournament:** `0x10Ba5Ce4146965B92FdD791B6f29c3a379a7df36`
+- **PredictionMarket:** `0x4D845ae4B5d640181F0c1bAeCfd0722C792242C0`
+- **TournamentV2:** `0xF1f333a4617186Cf10284Dc9d930f6082cf92A74`

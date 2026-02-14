@@ -67,7 +67,7 @@ def main():
     print()
     print("=" * 60)
     print("  MOLTEEE — Gaming Arena Agent Demo")
-    print("  Autonomous AI Agent on Monad Testnet")
+    print("  Autonomous AI Agent on Monad")
     print("=" * 60)
     time.sleep(SECTION_DELAY)
 
@@ -154,7 +154,7 @@ def main():
     print("  7. Uses psychological tactics for competitive edge")
     print("  8. Posts results to ERC-8004 reputation registry")
     print()
-    print("All gameplay settled on Monad testnet (chain 10143).")
+    print("All gameplay settled on Monad (chain 143).")
     print("Built for the Moltiverse Hackathon — Gaming Arena Agent Bounty")
     print()
     print("=" * 60)

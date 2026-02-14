@@ -1,6 +1,6 @@
 # RPS Strategy Reference
 
-This document describes the strategy engine used by the Fighter agent to gain an edge in Rock-Paper-Scissors matches on the Monad testnet Gaming Arena.
+This document describes the strategy engine used by the Fighter agent to gain an edge in Rock-Paper-Scissors matches on the Monad Gaming Arena.
 
 ## Strategy Overview
 
