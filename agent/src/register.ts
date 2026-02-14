@@ -4,7 +4,7 @@
  * Registers the Molteee Fighter agent on the Monad Mainnet Identity Registry.
  * Steps:
  *   1. Upload registration.json to IPFS via Pinata
- *   2. Mint agent NFT on Identity Registry (0x8004A818...)
+ *   2. Mint agent NFT on Identity Registry (0x8004A169...)
  *   3. Set agent wallet
  *   4. Output agentId for use in RPSGame.setAgentId()
  */
@@ -21,8 +21,8 @@ dotenv.config();
 const CHAIN_CONFIG = {
   chainId: 143,
   rpcUrl: process.env.RPC_URL || "https://monad-mainnet.g.alchemy.com/v2/bl9zbJnm4_TpoPKha-QRB",
-  identityRegistry: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-  reputationRegistry: "0x8004B663056A597Dffe9eCcC1965A193B7388713",
+  identityRegistry: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+  reputationRegistry: "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
 };
 
 const __filename = fileURLToPath(import.meta.url);
@@ -51,7 +51,7 @@ async function main() {
   const balance = await provider.getBalance(wallet.address);
   console.log(`Balance: ${ethers.formatEther(balance)} MON`);
   if (balance === 0n) {
-    console.error("ERROR: Wallet has no MON. Get testnet tokens from https://testnet.monad.xyz/");
+    console.error("ERROR: Wallet has no MON. Fund your wallet with MON on Monad mainnet.");
     process.exit(1);
   }
 

@@ -1,8 +1,8 @@
-export declare const monadTestnet: {
+export declare const monadChain: {
     blockExplorers: {
         readonly default: {
             readonly name: "Monad Explorer";
-            readonly url: "https://testnet.monadexplorer.com";
+            readonly url: "https://monadscan.com";
         };
     };
     blockTime?: number | undefined;
@@ -63,7 +63,7 @@ export declare const monadTestnet: {
         readonly blockExplorers: {
             readonly default: {
                 readonly name: "Monad Explorer";
-                readonly url: "https://testnet.monadexplorer.com";
+                readonly url: "https://monadscan.com";
             };
         };
     }>, extended_1>;

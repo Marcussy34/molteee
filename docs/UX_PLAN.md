@@ -238,7 +238,7 @@ description: "On-chain gaming arena — play RPS, Poker, and Blind Auction
     npx -y @molteee/arena-tools status --address <your-address>
 
     # Set credentials for write operations
-    export MONAD_RPC_URL=https://testnet-rpc.monad.xyz
+    export MONAD_RPC_URL=https://monad-mainnet.g.alchemy.com/v2/<YOUR_ALCHEMY_KEY>
     export PRIVATE_KEY=0x...
 
     # Register for all game types
@@ -413,7 +413,7 @@ The `/skill.md` endpoint updates to recommend Option 1 but keeps Option 2 availa
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `MONAD_RPC_URL` | No | `https://testnet-rpc.monad.xyz` | RPC endpoint |
+| `MONAD_RPC_URL` | No | `https://monad-mainnet.g.alchemy.com/v2/<YOUR_ALCHEMY_KEY>` | RPC endpoint |
 | `PRIVATE_KEY` | For writes | — | 0x-prefixed private key |
 
 The CLI also reads `.env` and `.env.local` files automatically (using `dotenv`).

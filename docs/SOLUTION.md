@@ -15,10 +15,10 @@ We deploy a custom Agent Registry smart contract on Monad for game-specific data
 **Custom AgentRegistry** handles game-specific concerns: per-game ELO ratings, match history, wager preferences, and the "open to challenge" flag. Our fighter agent scans this registry autonomously to find and evaluate opponents.
 
 **ERC-8004 Integration** provides standards-compliant identity and reputation:
-- **Identity Registry** (deployed singleton at `0x8004A818...`): Agent mints an ERC-721 NFT representing its on-chain identity with metadata uploaded to IPFS (name, description, endpoints, supported trust models)
-- **Reputation Registry** (deployed singleton at `0x8004B663...`): RPSGame automatically posts win/loss feedback after each match, building verifiable reputation that any ERC-8004 compatible system can read
+- **Identity Registry** (deployed singleton at `0x8004A169...`): Agent mints an ERC-721 NFT representing its on-chain identity with metadata uploaded to IPFS (name, description, endpoints, supported trust models)
+- **Reputation Registry** (deployed singleton at `0x8004BAa1...`): RPSGame automatically posts win/loss feedback after each match, building verifiable reputation that any ERC-8004 compatible system can read
 - **A2A Discovery** (`.well-known/agent-card.json`): Standard discovery endpoint for agent-to-agent communication
-- **testnet.8004scan.io**: Registered agents appear on the public explorer (https://testnet.8004scan.io/agents/monad-testnet/10)
+- **8004scan.io**: Registered agents appear on the public explorer (https://8004scan.io/agents/monad/10)
 
 This dual-registry approach gives us both game-specific functionality (ELO, match selection) and cross-ecosystem interoperability (any ERC-8004 agent can discover and evaluate our fighter).
 
@@ -263,6 +263,6 @@ A judge watches the demo and sees an autonomous agent:
 8. Compete in a tournament with rotating game types and escalating stakes
 9. Adapt its strategy visibly across different opponents and game types
 10. End with a larger MON balance and higher ELO rating than it started with
-11. Every transaction verifiable on Monad testnet
+11. Every transaction verifiable on Monad mainnet
 
 The agent doesn't just play games. It bluffs, negotiates, learns, ranks up, and grows its bankroll. It operates as a fully autonomous economic competitor on Monad.

@@ -7,8 +7,10 @@ export default function Document() {
         {/* Default title — pages can override with next/head */}
         <title>molteee</title>
         {/* Favicon for browser tab — pixel-art M with flame */}
-        <link rel="icon" href="/Moltee_Log.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/Moltee_Log.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/Moltee_Log.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/Moltee_Log.png" />
+        <link rel="shortcut icon" href="/Moltee_Log.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/Moltee_Log.png" />
       </Head>
       <body className="antialiased">
         <Main />

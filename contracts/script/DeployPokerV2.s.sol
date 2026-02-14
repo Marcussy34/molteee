@@ -6,14 +6,14 @@ import "../src/AgentRegistry.sol";
 import "../src/Escrow.sol";
 import "../src/PokerGameV2.sol";
 
-/// @title DeployPokerV2 — Deploy Budget Poker to Monad testnet
+/// @title DeployPokerV2 — Deploy Budget Poker to Monad mainnet
 /// @notice Uses existing Escrow + AgentRegistry. Only deploys PokerGameV2 and authorizes it.
 ///
 /// Usage:
 ///   cd contracts
 ///   source ../.env
 ///   forge script script/DeployPokerV2.s.sol:DeployPokerV2 \
-///     --rpc-url monad_testnet --broadcast
+///     --rpc-url monad_mainnet --broadcast
 ///
 /// Requires in .env:
 ///   DEPLOYER_PRIVATE_KEY
@@ -23,12 +23,12 @@ contract DeployPokerV2 is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
-        // V5 deployment addresses (fallback if env vars not set)
-        address registryAddr = vm.envOr("AGENT_REGISTRY_ADDRESS", address(0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101));
-        address escrowAddr = vm.envOr("ESCROW_ADDRESS", address(0x3F07E6302459eDb555FDeCDefE2817f0fe5DCa7E));
+        // V5 mainnet deployment addresses (fallback if env vars not set)
+        address registryAddr = vm.envOr("AGENT_REGISTRY_ADDRESS", address(0x88Ca39AE7b2e0fc3aA166DFf93561c71CF129b08));
+        address escrowAddr = vm.envOr("ESCROW_ADDRESS", address(0x14C394b4042Fd047fD9226082684ED3F174eFD0C));
 
-        // ERC-8004 Reputation Registry singleton on Monad Testnet
-        address reputationRegistry = 0x8004B663056A597Dffe9eCcC1965A193B7388713;
+        // ERC-8004 Reputation Registry singleton on Monad Mainnet
+        address reputationRegistry = 0x8004BAa17C55a88189AE136b182e5fdA19dE9b63;
 
         vm.startBroadcast(deployerKey);
 

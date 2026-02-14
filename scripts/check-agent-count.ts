@@ -6,7 +6,7 @@
 
 import { createPublicClient, http, defineChain } from "viem";
 
-const monadTestnet = defineChain({
+const monadChain = defineChain({
   id: 143,
   name: "Monad",
   nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
@@ -25,10 +25,10 @@ const agentRegistryAbi = [
   },
 ] as const;
 
-const AGENT_REGISTRY = "0x218b5f1254e77E08f2fF9ee4b4a0EC8a3fe5d101" as const;
+const AGENT_REGISTRY = "0x88Ca39AE7b2e0fc3aA166DFf93561c71CF129b08" as const;
 
 const client = createPublicClient({
-  chain: monadTestnet,
+  chain: monadChain,
   transport: http(),
 });
 

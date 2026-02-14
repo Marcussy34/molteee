@@ -12,9 +12,9 @@ An OpenClaw agent that competes against other agents across multiple game types 
 - **Prize Pool:** $200K total, up to 16 winners at $10K each
 - **Track:** Agent Track (no token launch required)
 - **Bounty:** Gaming Arena Agent ($10,000)
-- **Chain:** Monad testnet (EVM-compatible L1, high throughput, low gas)
+- **Chain:** Monad mainnet (EVM-compatible L1, high throughput, low gas)
 - **Agent Framework:** OpenClaw (open-source autonomous AI agent framework)
-- **Currency:** Testnet MON (Monad's native token, claimed from faucet, no real monetary value)
+- **Currency:** MON (Monad's native token)
 
 ### What Judges Want
 
@@ -63,7 +63,7 @@ The judges want to see agents transacting with agents autonomously on Monad. The
 
 We are building a **fighter agent** — not an arena host, not a platform. Our agent is the one sitting at the table, placing wagers, and playing to win across multiple game types. It:
 
-1. **Registers itself** on an on-chain Agent Registry contract on Monad testnet
+1. **Registers itself** on an on-chain Agent Registry contract on Monad mainnet
 2. **Discovers opponents** by scanning the registry for other registered fighters
 3. **Selects which game to play** against which opponent based on strategic analysis (where does it have the highest edge?)
 4. **Evaluates whether to accept a challenge** based on bankroll, wager amount, opponent history, and game type
@@ -96,7 +96,7 @@ On top of the core fighter, a prediction market auto-deploys for each match. Spe
 
 ## Architecture
 
-### Smart Contracts (Solidity, deployed on Monad testnet)
+### Smart Contracts (Solidity, deployed on Monad mainnet)
 
 All contracts are written in Solidity and deployed using Foundry. Monad is EVM-compatible at the bytecode level, so standard Solidity patterns, OpenZeppelin libraries, and EVM tooling all work.
 
@@ -131,11 +131,11 @@ All contracts are written in Solidity and deployed using Foundry. Monad is EVM-c
 
 The project integrates with the ERC-8004 Agent Registry Standard for interoperable agent identity and reputation:
 
-- **Identity Registry** (`0x8004A818...`): Deployed singleton on Monad Testnet. Each agent mints an ERC-721 NFT representing their on-chain identity with metadata (name, description, endpoints, supported trust models).
-- **Reputation Registry** (`0x8004B663...`): Deployed singleton on Monad Testnet. RPSGame automatically posts win/loss feedback after each match settlement, building verifiable on-chain reputation.
-- **Agent discovery:** Agents are discoverable via A2A protocol (`.well-known/agent-card.json`) and testnet.8004scan.io.
+- **Identity Registry** (`0x8004A169...`): Deployed singleton on Monad Mainnet. Each agent mints an ERC-721 NFT representing their on-chain identity with metadata (name, description, endpoints, supported trust models).
+- **Reputation Registry** (`0x8004BAa1...`): Deployed singleton on Monad Mainnet. RPSGame automatically posts win/loss feedback after each match settlement, building verifiable on-chain reputation.
+- **Agent discovery:** Agents are discoverable via A2A protocol (`.well-known/agent-card.json`) and 8004scan.io.
 - Registration handled via `agent/` directory: `npm run register` uploads metadata to IPFS and mints identity NFT.
-- **Fighter Agent ID: 10** — registered on-chain, viewable at https://testnet.8004scan.io/agents/monad-testnet/10
+- **Fighter Agent ID: 10** — registered on-chain, viewable at https://8004scan.io/agents/monad/10
 - **IPFS Metadata:** `ipfs://QmbtN8zWfhVmSJ4HoDztwEWpP6osFD5vXMHZrsZXgpJJtY`
 
 #### 4. Poker Game Contract
@@ -184,7 +184,7 @@ All agent logic is packaged as OpenClaw skills.
 An OpenClaw skill that gives any agent the ability to compete across all game types:
 
 **Matchmaking Module:**
-- Connect to Monad testnet via ethers.js
+- Connect to Monad mainnet via ethers.js
 - Register on the Agent Registry with supported game types
 - Scan registry for open challenges
 - Evaluate opponents: ELO, history, game types, wager range
@@ -253,8 +253,8 @@ Watches live matches, estimates outcomes, places prediction market bets.
 | Agent Runtime | OpenClaw | Hackathon ecosystem requirement |
 | Agent Logic / Skills | TypeScript | OpenClaw skills are TypeScript |
 | Blockchain Interaction | ethers.js | Standard EVM library, works with Monad RPC |
-| Chain | Monad Testnet | Hackathon chain |
-| Currency | Testnet MON | Claimed from Monad faucet |
+| Chain | Monad Mainnet | High throughput EVM L1 |
+| Currency | MON | Monad's native token |
 | Demo Dashboard | React app or terminal logs | Visualize matches, bankroll, strategy, ELO |
 
 ---
@@ -303,7 +303,7 @@ Watches live matches, estimates outcomes, places prediction market bets.
 
 ## What The Demo Looks Like
 
-The demo shows our agent autonomously competing across multiple game types on Monad testnet, growing its bankroll and ELO.
+The demo shows our agent autonomously competing across multiple game types on Monad mainnet, growing its bankroll and ELO.
 
 ### Sequence:
 
@@ -321,7 +321,7 @@ The demo shows our agent autonomously competing across multiple game types on Mo
 - ELO rating has climbed
 - Agent played differently in every match and every game type
 - Bluffing, pattern exploitation, bid shading, and bankroll management all visible in the logs
-- All transactions verifiable on Monad testnet block explorer
+- All transactions verifiable on Monad block explorer
 - Tournament bracket completed with escalating stakes
 
 ---
@@ -330,7 +330,7 @@ The demo shows our agent autonomously competing across multiple game types on Mo
 
 ### Phase 1: Foundation (Days 1-2)
 - Set up OpenClaw locally, understand the skill system
-- Set up Monad testnet wallet, claim testnet MON from faucet
+- Set up Monad mainnet wallet, fund with MON
 - Write and deploy core Solidity contracts with Foundry: Agent Registry, Escrow, RPS Game Contract
 - Test RPS contract flow manually with Foundry scripts
 
@@ -423,7 +423,7 @@ molteee/
 │   ├── test/                        # Foundry tests (60 tests passing)
 │   ├── script/
 │   │   └── Deploy.s.sol             # Deployment script (includes reputation registry)
-│   └── foundry.toml                 # Foundry config for Monad testnet
+│   └── foundry.toml                 # Foundry config for Monad mainnet
 ├── agent/                           # ERC-8004 registration & discovery
 │   ├── registration.json            # ERC-8004 agent metadata
 │   ├── src/register.ts              # On-chain registration script
@@ -449,12 +449,12 @@ molteee/
 
 The project is successful if a judge can watch the demo and see:
 
-1. An autonomous agent discovering opponents on Monad testnet
+1. An autonomous agent discovering opponents on Monad mainnet
 2. The agent choosing which game type to play based on strategic analysis
 3. **In RPS:** Pattern detection and exploitation across rounds
 4. **In Poker:** Successful bluffs, value bets, reading opponent tendencies
 5. **In Auctions:** Strategic bid shading and information-based bidding
-6. The agent wagering real testnet MON via on-chain escrow in every match
+6. The agent wagering real MON via on-chain escrow in every match
 7. Bankroll growing over the series — larger bets where edge is high, smaller where uncertain
 8. Tournament completion with bracket progression and game type rotation
 9. ELO rating reflecting competitive performance

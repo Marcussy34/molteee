@@ -11,7 +11,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { RPC_URL, WS_RPC_URL, FALLBACK_RPC_URL, CHAIN_ID, CHAIN_NAME, getPrivateKey } from "./config.js";
 
 // Define Monad chain
-export const monadTestnet = defineChain({
+export const monadChain = defineChain({
     id: CHAIN_ID,
     name: CHAIN_NAME,
     nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
@@ -21,7 +21,7 @@ export const monadTestnet = defineChain({
     blockExplorers: {
         default: {
             name: "Monad Explorer",
-            url: "https://testnet.monadexplorer.com",
+            url: "https://monadscan.com",
         },
     },
 });
@@ -42,7 +42,7 @@ let _publicClient: any = null;
 export function getPublicClient() {
     if (!_publicClient) {
         _publicClient = createPublicClient({
-            chain: monadTestnet,
+            chain: monadChain,
             transport,
         });
     }
@@ -56,7 +56,7 @@ export function getWalletClient() {
         const account = privateKeyToAccount(getPrivateKey());
         _walletClient = createWalletClient({
             account,
-            chain: monadTestnet,
+            chain: monadChain,
             transport,
         });
     }

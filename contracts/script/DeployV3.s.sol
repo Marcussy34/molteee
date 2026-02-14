@@ -20,7 +20,7 @@ import "../src/TournamentV2.sol";
 ///   cd contracts
 ///   source ../.env
 ///   forge script script/DeployV3.s.sol:DeployV3 \
-///     --rpc-url monad_testnet --broadcast
+///     --rpc-url monad_mainnet --broadcast
 ///
 /// Requires in .env:
 ///   DEPLOYER_PRIVATE_KEY, AGENT_REGISTRY_ADDRESS
@@ -31,8 +31,8 @@ contract DeployV3 is Script {
         // Existing contracts we KEEP (no Escrow dependency that needs changing)
         address registryAddr = vm.envAddress("AGENT_REGISTRY_ADDRESS");
 
-        // ERC-8004 Reputation Registry singleton on Monad Testnet
-        address reputationRegistry = 0x8004B663056A597Dffe9eCcC1965A193B7388713;
+        // ERC-8004 Reputation Registry singleton on Monad Mainnet
+        address reputationRegistry = 0x8004BAa17C55a88189AE136b182e5fdA19dE9b63;
 
         vm.startBroadcast(deployerKey);
 

@@ -6,7 +6,7 @@ import "../src/AgentRegistry.sol";
 import "../src/Escrow.sol";
 import "../src/RPSGame.sol";
 
-/// @title Deploy — Deploy all arena contracts to Monad testnet
+/// @title Deploy — Deploy all arena contracts to Monad mainnet
 /// @notice Deployment order: AgentRegistry → Escrow → RPSGame → authorize cross-refs
 contract Deploy is Script {
     function run() external {
@@ -22,8 +22,8 @@ contract Deploy is Script {
         console.log("Escrow deployed at:", address(escrow));
 
         // 3. Deploy RPSGame (depends on Escrow + Registry + Reputation)
-        //    Uses the ERC-8004 Reputation Registry singleton deployed on Monad Testnet
-        address reputationRegistry = 0x8004B663056A597Dffe9eCcC1965A193B7388713;
+        //    Uses the ERC-8004 Reputation Registry singleton deployed on Monad Mainnet
+        address reputationRegistry = 0x8004BAa17C55a88189AE136b182e5fdA19dE9b63;
         RPSGame rpsGame = new RPSGame(address(escrow), address(registry), reputationRegistry);
         console.log("RPSGame deployed at:", address(rpsGame));
 

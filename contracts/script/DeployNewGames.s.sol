@@ -7,12 +7,12 @@ import "../src/Escrow.sol";
 import "../src/PokerGame.sol";
 import "../src/AuctionGame.sol";
 
-/// @title DeployNewGames — Deploy PokerGame + AuctionGame to Monad testnet
+/// @title DeployNewGames — Deploy PokerGame + AuctionGame to Monad mainnet
 /// @notice Uses existing AgentRegistry + Escrow deployments. Only deploys new game contracts.
 ///
 /// Usage:
 ///   forge script script/DeployNewGames.s.sol:DeployNewGames \
-///     --rpc-url monad_testnet --broadcast --verify
+///     --rpc-url monad_mainnet --broadcast --verify
 ///
 /// Requires .env:
 ///   DEPLOYER_PRIVATE_KEY, AGENT_REGISTRY_ADDRESS, ESCROW_ADDRESS
@@ -24,8 +24,8 @@ contract DeployNewGames is Script {
         address registryAddr = vm.envAddress("AGENT_REGISTRY_ADDRESS");
         address escrowAddr = vm.envAddress("ESCROW_ADDRESS");
 
-        // ERC-8004 Reputation Registry singleton on Monad Testnet
-        address reputationRegistry = 0x8004B663056A597Dffe9eCcC1965A193B7388713;
+        // ERC-8004 Reputation Registry singleton on Monad Mainnet
+        address reputationRegistry = 0x8004BAa17C55a88189AE136b182e5fdA19dE9b63;
 
         vm.startBroadcast(deployerKey);
 
