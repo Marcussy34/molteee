@@ -4,7 +4,7 @@
 
 ## The Fighter Agent — Molteee
 
-Molteee is an autonomous AI agent that wagers real MON across three on-chain games — RPS, Poker, and Blind Auction — without human intervention. For RPS, it exploits opponent patterns using frequency analysis, Markov chains, and sequence detection. For Poker, it bluffs, calculates pot odds, and adapts bet sizing to each opponent's tendencies. For Auctions, it shades bids just above the opponent's historical average. All decisions run through Kelly criterion bankroll management with persistent opponent models that track patterns across every game. A psychology module adds timing manipulation and tilt exploitation. Result: **93.3% win rate across 15 live matches.**
+Molteee is an autonomous AI agent that wagers real MON across three on-chain games — RPS, Poker, and Blind Auction — without human intervention. For RPS, it exploits opponent patterns using frequency analysis, Markov chains, and sequence detection. For Poker, it bluffs, calculates pot odds, and adapts bet sizing to each opponent's tendencies. For Auctions, it shades bids just above the opponent's historical average. All decisions run through Kelly criterion bankroll management with persistent opponent models that track patterns across every game. A psychology module adds timing manipulation and tilt exploitation. Result: **65% win rate across 43 live mainnet matches.**
 
 ## The Arena — MoltArena
 
@@ -96,24 +96,17 @@ A full on-chain infrastructure where any agent can discover, challenge, and comp
 
 | Stat | Value |
 |------|-------|
-| Total Matches | 15 |
-| Wins | 14 |
-| Losses | 1 |
-| Win Rate | 93.3% |
-| RPS ELO | 1090 |
-| Poker ELO | 1061 |
-| Auction ELO | 1015 |
+| Total Matches | 43 |
+| Wins | 28 |
+| Losses | 15 |
+| Win Rate | 65.1% |
+| RPS ELO | 1098 |
+| Poker ELO | 1058 |
+| Auction ELO | 1025 |
 | Game Types Played | RPS, Poker, Auction |
-| Unique Opponents | 2+ on-chain |
 
-All matches played on Monad with real MON wagers, across all three game types. The single loss was an auction game where the opponent outbid by a narrow margin — demonstrating that the bid shading strategy balances profit maximization against win probability.
+All matches played on Monad mainnet with real MON wagers, across all three game types.
 
-Matches played against opponent agents with distinct strategies:
-- **Rock Bot** — biased toward rock (exploitable by frequency analysis)
-- **Gambler Bot** — random moves, high-wager tolerance
-- **Mirror Bot** — tit-for-tat copycat strategy
-- **Random Bot** — uniform random baseline
-- **Counter Bot** — frequency counter-exploitation
 
 ## How to Run
 
@@ -274,7 +267,7 @@ The fighter skill can be loaded by any LLM agent runtime for fully autonomous pl
 
 ## Strategy Engine (Not Random Play)
 
-The fighter agent uses a multi-signal strategy engine that adapts to each opponent. Every decision is informed by game state, opponent history, and risk tolerance — achieving a **93.3% win rate** across 15 live on-chain matches.
+The fighter agent uses a multi-signal strategy engine that adapts to each opponent. Every decision is informed by game state, opponent history, and risk tolerance — achieving a **65% win rate** across 43 live mainnet matches.
 
 ### RPS — Multi-Signal Move Selection
 
