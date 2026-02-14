@@ -26,11 +26,12 @@ export default function App({ Component, pageProps }: AppProps) {
 
   // Arcade pages render full-screen without the dashboard sidebar
   // Arcade pages render full-screen without the dashboard sidebar
-  const arcadePages = ["/", "/arena", "/poker", "/auction", "/leaderboard", "/matches", "/markets", "/bot", "/about"];
+  const arcadePages = ["/", "/arena", "/poker", "/auction", "/leaderboard", "/matches", "/markets", "/tournaments", "/bot", "/about"];
   const isArcade =
     arcadePages.includes(router.pathname) ||
     router.pathname.startsWith("/agents/") ||
-    router.pathname.startsWith("/matches/");
+    router.pathname.startsWith("/matches/") ||
+    router.pathname.startsWith("/tournaments/");
 
   return (
     <WagmiProvider config={config}>
