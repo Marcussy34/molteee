@@ -1,6 +1,7 @@
 import "@/styles/globals.css";
 import "@rainbow-me/rainbowkit/styles.css";
 import type { AppProps } from "next/app";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import { WagmiProvider } from "wagmi";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -10,6 +11,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ArcadeNav } from "@/components/layout/ArcadeNav";
 import { GlitchTransition } from "@/components/ui/GlitchTransition";
 import { SoundToggle } from "@/components/ui/SoundToggle";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 // RainbowKit requires WalletConnect projectId — skip it if not configured
 const hasWalletConnect = !!process.env.NEXT_PUBLIC_WALLETCONNECT_ID;
@@ -23,6 +25,8 @@ function MaybeRainbowKit({ children }: { children: React.ReactNode }) {
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const handleLoaded = useCallback(() => setLoading(false), []);
 
   // Arcade pages render full-screen without the dashboard sidebar
   // Arcade pages render full-screen without the dashboard sidebar
@@ -36,11 +40,12 @@ export default function App({ Component, pageProps }: AppProps) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <MaybeRainbowKit>
+          {loading && <LoadingScreen onFinished={handleLoaded} />}
           <GlitchTransition />
           {isArcade && router.pathname !== "/" && <ArcadeNav />}
           {isArcade && <SoundToggle />}
           {isArcade ? (
-            <Component {...pageProps} />
+            <Component {...pageProps} appReady={!loading} />
           ) : (
             <DashboardLayout>
               <Component {...pageProps} />

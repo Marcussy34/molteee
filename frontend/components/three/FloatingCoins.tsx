@@ -22,21 +22,16 @@ function Coin({ data }: { data: CoinData }) {
   const texture = useLoader(THREE.TextureLoader, "/Moltee_Log.png");
 
   const materials = useMemo(() => {
-    const faceMat = new THREE.MeshStandardMaterial({
+    const faceMat = new THREE.MeshBasicMaterial({
       map: texture,
-      metalness: 0.7,
+    });
+    const edgeMat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color("#c9a800"),
+      metalness: 0.8,
       roughness: 0.2,
       emissive: new THREE.Color("#836EF9"),
       emissiveIntensity: 0.15,
     });
-    const edgeMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color("#c9a800"),
-      metalness: 0.9,
-      roughness: 0.15,
-      emissive: new THREE.Color("#836EF9"),
-      emissiveIntensity: 0.1,
-    });
-    // [+x, -x, +y, -y, +z (front face), -z (back face)]
     // For a cylinder: [side, top, bottom]
     return [edgeMat, faceMat, faceMat];
   }, [texture]);
