@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useArenaStats, GlobalMatch } from "@/hooks/useArenaStats";
 import { sfx } from "@/lib/sound";
+import { FlickeringGrid } from "@/components/ui/FlickeringGrid";
+
+const FloatingCoins = dynamic(
+  () => import("@/components/three/FloatingCoins").then((m) => m.FloatingCoins),
+  { ssr: false }
+);
 
 // ─── INSERT COIN button ───────────────────────────────────────────────
 function InsertCoin({ onInsert }: { onInsert: () => void }) {
@@ -171,8 +178,33 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="arcade-page">
-      <div className="arcade-cabinet">
+    <div className="arcade-page relative">
+      {/* Flickering grid background — dual layer for gamefi feel */}
+      <div className="absolute inset-0 z-0">
+        <FlickeringGrid
+          className="h-full w-full [mask-image:radial-gradient(600px_circle_at_center,white,transparent)]"
+          squareSize={10}
+          gridGap={3}
+          color="#836EF9"
+          maxOpacity={0.6}
+          flickerChance={0.05}
+        />
+      </div>
+      <div className="absolute inset-0 z-0">
+        <FlickeringGrid
+          className="h-full w-full [mask-image:radial-gradient(500px_circle_at_center,white,transparent)]"
+          squareSize={10}
+          gridGap={3}
+          color="#00F0FF"
+          maxOpacity={0.25}
+          flickerChance={0.03}
+        />
+      </div>
+      {/* Floating coins on sides */}
+      <div className="absolute inset-0 z-[5] pointer-events-none">
+        <FloatingCoins />
+      </div>
+      <div className="arcade-cabinet relative z-10">
         {/* Side panels */}
         <div className="cabinet-side cabinet-side-left" />
         <div className="cabinet-side cabinet-side-right" />

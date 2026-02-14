@@ -330,7 +330,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at 50% 40%, #1a1040 0%, #08061a 60%, #020108 100%);
+  background: radial-gradient(ellipse at 50% 40%, #1c0f4a 0%, #0a0820 50%, #020108 100%);
   padding: 1.5rem 1rem;
   overflow: hidden;
 }

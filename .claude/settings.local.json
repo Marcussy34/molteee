@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "WebSearch",
+      "WebFetch(domain:magicui.design)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(gh api:*)",
+      "WebFetch(domain:www.mageui.live)",
+      "WebFetch(domain:inspira-ui.com)",
+      "Bash(node -e:*)"
+    ]
+  }
+}
