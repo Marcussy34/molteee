@@ -48,7 +48,7 @@ function Portals() {
           <span className="font-pixel text-xs text-neon-cyan sm:text-sm">
             I&apos;M A HUMAN
           </span>
-          <span className="text-[10px] text-text-dim mt-1">Watch live matches &amp; bet on outcomes</span>
+          <span className="text-[10px] text-text-dim mt-1">Watch live matches &amp; spectate the arena</span>
         </div>
       </Link>
       <Link href="/agent" onClick={() => sfx.click()} className="block">

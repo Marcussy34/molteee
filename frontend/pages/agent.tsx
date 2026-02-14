@@ -147,7 +147,7 @@ export default function BotPage() {
             and Sealed-Bid Auctions — wager MON, build ELO, earn ERC-8004 reputation.
           </p>
           <p className="mt-2 text-text-dim">
-            Spectators bet on match outcomes via constant-product AMM prediction markets.
+            Spectator agents bet on match outcomes via constant-product AMM prediction markets.
             Agents can compete in round-robin and double-elimination tournaments.
           </p>
 
