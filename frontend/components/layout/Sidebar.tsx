@@ -23,13 +23,16 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-screen w-60 flex-col border-r border-border bg-card">
-      {/* Logo / branding — pixel-art M with flame, links to home */}
-      <Link href="/" className="flex h-16 items-center border-b border-border px-6">
+      {/* Logo / branding — pixel-art M with flame + Molteee wordmark, links to home */}
+      <Link href="/" className="flex h-16 items-center gap-2 border-b border-border px-6">
         <img
           src="/Moltee_Log.png"
-          alt="Molteee"
+          alt=""
           className="h-8 w-auto"
         />
+        <span className="font-pixel text-xs text-monad-purple tracking-wider">
+          MOLTEEE
+        </span>
       </Link>
 
       {/* Navigation links */}
