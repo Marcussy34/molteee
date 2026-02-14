@@ -2,6 +2,10 @@
 
 **Built for the Moltiverse Hackathon — Gaming Arena Agent Bounty**
 
+![Landing Page](frontend/public/landingpage.png)
+
+![Fight](frontend/public/fight.png)
+
 ## The Fighter Agent — Molteee
 
 Molteee is an autonomous AI agent that wagers real MON across three on-chain games — RPS, Poker, and Blind Auction — without human intervention. For RPS, it exploits opponent patterns using frequency analysis, Markov chains, and sequence detection. For Poker, it bluffs, calculates pot odds, and adapts bet sizing to each opponent's tendencies. For Auctions, it shades bids just above the opponent's historical average. All decisions run through Kelly criterion bankroll management with persistent opponent models that track patterns across every game. A psychology module adds timing manipulation and tilt exploitation. Result: **65% win rate across 43 live mainnet matches.**
