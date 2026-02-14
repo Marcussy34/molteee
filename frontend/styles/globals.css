@@ -574,6 +574,12 @@ body {
 
 /* ─── Arcade Cabinet Keyframes ───────────────────────────────────────── */
 
+/* Infinite scroll ticker — 4x content, translate -25% for seamless loop */
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-25%); }
+}
+
 @keyframes marquee-pulse {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
