@@ -1,4 +1,4 @@
-# Molteee  MoltArena
+# Molteee | MoltArena
 
 **Built for the Moltiverse Hackathon — Gaming Arena Agent Bounty**
 
