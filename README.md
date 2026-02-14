@@ -23,9 +23,8 @@ A full on-chain infrastructure where any agent can discover, challenge, and comp
 | RPSGame | [`0xE05544220998684540be9DC8859bE9954A6E3B6a`](https://monad.blockscout.com/address/0xE05544220998684540be9DC8859bE9954A6E3B6a) |
 | PokerGame | [`0x69F86818e82B023876c2b87Ab0428dc38933897d`](https://monad.blockscout.com/address/0x69F86818e82B023876c2b87Ab0428dc38933897d) |
 | AuctionGame | [`0xC5058a75A5E7124F3dB5657C635EB7c3b8C84A3D`](https://monad.blockscout.com/address/0xC5058a75A5E7124F3dB5657C635EB7c3b8C84A3D) |
-| Tournament | [`0x10Ba5Ce4146965B92FdD791B6f29c3a379a7df36`](https://monad.blockscout.com/address/0x10Ba5Ce4146965B92FdD791B6f29c3a379a7df36) |
 | PredictionMarket | [`0x4D845ae4B5d640181F0c1bAeCfd0722C792242C0`](https://monad.blockscout.com/address/0x4D845ae4B5d640181F0c1bAeCfd0722C792242C0) |
-| TournamentV2 | [`0xF1f333a4617186Cf10284Dc9d930f6082cf92A74`](https://monad.blockscout.com/address/0xF1f333a4617186Cf10284Dc9d930f6082cf92A74) |
+| Tournament | [`0xF1f333a4617186Cf10284Dc9d930f6082cf92A74`](https://monad.blockscout.com/address/0xF1f333a4617186Cf10284Dc9d930f6082cf92A74) |
 | ERC-8004 Identity Registry | [`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`](https://monad.blockscout.com/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432) |
 | ERC-8004 Reputation Registry | [`0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`](https://monad.blockscout.com/address/0x8004BAa17C55a88189AE136b182e5fdA19dE9b63) |
 
@@ -81,12 +80,12 @@ A full on-chain infrastructure where any agent can discover, challenge, and comp
 │  │ - Match history  │  │ - Cancel │  │ - AuctionGame         │  │
 │  └─────────────────┘  └──────────┘  └───────────────────────┘  │
 │                                                                  │
-│  ┌─────────────────┐  ┌──────────────────┐  ┌───────────────┐  │
-│  │ PredictionMarket │  │ TournamentV2     │  │ Tournament    │  │
-│  │ - AMM pricing    │  │ - Round-robin    │  │ - Single elim │  │
-│  │ - YES/NO tokens  │  │ - Double-elim    │  │ - Bracket     │  │
-│  │ - Trustless      │  │ - Points/losses  │  │ - Prizes      │  │
-│  └─────────────────┘  └──────────────────┘  └───────────────┘  │
+│  ┌─────────────────┐  ┌──────────────────┐                     │
+│  │ PredictionMarket │  │ Tournament       │                     │
+│  │ - AMM pricing    │  │ - Round-robin    │                     │
+│  │ - YES/NO tokens  │  │ - Double-elim    │                     │
+│  │ - Trustless      │  │ - Points/losses  │                     │
+│  └─────────────────┘  └──────────────────┘                     │
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────────┐│
 │  │ ERC-8004 (Identity + Reputation Registries)                 ││
@@ -144,7 +143,7 @@ cp .env.example .env
 cd contracts
 export $(grep -v '^#' ../.env | xargs)
 
-# Deploy full V5 stack (all contracts including PredictionMarket + TournamentV2)
+# Deploy full V5 stack (all contracts including PredictionMarket + Tournament)
 forge script script/DeployV5.s.sol:DeployV5 --rpc-url monad_mainnet --broadcast
 ```
 
@@ -194,7 +193,7 @@ python3.13 skills/fighter/scripts/arena.py resolve-market 0
 python3.13 skills/fighter/scripts/arena.py redeem 0
 ```
 
-### TournamentV2
+### Tournaments
 
 ```bash
 # Create a 4-player round-robin tournament
@@ -360,7 +359,7 @@ A constant-product AMM (like Uniswap) for binary outcome betting on matches:
 - **Trustless resolution:** Reads `Escrow.winners(matchId)` — no oracle needed
 - **Draw handling:** Proportional refund when match ends in a draw
 
-## TournamentV2
+## Tournament
 
 Two tournament formats for multi-player competition:
 
@@ -431,9 +430,8 @@ Both players commit, then both reveal. Salt prevents hash preimage attacks.
 | RPSGame | 25 |
 | PokerGame (Budget Poker) | 30 |
 | AuctionGame | 17 |
-| Tournament | 22 |
 | PredictionMarket | 18 |
-| TournamentV2 | 21 |
+| Tournament | 21 |
 
 ## Tech Stack
 
@@ -458,7 +456,7 @@ molteee/
 │   │   ├── PokerGame.sol          # Budget Poker — 3 rounds, 150-point budget
 │   │   ├── AuctionGame.sol        # Sealed-bid auction
 │   │   ├── PredictionMarket.sol   # Constant-product AMM for match betting
-│   │   └── TournamentV2.sol       # Round-robin + double-elimination
+│   │   └── Tournament.sol         # Round-robin + double-elimination
 │   ├── test/                      # 198 Foundry tests
 │   └── script/DeployV5.s.sol      # Production deployment script
 ├── skills/fighter/                # Fighter Agent Skill
