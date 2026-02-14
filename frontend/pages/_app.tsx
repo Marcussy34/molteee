@@ -7,7 +7,6 @@ import { WagmiProvider } from "wagmi";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 import { config, queryClient } from "@/lib/wagmi";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ArcadeNav } from "@/components/layout/ArcadeNav";
 import { GlitchTransition } from "@/components/ui/GlitchTransition";
 import { SoundToggle } from "@/components/ui/SoundToggle";
