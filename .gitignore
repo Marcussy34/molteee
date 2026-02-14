@@ -44,8 +44,7 @@ skills/spectator/data/predictions.json
 # Deployment broadcast receipts
 contracts/broadcast/
 
-# Frontend mock data
-frontend/data/
+# Frontend mock data (empty placeholders are tracked for build compatibility)
 
 # Social platform state (contains API keys)
 **/moltbook_state.json
