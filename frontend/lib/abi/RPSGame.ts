@@ -53,5 +53,16 @@ export const rpsGameAbi = [
     "inputs": [],
     "outputs": [{ "name": "", "type": "uint256" }],
     "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "GameCreated",
+    "inputs": [
+      { "name": "gameId", "type": "uint256", "indexed": true },
+      { "name": "escrowMatchId", "type": "uint256", "indexed": true },
+      { "name": "player1", "type": "address", "indexed": true },
+      { "name": "player2", "type": "address", "indexed": false },
+      { "name": "totalRounds", "type": "uint256", "indexed": false }
+    ]
   }
 ] as const;

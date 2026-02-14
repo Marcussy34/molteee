@@ -3,6 +3,7 @@ import { publicClient, ADDRESSES } from "@/lib/contracts";
 import { rpsGameAbi } from "@/lib/abi/RPSGame";
 import { pokerGameV2Abi } from "@/lib/abi/PokerGameV2";
 import { auctionGameAbi } from "@/lib/abi/AuctionGame";
+import { discoverGameId, getGameAbi, getGameAddress } from "@/lib/gameDiscovery";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -98,9 +99,9 @@ function getPhaseLabel(gameType: string, phase: number): string {
   }
 }
 
-// ─── Game ID discovery cache (matchId → gameId) ──────────────────────────────
-
-const gameIdCache = new Map<string, number>(); // key: `${matchId}-${gameContract}`
+// ─── Game ID discovery ──────────────────────────────────────────────────────
+// Uses shared discoverGameId() from @/lib/gameDiscovery — event log lookup
+// with backward-scan fallback. See that module for implementation details.
 
 // ─── Settled match cache (past matches never change — skip chain calls) ───────
 // Key: `${matchId}-${gameType}`. Settled game state is immutable.
@@ -111,25 +112,8 @@ const SETTLED_CACHE_MAX = 50; // Limit memory use
 // Key: `${gameId}-${roundIndex}`. Once a round is complete, its data is immutable.
 const roundHistoryCache = new Map<string, RoundHistoryEntry>();
 
-// ─── ABI mapping ──────────────────────────────────────────────────────────────
-
-function getGameAbi(gameType: string) {
-  switch (gameType) {
-    case "rps": return rpsGameAbi;
-    case "poker": return pokerGameV2Abi;
-    case "auction": return auctionGameAbi;
-    default: return rpsGameAbi;
-  }
-}
-
-function getGameAddress(gameType: string): `0x${string}` {
-  switch (gameType) {
-    case "rps": return ADDRESSES.rpsGame;
-    case "poker": return ADDRESSES.pokerGame;
-    case "auction": return ADDRESSES.auctionGame;
-    default: return ADDRESSES.rpsGame;
-  }
-}
+// ─── ABI / address helpers ──────────────────────────────────────────────────
+// Imported from @/lib/gameDiscovery (shared with useActiveMatches)
 
 // ─── RPS round winner logic ──────────────────────────────────────────────────
 
@@ -188,56 +172,6 @@ async function fetchRoundHistory(
   return history;
 }
 
-// ─── Game ID discovery ────────────────────────────────────────────────────────
-// Scans backward from nextGameId to find the game that belongs to this match.
-
-async function discoverGameId(
-  matchId: number,
-  gameType: string,
-): Promise<number | null> {
-  const address = getGameAddress(gameType);
-  const abi = getGameAbi(gameType);
-  const cacheKey = `${matchId}-${address}`;
-
-  // Check cache first
-  if (gameIdCache.has(cacheKey)) {
-    return gameIdCache.get(cacheKey)!;
-  }
-
-  try {
-    const nextId = await publicClient.readContract({
-      address,
-      abi,
-      functionName: "nextGameId",
-    }) as bigint;
-
-    const total = Number(nextId);
-    // Scan backward (most recent games are more likely to match)
-    const scanLimit = Math.min(total, 20);
-
-    for (let i = total - 1; i >= total - scanLimit && i >= 0; i--) {
-      try {
-        const game = await publicClient.readContract({
-          address,
-          abi,
-          functionName: "getGame",
-          args: [BigInt(i)],
-        }) as any;
-
-        if (Number(game.escrowMatchId) === matchId) {
-          gameIdCache.set(cacheKey, i);
-          return i;
-        }
-      } catch {
-        // Skip invalid game IDs
-      }
-    }
-  } catch (err) {
-    console.error("[discoverGameId] error:", err);
-  }
-
-  return null;
-}
 
 // ─── Helper: compute commit/reveal counts from booleans ──────────────────────
 

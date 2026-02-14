@@ -4,6 +4,7 @@ import { escrowAbi } from "@/lib/abi/Escrow";
 import { rpsGameAbi } from "@/lib/abi/RPSGame";
 import { pokerGameV2Abi } from "@/lib/abi/PokerGameV2";
 import { auctionGameAbi } from "@/lib/abi/AuctionGame";
+import { discoverGameId, getGameAbi, getGameAddress } from "@/lib/gameDiscovery";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,25 +51,8 @@ export function parseStatus(status: number): MatchStatus {
   }
 }
 
-// ─── Game ABI / address helpers (reuse pattern from useLiveGameState) ─────────
-
-function getGameAbi(gameType: string) {
-  switch (gameType) {
-    case "rps": return rpsGameAbi;
-    case "poker": return pokerGameV2Abi;
-    case "auction": return auctionGameAbi;
-    default: return rpsGameAbi;
-  }
-}
-
-function getGameAddress(gameType: string): `0x${string}` {
-  switch (gameType) {
-    case "rps": return ADDRESSES.rpsGame;
-    case "poker": return ADDRESSES.pokerGame;
-    case "auction": return ADDRESSES.auctionGame;
-    default: return ADDRESSES.rpsGame;
-  }
-}
+// ─── Game ABI / address helpers ──────────────────────────────────────────────
+// Imported from @/lib/gameDiscovery (shared with useLiveGameState)
 
 // ─── Phase label maps ─────────────────────────────────────────────────────────
 
@@ -231,8 +215,7 @@ let cachedSettled: OnChainMatch[] = [];
 let lastFetchTime = 0;
 let hydratedFromStorage = false; // tracks if we've loaded localStorage yet
 
-// Game discovery caches (persistent across polls — never need to re-discover)
-const gameIdByMatch = new Map<number, number>();      // matchId → gameId
+// Game discovery cache — now shared via @/lib/gameDiscovery (discoverGameId)
 const settledGameMatches = new Set<number>();          // matchIds with complete games (skip re-poll)
 
 // ─── Persist settled game match IDs in localStorage ──────────────────────────
@@ -284,54 +267,8 @@ const SCAN_WINDOW = 30;              // How many recent matches to scan
 const PENDING_MAX_AGE_S = 3600;      // Hide pending challenges older than 1 hour
 
 // ─── Game ID discovery ───────────────────────────────────────────────────────
-// Scans backward from nextGameId to find the game belonging to a match.
-
-async function discoverGameId(
-  matchId: number,
-  gameType: string,
-): Promise<number | null> {
-  // Check cache first
-  if (gameIdByMatch.has(matchId)) {
-    return gameIdByMatch.get(matchId)!;
-  }
-
-  const address = getGameAddress(gameType);
-  const abi = getGameAbi(gameType);
-
-  try {
-    const nextId = await publicClient.readContract({
-      address,
-      abi,
-      functionName: "nextGameId",
-    }) as bigint;
-
-    const total = Number(nextId);
-    const scanLimit = Math.min(total, 20);
-
-    // Scan backward — most recent games are more likely to match
-    for (let i = total - 1; i >= total - scanLimit && i >= 0; i--) {
-      try {
-        const game = await publicClient.readContract({
-          address,
-          abi,
-          functionName: "getGame",
-          args: [BigInt(i)],
-        }) as any;
-
-        if (Number(game.escrowMatchId) === matchId) {
-          gameIdByMatch.set(matchId, i);
-          return i;
-        }
-      } catch {
-        // Skip invalid game IDs
-      }
-    }
-  } catch (err) {
-    console.error("[discoverGameId] error:", err);
-  }
-
-  return null;
-}
+// Uses shared discoverGameId() from @/lib/gameDiscovery — event log lookup
+// with backward-scan fallback. See that module for implementation details.
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
