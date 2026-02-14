@@ -118,7 +118,7 @@ def _api_request(endpoint: str, data: dict, method: str = "POST",
     body = json.dumps(data).encode("utf-8")
     headers = {
         "Content-Type": "application/json",
-        "User-Agent": "MolteeFighter/1.0 (OpenClaw Agent)",
+        "User-Agent": "MolteeFighter/1.0 (Agent Skill)",
         "Accept": "application/json",
     }
 

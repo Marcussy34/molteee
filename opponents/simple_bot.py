@@ -2,7 +2,7 @@
 """
 simple_bot.py — Standalone opponent bot for testing the Gaming Arena.
 
-No OpenClaw needed. Uses its own web3 setup with a dedicated wallet.
+No Agent Skill runtime needed. Uses its own web3 setup with a dedicated wallet.
 Auto-registers, polls for challenges, accepts and plays with random moves.
 
 Usage: python3 opponents/simple_bot.py [--wallet N]

@@ -121,7 +121,7 @@ def _api_request(endpoint: str, data: dict = None, method: str = "POST",
     # User-Agent required — MoltX is behind Cloudflare which blocks default urllib UA
     headers = {
         "Content-Type": "application/json",
-        "User-Agent": "MolteeFighter/1.0 (OpenClaw Agent)",
+        "User-Agent": "MolteeFighter/1.0 (Agent Skill)",
         "Accept": "application/json",
     }
 

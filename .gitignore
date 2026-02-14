@@ -35,3 +35,20 @@ Thumbs.db
 # Claude-mem auto-generated context files (keep root CLAUDE.md tracked)
 **/CLAUDE.md
 !/CLAUDE.md
+
+# Runtime data (opponent models, API state, logs)
+skills/fighter/data/*.json
+!skills/fighter/data/psychology_config.json
+skills/spectator/data/predictions.json
+
+# Deployment broadcast receipts
+contracts/broadcast/
+
+# Frontend mock data
+frontend/data/
+
+# Social platform state (contains API keys)
+**/moltbook_state.json
+**/moltx_state.json
+**/moltbook_log.json
+**/moltx_log.json

@@ -1,4 +1,4 @@
-// Serves the OpenClaw-format SKILL.md for agent discovery.
+// Serves the Agent Skill-format SKILL.md for agent discovery.
 // Any web3-capable LLM agent can GET /skill.md to learn how to integrate with the arena.
 // The raw markdown includes YAML frontmatter (name, description, metadata)
 // and a full integration guide organized by gameplay workflow.

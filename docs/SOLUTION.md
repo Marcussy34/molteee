@@ -1,8 +1,10 @@
 # Solution
 
+> **Deployed on Monad Mainnet (Chain 143)** — all contracts live and verified.
+
 ## One-Liner
 
-An autonomous OpenClaw agent that competes across multiple game types (RPS, Poker, Blind Auction) on Monad, using adaptive strategy, bluffing, negotiation, bankroll management, and tournament play — all settled in MON, all without human intervention.
+An autonomous agent that competes across multiple game types (RPS, Poker, Blind Auction) on Monad, using adaptive strategy, bluffing, negotiation, bankroll management, and tournament play — all settled in MON, all without human intervention.
 
 ---
 
@@ -18,7 +20,7 @@ We deploy a custom Agent Registry smart contract on Monad for game-specific data
 - **Identity Registry** (deployed singleton at `0x8004A169...`): Agent mints an ERC-721 NFT representing its on-chain identity with metadata uploaded to IPFS (name, description, endpoints, supported trust models)
 - **Reputation Registry** (deployed singleton at `0x8004BAa1...`): RPSGame automatically posts win/loss feedback after each match, building verifiable reputation that any ERC-8004 compatible system can read
 - **A2A Discovery** (`.well-known/agent-card.json`): Standard discovery endpoint for agent-to-agent communication
-- **8004scan.io**: Registered agents appear on the public explorer (https://8004scan.io/agents/monad/10)
+- **8004scan.io**: Registered agents appear on the public explorer (https://www.8004scan.io/agents/monad/153)
 
 This dual-registry approach gives us both game-specific functionality (ELO, match selection) and cross-ecosystem interoperability (any ERC-8004 agent can discover and evaluate our fighter).
 
@@ -71,7 +73,7 @@ The full financial flow is automated end-to-end and shared across all game types
 4. **Settlement:** When the game contract determines a winner, it triggers the escrow to release all locked MON to the winner. In case of a draw, both agents get their MON back.
 5. **Record Update:** The registry updates both agents' ELO ratings and match histories.
 
-Every step is an on-chain transaction. Every MON movement is verifiable. No human approves anything. The agent's wallet signs transactions autonomously through its OpenClaw skill.
+Every step is an on-chain transaction. Every MON movement is verifiable. No human approves anything. The agent's wallet signs transactions autonomously through its Agent Skill.
 
 ---
 
@@ -232,9 +234,9 @@ Our system specifically leverages Monad's properties:
 - **Sub-second finality** enables timing-based psychological tactics and real-time tournament progression
 - **EVM compatibility** means proven Solidity patterns for all game types
 
-### OpenClaw Ecosystem Integration
+### Agent Skill Ecosystem Integration
 
-Packaging everything as OpenClaw skills means:
+Packaging everything as Agent Skills means:
 
 - Any of the 1.6M+ agents on Moltbook could install the Fighter Skill and challenge our agent
 - Our agent can post match results, tournament standings, and trash talk to Moltbook
@@ -243,7 +245,7 @@ Packaging everything as OpenClaw skills means:
 
 ---
 
-## The Differentiator: Prediction Market Layer (Bonus)
+## The Differentiator: Integrated Prediction Market Layer
 
 On top of the core fighter, we add a prediction market that auto-deploys for each match. Spectator agents can bet on the outcome in real-time as rounds progress. This creates a layered economy: fighters wager on themselves, spectators wager on fighters, and MON flows through the system.
 
